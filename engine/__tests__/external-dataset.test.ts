@@ -9,7 +9,8 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Chess } from 'chess.js';
-import { findForks, findMatesIn1, findPinsAndSkewers, findRemovalOfGuard, findDiscoveredCheck } from '../motif';
+import { findRemovalOfGuard, findDiscoveredCheck } from '../motif';
+import { detectAllMotifs } from '../detectall';
 import { tacticalOutcome } from '../tacticsearch';
 
 interface ExtCase {
@@ -48,43 +49,37 @@ function legalFen(fen: string): boolean {
   }
 }
 
-/** Does our detector fire for this case's motif on its key move/position? */
+/**
+ * Does our COMPREHENSIVE detector fire for this case? Uses detectAllMotifs
+ * (Tier-1 + gated mate proof + skewer/pin tactics + Tier-2), matching the
+ * solution's key move; plus the move-aware before/after detectors.
+ */
 function detectorFires(c: ExtCase): boolean {
   const key = c.solution?.[0] ? uciToSan(c.fen, c.solution[0]) : null;
-  switch (c.motif) {
-    case 'fork':
-      return key ? findForks(c.fen).motifs.some((m) => m.line[0] === key) : false;
-    case 'mating_net':
-    case 'back_rank':
-      return key ? findMatesIn1(c.fen).motifs.some((m) => m.line[0] === key) : false;
-    case 'pin_absolute':
-    case 'pin_relative':
-    case 'skewer':
-      return (
-        findPinsAndSkewers(c.fen, 'w').motifs.some((m) => m.type === c.motif) ||
-        findPinsAndSkewers(c.fen, 'b').motifs.some((m) => m.type === c.motif)
-      );
-    case 'discovered_check':
-      if (!key) return false;
-      try {
-        const ch = new Chess(c.fen);
-        ch.move(key);
-        return findDiscoveredCheck(c.fen, ch.fen()).motifs.length > 0;
-      } catch {
-        return false;
-      }
-    case 'removal_of_guard':
-      if (!key) return false;
-      try {
-        const ch = new Chess(c.fen);
-        ch.move(key);
-        return findRemovalOfGuard(c.fen, ch.fen()).motifs.length > 0;
-      } catch {
-        return false;
-      }
-    default:
-      return false; // Tier-2 not yet covered
+
+  // Move-aware motifs need before/after the played move.
+  if (c.motif === 'discovered_check' || c.motif === 'removal_of_guard') {
+    if (!key) return false;
+    try {
+      const ch = new Chess(c.fen);
+      ch.move(key);
+      const r =
+        c.motif === 'discovered_check'
+          ? findDiscoveredCheck(c.fen, ch.fen())
+          : findRemovalOfGuard(c.fen, ch.fen());
+      return r.motifs.length > 0;
+    } catch {
+      return false;
+    }
   }
+
+  const all = detectAllMotifs(c.fen, { mateBudgetMs: 2500 });
+  // a move-producing tactic: our detected motif starts with the solution key move
+  if (key && all.some((m) => m.line[0] === key)) return true;
+  // a static (s)pin already on the board that the solution exploits
+  if (['pin_absolute', 'pin_relative', 'skewer'].includes(c.motif))
+    return all.some((m) => m.type === c.motif);
+  return false;
 }
 
 /** Search oracle: does the stated solution actually win material / force mate? */
@@ -114,6 +109,7 @@ describe.skipIf(!hasFile)('external dataset (ChatGPT) triangulation', () => {
     let oracleOk = 0;
     let claimedOk = 0;
     let claimedAgree = 0;
+    let detectedOracle = 0; // ANY oracle-confirmed positive the detector fires on
     const mislabels: string[] = []; // model says positive+wins, oracle finds no win
     const gaps: string[] = []; // oracle confirms a win but our detector misses
 
@@ -124,6 +120,7 @@ describe.skipIf(!hasFile)('external dataset (ChatGPT) triangulation', () => {
       if (oracleConfirms(c)) {
         oracleOk++;
         const fires = detectorFires(c);
+        if (fires) detectedOracle++;
         if (CLAIMED.has(c.motif)) {
           claimedOk++;
           if (fires) claimedAgree++;
@@ -138,13 +135,16 @@ describe.skipIf(!hasFile)('external dataset (ChatGPT) triangulation', () => {
 
     console.log(`\nExternal dataset: ${cases.length} cases (${legal} legal FENs)`);
     console.log(`  oracle-confirmed positive wins: ${oracleOk}`);
+    console.log(`  detectAllMotifs found:          ${detectedOracle}/${oracleOk} (was 14/30 with Tier-1 only)`);
     console.log(`  CLAIMED Tier-1 motifs detected: ${claimedAgree}/${claimedOk}`);
     console.log(`  model over-claims our oracle REFUTED (e.g. pin "wins" that are even trades): ${mislabels.length}`);
     if (mislabels.length) console.log('   ' + mislabels.join('\n   '));
     if (gaps.length) console.log('  GAPS (roadmap vs regression):\n   ' + gaps.join('\n   '));
 
-    // Floor ONLY on the motifs we claim to detect as move-solvers today.
+    // Floor on the comprehensive detector — the proof-obligation integration lifted
+    // detection from 14/30 to (near) 30/30 on oracle-confirmed positives.
     if (claimedOk >= 5) expect(claimedAgree / claimedOk).toBeGreaterThan(0.85);
+    if (oracleOk >= 10) expect(detectedOracle / oracleOk).toBeGreaterThan(0.8);
   });
 });
 
