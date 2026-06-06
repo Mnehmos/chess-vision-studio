@@ -5,6 +5,7 @@
 // the other channels only ATTRIBUTE that swing. We never sum differently-scaled
 // raw quantities into a magic score. Saliency ranks among VALIDATED candidates;
 // it is never a substitute for validation (Invariant 7).
+import { Chess } from 'chess.js';
 import { parseFen } from './board';
 import { computeCpLoss, classify } from './classify';
 import { diffPlayedMove, diffRefutation } from './diff';
@@ -80,6 +81,14 @@ function priorityOf(c: InsightCandidate): number {
   return TYPE_PRIORITY[c.type] ?? 0;
 }
 
+function isCheckmate(fen: string): boolean {
+  try {
+    return new Chess(fen).isCheckmate();
+  } catch {
+    return false;
+  }
+}
+
 function formatMove(fenBefore: string, san: string): string {
   const pos = parseFen(fenBefore);
   const moveNumber = parseInt(fenBefore.trim().split(/\s+/)[5] ?? '1', 10);
@@ -99,9 +108,15 @@ export function analyzeMove(
   extraCandidates: InsightCandidate[] = [],
 ): MoveAnalysis {
   const { fenBefore, fenAfter, san, evalBefore, evalAfter } = input;
-  const cpLoss = computeCpLoss(evalBefore, evalAfter);
-  const classification = classify(cpLoss);
   const move = formatMove(fenBefore, san);
+
+  // Terminal position: if the played move DELIVERS checkmate it is the best
+  // possible move — never a blunder, and you did not "miss" any other mate.
+  // (Stockfish returns no eval for a mated position, which would otherwise make
+  // cpLoss look like the whole mate was thrown away.)
+  const deliveredMate = isCheckmate(fenAfter);
+  const cpLoss = deliveredMate ? 0 : computeCpLoss(evalBefore, evalAfter);
+  const classification = deliveredMate ? 'best' : classify(cpLoss);
 
   const base: Omit<MoveAnalysis, 'rankedInsights' | 'topExplanation'> = {
     positionBefore: fenBefore,
@@ -112,6 +127,14 @@ export function analyzeMove(
     evalAfter,
     cpLoss,
   };
+
+  if (deliveredMate) {
+    return {
+      ...base,
+      rankedInsights: [],
+      topExplanation: `Checkmate — ${san} ends the game.`,
+    };
+  }
 
   // §5 Step B — the gate. Small swing → nothing salient → say nothing.
   if (cpLoss < GATE) {

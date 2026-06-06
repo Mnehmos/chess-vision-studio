@@ -21,9 +21,14 @@ export async function analyzeMoveLive(
   if (!moved) throw new Error(`illegal move ${san} in ${fenBefore}`);
   const fenAfter = chess.fen();
 
+  // A terminal position (checkmate/stalemate) has no eval — don't ask Stockfish.
+  // analyzeMove short-circuits on a delivered mate, so evalAfter is unused there.
+  const terminal = chess.isGameOver();
   const [evalBefore, evalAfter] = await Promise.all([
     engine.evaluate({ fen: fenBefore, depth }),
-    engine.evaluate({ fen: fenAfter, depth }),
+    terminal
+      ? Promise.resolve({ depth, pv: [] } as Awaited<ReturnType<typeof engine.evaluate>>)
+      : engine.evaluate({ fen: fenAfter, depth }),
   ]);
 
   return analyzeMove({ fenBefore, fenAfter, san, evalBefore, evalAfter });

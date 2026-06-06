@@ -45,6 +45,23 @@ describe('M4.1 — quiet move, ~10 changes: the ranker names the material one', 
   });
 });
 
+describe('delivering checkmate is the BEST move, never a blunder', () => {
+  it('R1e7# is classified best with cpLoss 0 and a checkmate explanation', () => {
+    const r = analyzeMove({
+      fenBefore: '4R3/3N1kpp/p1r3p1/3p4/2p2PrP/8/P1P3P1/4R1K1 w - - 0 31',
+      fenAfter: '4R3/3NRkpp/p1r3p1/3p4/2p2PrP/8/P1P3P1/6K1 b - - 1 31',
+      san: 'R1e7#',
+      evalBefore: ev(0, ['R1e7#']), // (eval irrelevant — terminal short-circuit)
+      evalAfter: ev(0, []), // Stockfish returns nothing for a mated position
+    });
+    expect(r.classification).toBe('best');
+    expect(r.cpLoss).toBe(0);
+    expect(r.topExplanation).toContain('Checkmate');
+    expect(r.topExplanation).toContain('R1e7#');
+    expect(r.rankedInsights).toEqual([]); // you did not "miss" any other mate
+  });
+});
+
 describe('M4.2 — silence: a solid equal move says nothing', () => {
   it('cpLoss below the gate → explicit silence, no insights', () => {
     const result = analyzeMove({
