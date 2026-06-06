@@ -222,7 +222,17 @@ function legalSummary(fen: string, withMotifs = true): LegalFeatureSummary {
   // position can be illegal (opponent left in check), which would let chess.js
   // generate a king capture and throw downstream — so skip motifs there, and fail
   // soft if detection ever hits a malformed FEN so one bad ply can't crash the load.
-  const motifs = withMotifs ? safeAvailableMotifSans(fen) : new Set<string>();
+  // Inlined (not a helper) so a partial HMR can never leave it "not defined".
+  let motifs: Set<string>;
+  if (withMotifs) {
+    try {
+      motifs = new Set(detectAvailableMotifs(fen).motifs.map((m) => m.line[0]));
+    } catch {
+      motifs = new Set<string>();
+    }
+  } else {
+    motifs = new Set<string>();
+  }
   const byPiece = emptyPieceCounts();
   let safe = 0;
   let captures = 0;
@@ -487,16 +497,6 @@ function isSafeDestination(fen: string, move: { san: string; to: Square; from: S
   const played = chess.move(move.san);
   if (!played) return false;
   return seeOnSquare(chess.fen(), move.to).swing <= 0;
-}
-
-/** SANs of tactical-candidate moves available to the side to move, or empty if the
- *  position is malformed/illegal (never throws). */
-function safeAvailableMotifSans(fen: string): Set<string> {
-  try {
-    return new Set(detectAvailableMotifs(fen).motifs.map((m) => m.line[0]));
-  } catch {
-    return new Set<string>();
-  }
 }
 
 function legalSummaryForSide(fen: string, color: Color): LegalFeatureSummary {

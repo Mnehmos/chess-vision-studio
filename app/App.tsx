@@ -743,6 +743,22 @@ function Legend({ modeId }: { modeId: string }) {
   );
 }
 
+// Scroll an element into view by adjusting ONLY its scroll container — never the
+// window. (element.scrollIntoView() bubbles to every scrollable ancestor incl. the
+// document, which is what made the whole page jump on each step.)
+function keepInView(el: HTMLElement | null, container: HTMLElement | null, axis: 'x' | 'y') {
+  if (!el || !container) return;
+  const e = el.getBoundingClientRect();
+  const c = container.getBoundingClientRect();
+  if (axis === 'y') {
+    if (e.top < c.top) container.scrollTop -= c.top - e.top;
+    else if (e.bottom > c.bottom) container.scrollTop += e.bottom - c.bottom;
+  } else {
+    if (e.left < c.left) container.scrollLeft -= c.left - e.left;
+    else if (e.right > c.right) container.scrollLeft += e.right - c.right;
+  }
+}
+
 // Compact horizontal notation directly under the board (always visible).
 function MoveStrip({
   plies,
@@ -754,11 +770,13 @@ function MoveStrip({
   setView: (n: number) => void;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    keepInView(ref.current, containerRef.current, 'x');
   }, [view]);
   return (
     <div
+      ref={containerRef}
       style={{
         display: 'flex',
         gap: 4,
@@ -811,8 +829,9 @@ function MoveHistory({
   analyses: Map<number, MoveAnalysis>;
 }) {
   const currentRef = useRef<HTMLTableRowElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    currentRef.current?.scrollIntoView?.({ block: 'nearest' });
+    keepInView(currentRef.current, scrollRef.current, 'y');
   }, [view]);
 
   // group plies into full moves
@@ -850,7 +869,7 @@ function MoveHistory({
   return (
     <div style={{ minWidth: 200 }}>
       <h4 style={{ margin: '0 0 4px' }}>Move history</h4>
-      <div style={{ maxHeight: 360, overflowY: 'auto', fontSize: 13 }}>
+      <div ref={scrollRef} style={{ maxHeight: 360, overflowY: 'auto', fontSize: 13 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <tbody>
             {rows.map((r) => {
