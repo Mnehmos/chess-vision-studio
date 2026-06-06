@@ -15,6 +15,15 @@ const W_RES = '#7ba3d0';
 const D_RES = '#c4c4c4';
 const B_RES = '#4a4a4a';
 
+// Match the board view's card treatment.
+const card: React.CSSProperties = {
+  background: '#fff',
+  border: '1px solid #e6e8eb',
+  borderRadius: 10,
+  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+  padding: 14,
+};
+
 export function DatasetPanel({
   games,
   engineReady,
@@ -65,9 +74,9 @@ export function DatasetPanel({
           Analyze all games
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Left column: the numbers */}
-        <div style={{ flex: '1 1 420px', minWidth: 360 }}>
+        <div style={{ ...card, flex: '1 1 420px', minWidth: 360 }}>
           <h3 style={{ margin: '0 0 8px' }}>
             {ds.hero ? `${ds.hero} — ` : ''}
             {ds.totalGames} games
@@ -99,12 +108,14 @@ export function DatasetPanel({
         </div>
 
         {/* Right column: the move explorer */}
-        <div style={{ flex: '1 1 360px', minWidth: 320 }}>
+        <div style={{ ...card, flex: '1 1 360px', minWidth: 320 }}>
           <MoveExplorer tree={tree} totalGames={ds.totalGames} />
         </div>
       </div>
 
-      <GamesList ds={ds} onOpenGame={onOpenGame} />
+      <div style={{ ...card, marginTop: 20 }}>
+        <GamesList ds={ds} onOpenGame={onOpenGame} />
+      </div>
     </div>
   );
 }
@@ -348,7 +359,7 @@ function GamesList({ ds, onOpenGame }: { ds: ReturnType<typeof computeDataset>; 
     });
 
   return (
-    <details style={{ marginTop: 18 }}>
+    <details>
       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
         Review games ({rows.length} shown / {ds.totalGames})
       </summary>

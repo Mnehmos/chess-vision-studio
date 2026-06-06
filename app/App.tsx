@@ -437,7 +437,12 @@ export function App() {
 
   return (
     <div style={{ minHeight: '100vh', background: PAGE_BG, color: '#1a1a1a', fontFamily: 'system-ui, sans-serif' }}>
-      <style>{`@keyframes csvBlink{50%{opacity:0.1}}`}</style>
+      <style>{`
+        @keyframes csvBlink{50%{opacity:0.1}}
+        .cvs-workspace{display:grid;grid-template-columns:480px minmax(0,1fr) 300px;gap:20px;align-items:start}
+        @media (max-width:1180px){.cvs-workspace{grid-template-columns:480px minmax(0,1fr)}}
+        @media (max-width:820px){.cvs-workspace{grid-template-columns:1fr}}
+      `}</style>
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 24px 56px' }}>
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.01em' }}>Chess Vision Studio</h1>
@@ -479,9 +484,9 @@ export function App() {
         />
       ) : (
         <>
-      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div className="cvs-workspace">
         {/* Left: board + nav */}
-        <div style={{ ...cardStyle, width: 480, padding: 12 }}>
+        <div style={{ ...cardStyle, width: '100%', maxWidth: 480, padding: 12 }}>
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
           <Board2D
             fen={fen}
@@ -510,7 +515,7 @@ export function App() {
         </div>
 
         {/* Middle: facts + mate-line card */}
-        <div style={{ flex: '1 1 360px', minWidth: 320, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <FactsPanel
             fen={fen}
             selected={selected}
@@ -538,7 +543,7 @@ export function App() {
         </div>
 
         {/* Right: LED twin + move list */}
-        <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: '100%', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LedPreview ledMap={ledMap} />
           <MoveHistory plies={plies} view={view} setView={setView} analyses={analyses} />
         </div>

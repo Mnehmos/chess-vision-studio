@@ -44,7 +44,10 @@ export function AnalyticsPanel({
     () => (scope === 'step' ? (features ?? []).filter((e) => e.ply <= view) : features ?? []),
     [features, scope, view],
   );
-  const patterns = useMemo(() => computePatternProfile(scopedFeatures), [scopedFeatures]);
+  // Provenance matters: attribute every pattern/motif/phase-loss to the side whose
+  // move it was, so White's and Black's habits are read separately (like the mistakes).
+  const patternsW = useMemo(() => computePatternProfile(scopedFeatures.filter((e) => e.color === 'w')), [scopedFeatures]);
+  const patternsB = useMemo(() => computePatternProfile(scopedFeatures.filter((e) => e.color === 'b')), [scopedFeatures]);
   const timeline = useMemo(() => buildTimeline(scoped), [scoped]);
 
   return (
@@ -79,9 +82,9 @@ export function AnalyticsPanel({
           <MistakeColumn title="White's mistakes" color={TEAM.w} moves={analytics.worstByColor.w} onJump={onJump} />
           <MistakeColumn title="Black's mistakes" color={TEAM.b} moves={analytics.worstByColor.b} onJump={onJump} />
 
-          <PatternCards patterns={patterns} />
-          <MotifSummary patterns={patterns} />
-          <PhaseSummary patterns={patterns} />
+          <PatternsSplit w={patternsW} b={patternsB} />
+          <MotifsSplit w={patternsW} b={patternsB} />
+          <PhaseSplit w={patternsW} b={patternsB} />
 
           {/* What happened — chronological, tied to the move history. */}
           <div style={{ minWidth: 280, flex: 1 }}>
@@ -204,70 +207,93 @@ function MistakeColumn({
   );
 }
 
-// ── timeline ────────────────────────────────────────────────────────────────
-function PatternCards({ patterns }: { patterns: PatternProfile }) {
+// ── split-by-side analytics (provenance) ─────────────────────────────────────
+function SideLabel({ color, text, mt }: { color: string; text: string; mt?: number }) {
   return (
-    <div style={{ minWidth: 300, maxWidth: 360, flex: '1 1 320px' }}>
-      <h4 style={{ margin: '0 0 4px' }}>Patterns</h4>
-      {patterns.topPatterns.length === 0 ? (
-        <div style={{ color: '#888', fontSize: 13 }}>No recurring pattern signals yet.</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(138px, 1fr))', gap: 6 }}>
-          {patterns.topPatterns.map((p) => (
-            <div
-              key={p.type}
-              style={{
-                border: '1px solid #e4e4e4',
-                borderRadius: 4,
-                padding: '6px 8px',
-                minHeight: 54,
-                background: '#fafafa',
-              }}
-            >
-              <div style={{ fontSize: 12, color: '#666' }}>{p.count}x</div>
-              <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {p.title}
-              </div>
-              <div style={{ fontSize: 11, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {p.detail}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color, marginTop: mt ?? 0, marginBottom: 3 }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+      {text}
     </div>
   );
 }
 
-function MotifSummary({ patterns }: { patterns: PatternProfile }) {
-  const rows = motifRows(patterns).slice(0, 6);
+function PatternsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
+  return (
+    <div style={{ minWidth: 280, maxWidth: 380, flex: '1 1 300px' }}>
+      <h4 style={{ margin: '0 0 6px' }}>Patterns</h4>
+      <SideLabel color={TEAM.w} text="White" />
+      <PatternGrid patterns={w} />
+      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <PatternGrid patterns={b} />
+    </div>
+  );
+}
+
+function PatternGrid({ patterns }: { patterns: PatternProfile }) {
+  if (patterns.topPatterns.length === 0) return <div style={{ color: '#aaa', fontSize: 12 }}>none</div>;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(132px, 1fr))', gap: 6 }}>
+      {patterns.topPatterns.map((p) => (
+        <div key={p.type} style={{ border: '1px solid #e4e4e4', borderRadius: 4, padding: '6px 8px', minHeight: 50, background: '#fafafa' }}>
+          <div style={{ fontSize: 12, color: '#666' }}>{p.count}x</div>
+          <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
+          <div style={{ fontSize: 11, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.detail}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
     <div style={{ minWidth: 220, flex: '1 1 240px' }}>
-      <h4 style={{ margin: '0 0 4px' }}>Motifs</h4>
-      {rows.length === 0 ? (
-        <div style={{ color: '#888', fontSize: 13 }}>No validated motifs in the scoped review.</div>
-      ) : (
-        <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
-          {rows.map((r) => (
-            <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 32px', gap: 6, alignItems: 'center' }}>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-              <div style={{ display: 'flex', height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ width: `${r.createdPct}%`, background: '#3fbf5f' }} />
-                <div style={{ width: `${r.sufferedPct}%`, background: '#e2603b' }} />
-              </div>
-              <span style={{ color: '#777', textAlign: 'right' }}>{r.total}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <h4 style={{ margin: '0 0 6px' }}>
+        Motifs <span style={{ fontSize: 11, fontWeight: 400, color: '#3fbf5f' }}>created</span>
+        <span style={{ fontSize: 11, fontWeight: 400, color: '#999' }}> / </span>
+        <span style={{ fontSize: 11, fontWeight: 400, color: '#e2603b' }}>suffered</span>
+      </h4>
+      <SideLabel color={TEAM.w} text="White" />
+      <MotifBars patterns={w} />
+      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <MotifBars patterns={b} />
     </div>
   );
 }
 
-function PhaseSummary({ patterns }: { patterns: PatternProfile }) {
+function MotifBars({ patterns }: { patterns: PatternProfile }) {
+  const rows = motifRows(patterns).slice(0, 6);
+  if (rows.length === 0) return <div style={{ color: '#aaa', fontSize: 12 }}>none</div>;
+  return (
+    <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
+      {rows.map((r) => (
+        <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 32px', gap: 6, alignItems: 'center' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+          <div style={{ display: 'flex', height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${r.createdPct}%`, background: '#3fbf5f' }} />
+            <div style={{ width: `${r.sufferedPct}%`, background: '#e2603b' }} />
+          </div>
+          <span style={{ color: '#777', textAlign: 'right' }}>{r.total}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PhaseSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
     <div style={{ minWidth: 210, flex: '1 1 220px' }}>
-      <h4 style={{ margin: '0 0 4px' }}>Phase loss</h4>
+      <h4 style={{ margin: '0 0 6px' }}>Phase loss (avg cp)</h4>
+      <SideLabel color={TEAM.w} text="White" />
+      <PhaseBars patterns={w} />
+      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <PhaseBars patterns={b} />
+    </div>
+  );
+}
+
+function PhaseBars({ patterns }: { patterns: PatternProfile }) {
+  return (
+    <>
       {(['opening', 'middlegame', 'endgame'] as const).map((phase) => {
         const row = patterns.phase[phase];
         const width = Math.min(100, row.avgCpLoss * 35);
@@ -281,7 +307,7 @@ function PhaseSummary({ patterns }: { patterns: PatternProfile }) {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
 
