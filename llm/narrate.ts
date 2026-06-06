@@ -4,6 +4,7 @@
 // the LLM is a narrator on both ends.
 import type { InsightCandidate, MoveAnalysis } from '../engine/types';
 import { controlShare, type PlyFeatures } from '../engine/features';
+import { threatLines, shieldLines } from '../engine/threats';
 import type { ChatClient, ChatMessage } from './openai';
 
 const SYSTEM = `You are a chess coach for a 300-1400 rated player. You will be given
@@ -50,6 +51,13 @@ export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
   if (features) {
     lines.push('Obligation facts (engine-derived, position after the move):');
     for (const f of obligationLines(features)) lines.push(`  - ${f}`);
+  }
+  // Relational threats (validated by SEE / geometry) — the "threatens X" / "shields Y"
+  // facts the Major-threats section is built from.
+  const rel = [...threatLines(a.positionAfter), ...shieldLines(a.positionAfter)];
+  if (rel.length) {
+    lines.push('Relational threats (validated):');
+    for (const r of rel) lines.push(`  - ${r}`);
   }
   return lines.join('\n');
 }
