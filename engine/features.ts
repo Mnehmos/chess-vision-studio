@@ -108,6 +108,36 @@ export interface PlyFeatures {
   badges: string[];
 }
 
+// Board-control analytics — what share of the 64 squares each side's pieces attack
+// (a "territory" read from the threat map). Contested squares are attacked by both.
+export interface ControlShare {
+  whitePct: number; // squares White attacks, as % of 64 (incl. contested)
+  blackPct: number;
+  contestedPct: number;
+  exclusiveWhitePct: number; // White-only territory
+  exclusiveBlackPct: number;
+  neutralPct: number; // attacked by neither side
+  centerWhite: number; // of the 4 center squares (d4/e4/d5/e5)
+  centerBlack: number;
+}
+
+export function controlShare(t: ThreatFeatureSummary): ControlShare {
+  const pct = (n: number) => Math.round((Math.max(0, n) / 64) * 100);
+  const exclW = t.whiteControl - t.contested;
+  const exclB = t.blackControl - t.contested;
+  const anyControlled = exclW + exclB + t.contested;
+  return {
+    whitePct: pct(t.whiteControl),
+    blackPct: pct(t.blackControl),
+    contestedPct: pct(t.contested),
+    exclusiveWhitePct: pct(exclW),
+    exclusiveBlackPct: pct(exclB),
+    neutralPct: pct(64 - anyControlled),
+    centerWhite: t.centerWhite,
+    centerBlack: t.centerBlack,
+  };
+}
+
 const CENTER = new Set(['d4', 'e4', 'd5', 'e5']);
 
 const emptyPieceCounts = (): Record<PieceType, number> => ({ p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 });

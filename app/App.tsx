@@ -5,7 +5,7 @@ import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/positio
 import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
 import type { AnalyzedEntry } from '../engine/analytics';
-import { extractPlyFeatures, type FeatureEntry, type PlyFeatures } from '../engine/features';
+import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures } from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
@@ -149,7 +149,8 @@ export function App() {
     if (!client || !analysis || plyIndex < 0) return;
     setExplaining(true);
     try {
-      const text = await narrate(client, analysis);
+      const feat = getFeatureEntry(featureCacheRef.current, currentGameKey, plies[plyIndex], plyIndex, analysis).features;
+      const text = await narrate(client, analysis, feat);
       setCommentary((prev) => {
         const next = new Map(prev).set(plyIndex, text);
         cacheCommentary(currentGameKey, next);
@@ -172,8 +173,9 @@ export function App() {
         const idx = targets[k];
         if (!commentaryCacheRef.current.get(gameKey)?.has(idx)) {
           const a = analyses.get(idx);
-          if (a) {
-            const text = await narrate(client, a);
+          if (a && plies[idx]) {
+            const feat = getFeatureEntry(featureCacheRef.current, gameKey, plies[idx], idx, a).features;
+            const text = await narrate(client, a, feat);
             if (currentGameKeyRef.current !== gameKey) return; // user switched games — stop
             setCommentary((prev) => {
               const next = new Map(prev).set(idx, text);
@@ -485,6 +487,7 @@ export function App() {
           />
           <Nav view={view} total={plies.length} setView={setView} />
           <MiniBadges features={currentFeatures} />
+          <ControlBar features={currentFeatures} />
           <MoveStrip plies={plies} view={view} setView={setView} />
           <AnnotationLegend
             showThreats={showThreats}
@@ -745,6 +748,42 @@ const BADGE_GLOSSARY: { match: string; explain: string }[] = [
 function badgeTitle(badge: string): string {
   const g = BADGE_GLOSSARY.find((x) => badge.startsWith(x.match));
   return g ? `${badge}\n\n${g.explain}` : badge;
+}
+
+// Board control — what share of the 64 squares each side's pieces attack (territory
+// from the threat map). White = blue, Black = red, contested = purple, neutral = grey.
+function ControlBar({ features }: { features?: PlyFeatures }) {
+  const c = features ? controlShare(features.threatAfter) : undefined;
+  const segs = c
+    ? [
+        { pct: c.exclusiveWhitePct, color: '#3b6fd4', label: `White ${c.exclusiveWhitePct}%` },
+        { pct: c.contestedPct, color: '#8a5cc4', label: `contested ${c.contestedPct}%` },
+        { pct: c.exclusiveBlackPct, color: '#d43b3b', label: `Black ${c.exclusiveBlackPct}%` },
+        { pct: c.neutralPct, color: '#e6e6e6', label: `neutral ${c.neutralPct}%` },
+      ]
+    : [];
+  return (
+    <div style={{ width: 456, marginTop: 6 }} title="Share of the 64 squares each side's pieces attack (contested = both).">
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666', marginBottom: 2 }}>
+        <span>Board control</span>
+        {c && <span>center {c.centerWhite}–{c.centerBlack}</span>}
+      </div>
+      <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', background: '#f0f0f0' }}>
+        {segs.map((s, i) =>
+          s.pct > 0 ? (
+            <div key={i} title={s.label} style={{ width: `${s.pct}%`, background: s.color }} />
+          ) : null,
+        )}
+      </div>
+      {c && (
+        <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2 }}>
+          <span style={{ color: '#3b6fd4' }}>White {c.whitePct}%</span>
+          <span style={{ color: '#8a5cc4' }}>contested {c.contestedPct}%</span>
+          <span style={{ color: '#d43b3b' }}>Black {c.blackPct}%</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MiniBadges({ features }: { features?: PlyFeatures }) {
