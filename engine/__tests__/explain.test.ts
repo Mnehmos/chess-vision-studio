@@ -90,20 +90,29 @@ describe('M6 — every Tier-1 & Tier-2 MotifType renders a non-empty, clean stri
 });
 
 describe('M6 — the marquee topExplanation', () => {
-  it('renders the "You missed a fork" line from a real validated fork', () => {
+  it('renders a color-specific "missed a fork" line from a real validated fork', () => {
     const { motifs } = findForks('r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1');
     const fork = { ...motifs.find((m) => m.type === 'fork')!, source: 'available' as const };
     const s = renderInsight(fork);
-    expect(s).toContain('You missed a fork');
+    expect(s).toContain('White missed a fork'); // names the COLOR, not "you"
     expect(s).toContain('Nc7+');
     expect(s.toLowerCase()).toContain('rook'); // wins a rook
   });
 
-  it('source changes the framing (miss vs threat vs neutral)', () => {
-    expect(renderInsight(baseMotif({ type: 'fork', source: 'available' }))).toContain('You missed');
-    expect(renderInsight(baseMotif({ type: 'fork', source: 'refutation' }))).toContain(
-      'Your opponent has',
+  it('names the side by color (never "you" / "your opponent")', () => {
+    expect(renderInsight(baseMotif({ type: 'fork', source: 'available', side: 'white' }))).toContain(
+      'White missed',
     );
+    expect(
+      renderInsight(baseMotif({ type: 'fork', source: 'refutation', side: 'white' })),
+    ).toContain('White has a fork');
+    expect(
+      renderInsight(baseMotif({ type: 'fork', source: 'refutation', side: 'black' })),
+    ).toContain('Black has a fork');
+    // no second-person phrasing anywhere
+    const all = renderInsight(baseMotif({ type: 'fork', source: 'refutation', side: 'black' }));
+    expect(all.toLowerCase()).not.toContain('you');
+    expect(all.toLowerCase()).not.toContain('opponent');
   });
 });
 
@@ -114,7 +123,7 @@ describe('M6 — deterministic: same input → same string', () => {
     const b = renderInsight(fork);
     expect(a).toBe(b);
     expect(a).toMatchInlineSnapshot(
-      `"You missed a fork — Nc7+ Kf8 Nxa8 forks a8 and e8, winning a rook."`,
+      `"White missed a fork — Nc7+ Kf8 Nxa8 forks a8 and e8, winning a rook."`,
     );
   });
 });

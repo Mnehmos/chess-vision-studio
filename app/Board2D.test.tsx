@@ -38,4 +38,24 @@ describe('Board2D', () => {
     expect(container.querySelector('[data-square="d1"]')!.getAttribute('data-piece')).toBe('wQ');
     expect(container.querySelector('[data-square="g8"]')!.getAttribute('data-piece')).toBe('bK');
   });
+
+  it('renders annotation arrows as an SVG overlay (defender/attacker/threat)', () => {
+    const ledMap = computeLedMap('hanging', { fen: G4_FEN });
+    const { container } = render(
+      <Board2D
+        fen={G4_FEN}
+        ledMap={ledMap}
+        onSelect={() => {}}
+        arrows={[
+          { from: 'd1', to: 'g4', color: '#c53030' }, // wQ attacks g4
+          { from: 'e3', to: 'd4', color: '#2f855a' }, // a defender
+          { from: 'd1', to: 'g4', color: '#2b6cb0', label: '1' }, // numbered threat
+        ]}
+      />,
+    );
+    const lines = container.querySelectorAll('svg line');
+    expect(lines.length).toBe(3);
+    // the numbered threat arrow renders its sequence label
+    expect(container.querySelector('svg text')?.textContent).toBe('1');
+  });
 });

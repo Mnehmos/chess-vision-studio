@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { pliesFromPgn, type PlyRecord } from '../engine/position';
 import { computeLedMap } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
+import { buildRelationMap } from '../engine/relations';
 import { UciEngine } from '../engine/evaluation';
 import type { MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
+import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
 import { LedPreview } from './LedPreview';
 
@@ -19,6 +22,7 @@ export function App() {
   const [view, setView] = useState(0); // 0 = start; k = after move k
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
+  const [showThreats, setShowThreats] = useState(true);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
   const engineRef = useRef<UciEngine | null>(null);
@@ -60,6 +64,49 @@ export function App() {
     [modeId, fen, selected, analysis],
   );
 
+  // Annotation arrows: selected-piece relations (defenders/attackers) + the top
+  // refutation's call-and-response threat line (numbered, colored by mover).
+  const arrows = useMemo<Arrow[]>(() => {
+    const out: Arrow[] = [];
+    if (selected) {
+      const rel = buildRelationMap(fen).bySquare[selected];
+      if (rel) {
+        for (const id of rel.defendedBy)
+          out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.defend });
+        for (const id of rel.attackedBy)
+          out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.attack });
+      }
+    }
+    if (showThreats && analysis && analysis.rankedInsights.length) {
+      const top = analysis.rankedInsights[0];
+      if (top.source === 'refutation') {
+        const line = top.kind === 'motif' ? top.line : [];
+        if (line.length) {
+          const c = new Chess(fen);
+          line.slice(0, 6).forEach((san, i) => {
+            let m: ReturnType<Chess['move']> | null = null;
+            try {
+              m = c.move(san);
+            } catch {
+              m = null;
+            }
+            if (m)
+              out.push({
+                from: m.from,
+                to: m.to,
+                color: m.color === 'w' ? ARROW.white : ARROW.black,
+                label: String(i + 1),
+              });
+          });
+        } else {
+          for (const [from, to] of top.arrows)
+            out.push({ from, to, color: ARROW.attack, dashed: true });
+        }
+      }
+    }
+    return out;
+  }, [fen, selected, analysis, showThreats]);
+
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -96,9 +143,21 @@ export function App() {
         {/* Left: board + nav */}
         <div>
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
-          <Board2D fen={fen} ledMap={ledMap} selected={selected} onSelect={setSelected} />
+          <Board2D
+            fen={fen}
+            ledMap={ledMap}
+            selected={selected}
+            onSelect={setSelected}
+            arrows={arrows}
+          />
           <Nav view={view} total={plies.length} setView={setView} />
           <MoveStrip plies={plies} view={view} setView={setView} />
+          <AnnotationLegend
+            showThreats={showThreats}
+            setShowThreats={setShowThreats}
+            hasSelection={!!selected}
+            onClear={() => setSelected(undefined)}
+          />
           <Legend modeId={modeId} />
         </div>
 
@@ -200,6 +259,53 @@ function Nav({ view, total, setView }: { view: number; total: number; setView: (
       <button onClick={() => setView(total)} disabled={view === total}>
         ⏭
       </button>
+    </div>
+  );
+}
+
+function AnnotationLegend({
+  showThreats,
+  setShowThreats,
+  hasSelection,
+  onClear,
+}: {
+  showThreats: boolean;
+  setShowThreats: (v: boolean) => void;
+  hasSelection: boolean;
+  onClear: () => void;
+}) {
+  const swatch = (color: string, label: string) => (
+    <span style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
+      <span
+        style={{
+          display: 'inline-block',
+          width: 14,
+          height: 4,
+          background: color,
+          borderRadius: 2,
+          marginRight: 4,
+          verticalAlign: 'middle',
+        }}
+      />
+      {label}
+    </span>
+  );
+  return (
+    <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+      <strong style={{ marginRight: 6 }}>Arrows:</strong>
+      {swatch(ARROW.defend, 'defends (friendly)')}
+      {swatch(ARROW.attack, 'attacks (adversary)')}
+      {swatch(ARROW.white, 'White move')}
+      {swatch(ARROW.black, 'Black move')}
+      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showThreats} onChange={(e) => setShowThreats(e.target.checked)} />{' '}
+        threat line
+      </label>
+      {hasSelection && (
+        <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>
+          clear selection
+        </button>
+      )}
     </div>
   );
 }

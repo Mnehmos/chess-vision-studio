@@ -44,14 +44,15 @@ function renderChange(c: ChangedRelation): string {
   switch (c.templateId) {
     case 'refutation_wins_material': {
       const reply = firstLineMove(c.evidence[0]);
-      return `This loses material — the reply ${reply ?? ''} wins ${materialNoun(
-        c.materialSwing,
-      )} on ${sq}.`.replace(/\s+/g, ' ');
+      return `${who}'s reply ${reply ?? ''} wins ${materialNoun(c.materialSwing)} on ${sq}.`.replace(
+        /\s+/g,
+        ' ',
+      );
     }
     case 'now_see_losing':
       return c.source === 'refutation'
-        ? `This is losing material on ${sq} to the opponent's reply (${signed(c.materialSwing)}).`
-        : `The ${who.toLowerCase()} ${pieceName(pieceOnSquare(c))} on ${sq} is now losing material — it hangs for ${materialNoun(
+        ? `${who} wins material on ${sq} (${signed(c.materialSwing)}).`
+        : `${who}'s ${pieceName(pieceOnSquare(c))} on ${sq} is losing material — it hangs for ${materialNoun(
             c.materialSwing,
           )} (SEE ${signed(c.materialSwing)}).`;
     case 'now_undefended':
@@ -137,11 +138,12 @@ function renderMotif(m: Motif): string {
   }
 }
 
-/** Source-aware prefix so the same motif reads correctly as a miss vs a threat. */
+/** Color-specific prefix: name the SIDE (White/Black), never "you"/"opponent". */
 function motifPrefix(m: Motif): string {
-  if (m.source === 'available') return 'You missed a ';
-  if (m.source === 'refutation') return "Your opponent has a ";
-  return 'A ';
+  const side = m.side === 'white' ? 'White' : 'Black';
+  if (m.source === 'available') return `${side} missed a `; // the mover passed it up
+  if (m.source === 'refutation') return `${side} has a `; // the reply punishes the move
+  return `${side} has a `; // executed by the move
 }
 
 function targetList(m: Motif): string {

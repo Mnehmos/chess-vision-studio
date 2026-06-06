@@ -2,6 +2,7 @@
 import { parseFen } from '../engine/board';
 import type { LedMap, Square } from '../engine/types';
 import { LED_CSS } from './modes';
+import { BoardArrows, type Arrow } from './BoardArrows';
 
 const GLYPH: Record<string, string> = {
   wP: '♙',
@@ -26,27 +27,30 @@ export function Board2D({
   ledMap,
   selected,
   onSelect,
+  arrows = [],
 }: {
   fen: string;
   ledMap: LedMap;
   selected?: Square;
   onSelect: (sq: Square) => void;
+  arrows?: Arrow[];
 }) {
   const board = parseFen(fen);
   const ranks = [7, 6, 5, 4, 3, 2, 1, 0]; // rank 8 at top
   const files = [0, 1, 2, 3, 4, 5, 6, 7];
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(8, 56px)',
-        gridTemplateRows: 'repeat(8, 56px)',
-        border: '2px solid #333',
-        width: 'max-content',
-        userSelect: 'none',
-      }}
-    >
+    <div style={{ position: 'relative', width: 'max-content' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(8, 56px)',
+          gridTemplateRows: 'repeat(8, 56px)',
+          border: '2px solid #333',
+          width: 'max-content',
+          userSelect: 'none',
+        }}
+      >
       {ranks.map((r) =>
         files.map((f) => {
           const sq = (String.fromCharCode(97 + f) + String.fromCharCode(49 + r)) as Square;
@@ -101,6 +105,8 @@ export function Board2D({
           );
         }),
       )}
+      </div>
+      <BoardArrows arrows={arrows} />
     </div>
   );
 }
