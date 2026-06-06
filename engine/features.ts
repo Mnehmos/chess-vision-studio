@@ -123,16 +123,21 @@ export interface ControlShare {
 
 export function controlShare(t: ThreatFeatureSummary): ControlShare {
   const pct = (n: number) => Math.round((Math.max(0, n) / 64) * 100);
-  const exclW = t.whiteControl - t.contested;
-  const exclB = t.blackControl - t.contested;
-  const anyControlled = exclW + exclB + t.contested;
+  // The board partitions into FOUR disjoint buckets that sum to 100%:
+  //   White-only + contested + Black-only + neutral.
+  // (whitePct/blackPct are each side's TOTAL reach and DO overlap on contested, so
+  //  they must not be added together — they're for the tooltip/narration only.)
+  const exclusiveWhitePct = pct(t.whiteControl - t.contested);
+  const exclusiveBlackPct = pct(t.blackControl - t.contested);
+  const contestedPct = pct(t.contested);
+  const neutralPct = Math.max(0, 100 - exclusiveWhitePct - contestedPct - exclusiveBlackPct);
   return {
-    whitePct: pct(t.whiteControl),
-    blackPct: pct(t.blackControl),
-    contestedPct: pct(t.contested),
-    exclusiveWhitePct: pct(exclW),
-    exclusiveBlackPct: pct(exclB),
-    neutralPct: pct(64 - anyControlled),
+    whitePct: pct(t.whiteControl), // total reach (incl. contested)
+    blackPct: pct(t.blackControl), // total reach (incl. contested)
+    contestedPct,
+    exclusiveWhitePct,
+    exclusiveBlackPct,
+    neutralPct,
     centerWhite: t.centerWhite,
     centerBlack: t.centerBlack,
   };

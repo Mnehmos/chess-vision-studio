@@ -23,9 +23,11 @@ describe('controlShare — board-territory analytics from the threat map', () =>
     expect(c.contestedPct).toBe(6); // 4/64
     expect(c.exclusiveWhitePct).toBe(25); // 16/64
     expect(c.exclusiveBlackPct).toBe(19); // 12/64
-    // exclusive + exclusive + contested + neutral ≈ 100 (integer rounding tolerance)
-    const sum = c.exclusiveWhitePct + c.exclusiveBlackPct + c.contestedPct + c.neutralPct;
-    expect(Math.abs(sum - 100)).toBeLessThanOrEqual(2);
+    // the four disjoint buckets shown in the bar/legend sum to EXACTLY 100
+    const sum = c.exclusiveWhitePct + c.contestedPct + c.exclusiveBlackPct + c.neutralPct;
+    expect(sum).toBe(100);
+    // reach (whitePct/blackPct) overlaps on contested, so it must NOT be added in
+    expect(c.whitePct).toBe(c.exclusiveWhitePct + c.contestedPct);
   });
 
   it('passes through center control and never goes negative', () => {

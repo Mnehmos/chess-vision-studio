@@ -776,10 +776,14 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
         )}
       </div>
       {c && (
-        <div style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2 }}>
-          <span style={{ color: '#3b6fd4' }}>White {c.whitePct}%</span>
+        <div
+          style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2 }}
+          title={`Total reach (overlaps on contested): White ${c.whitePct}%, Black ${c.blackPct}%`}
+        >
+          <span style={{ color: '#3b6fd4' }}>White {c.exclusiveWhitePct}%</span>
           <span style={{ color: '#8a5cc4' }}>contested {c.contestedPct}%</span>
-          <span style={{ color: '#d43b3b' }}>Black {c.blackPct}%</span>
+          <span style={{ color: '#d43b3b' }}>Black {c.exclusiveBlackPct}%</span>
+          <span style={{ color: '#aaa' }}>neutral {c.neutralPct}%</span>
         </div>
       )}
     </div>
