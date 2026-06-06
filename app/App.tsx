@@ -12,6 +12,7 @@ import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows } from './annotate';
 import { FactsPanel } from './FactsPanel';
+import { MateCard } from './MateCard';
 import { LedPreview } from './LedPreview';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -171,15 +172,18 @@ export function App() {
           <Legend modeId={modeId} />
         </div>
 
-        {/* Middle: facts */}
-        <FactsPanel
-          fen={fen}
-          selected={selected}
-          analysis={analysis}
-          move={moveLabel}
-          focused={focused}
-          onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
-        />
+        {/* Middle: facts + mate-line card */}
+        <div>
+          <FactsPanel
+            fen={fen}
+            selected={selected}
+            analysis={analysis}
+            move={moveLabel}
+            focused={focused}
+            onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+          />
+          {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
+        </div>
 
         {/* Right: LED twin + move list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

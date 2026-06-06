@@ -136,6 +136,19 @@ export type Classification =
   | 'mistake'
   | 'blunder';
 
+// Mate-proof obligation facts (oracle says mate exists; the evaluator explains it).
+export interface MateProof {
+  mateInMoves: number;
+  matingSide: 'white' | 'black';
+  line: string[]; // SAN, ending on the mating move (…#)
+  matingMove: string;
+  matingPiece: string; // 'Rook e7' — the critical attacker
+  checkingLine: string; // 'e-file' | 'rank 7' | 'a diagonal' | 'knight'
+  supportPiece?: string; // a friendly piece defending the mating square
+  trappedKing: string;
+  kingEscapesAtStart: number;
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // [7] The central seam — everything downstream consumes THIS
 // ────────────────────────────────────────────────────────────────────────────
@@ -149,6 +162,7 @@ export interface MoveAnalysis {
   cpLoss: number; // pawns lost vs best move (see §5)
   rankedInsights: InsightCandidate[]; // VALIDATED only, sorted desc by saliency
   topExplanation: string; // = rankedInsights[0] rendered, or "solid move"
+  mateProof?: MateProof; // present when a forced mate is in play (oracle-confirmed)
   ledMap?: LedMap; // active-mode color map (later)
 }
 

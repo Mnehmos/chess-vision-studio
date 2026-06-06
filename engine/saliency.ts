@@ -15,7 +15,8 @@ import {
   findDiscoveredCheck,
 } from './motif';
 import { renderInsight } from './explain';
-import type { Eval, InsightCandidate, Motif, MoveAnalysis } from './types';
+import { buildMateProof } from './mateproof';
+import type { Eval, InsightCandidate, MateProof, Motif, MoveAnalysis } from './types';
 
 export interface AnalyzeInput {
   fenBefore: string;
@@ -118,6 +119,14 @@ export function analyzeMove(
   const cpLoss = deliveredMate ? 0 : computeCpLoss(evalBefore, evalAfter);
   const classification = deliveredMate ? 'best' : classify(cpLoss);
 
+  // Mate proof: when the side to move at positionAfter forces mate, the oracle
+  // (Stockfish mate score) gives the line; the evaluator explains it in
+  // obligation terms (mating piece, checking line, collapsing king escapes).
+  let mateProof: MateProof | undefined;
+  if (evalAfter.mate !== undefined && evalAfter.mate > 0 && (evalAfter.pv?.length ?? 0) > 0) {
+    mateProof = buildMateProof(fenAfter, evalAfter.pv, evalAfter.mate) ?? undefined;
+  }
+
   const base: Omit<MoveAnalysis, 'rankedInsights' | 'topExplanation'> = {
     positionBefore: fenBefore,
     positionAfter: fenAfter,
@@ -126,6 +135,7 @@ export function analyzeMove(
     evalBefore,
     evalAfter,
     cpLoss,
+    mateProof,
   };
 
   if (deliveredMate) {
