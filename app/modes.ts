@@ -28,7 +28,9 @@ export const MODES: ModeDef[] = [
       { color: 'blue', meaning: 'White controls' },
       { color: 'orange', meaning: 'Black controls' },
       { color: 'purple', meaning: 'contested' },
+      { color: 'red', meaning: 'king zone (held)' },
       { color: 'dark_red', meaning: 'king danger' },
+      { color: 'red_blink', meaning: 'king in check' },
     ],
   },
   {

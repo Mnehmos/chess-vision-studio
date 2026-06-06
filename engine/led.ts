@@ -113,11 +113,18 @@ function threatMode(ctx: LedContext): LedMap {
     else if (byW) map.squares[sq] = 'blue'; // White controls
     else if (byB) map.squares[sq] = 'orange'; // Black controls
   }
-  // King danger: squares next to EITHER king controlled by the opponent.
+  // King zone — a RED spectrum is the primary danger scheme:
+  //   red_blink = the king itself is attacked (in check)
+  //   dark_red  = an adjacent square the enemy holds and the king's side does NOT
+  //   red       = an adjacent danger square the king's side still contests/defends
   const board = parseFen(ctx.fen);
   for (const king of allPieces(board).filter((p) => p.type === 'k')) {
+    const own = king.color === 'w' ? w : b;
     const enemy = king.color === 'w' ? b : w;
-    for (const sq of adjacent(king.square)) if (enemy.has(sq)) map.squares[sq] = 'dark_red';
+    if (enemy.has(king.square)) map.squares[king.square] = 'red_blink';
+    for (const sq of adjacent(king.square)) {
+      if (enemy.has(sq)) map.squares[sq] = own.has(sq) ? 'red' : 'dark_red';
+    }
   }
   return map;
 }
