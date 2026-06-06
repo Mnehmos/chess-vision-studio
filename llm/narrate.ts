@@ -8,9 +8,16 @@ import type { ChatClient, ChatMessage } from './openai';
 
 const SYSTEM = `You are a chess coach for a 300-1400 rated player. You will be given
 STRUCTURED, ENGINE-VALIDATED facts about ONE move (the move played, the eval verdict,
-the salient changes, and the position's "obligation" facts: who controls territory,
-king pressure, loose pieces, hanging material, pawn structure). Write 2-4 short,
-plain-English sentences that help the player SEE what matters.
+the salient changes, the engine's best line, and the position's "obligation" facts:
+who controls territory, king pressure, loose pieces, hanging material, pawn structure).
+
+Write your answer in THREE short, plain-English labeled sections:
+Summary: 1-2 sentences — the verdict and the single most important idea.
+Best line: explain the engine's best line briefly — what its key moves accomplish
+  (threaten, defend, open a file, decoy). Use ONLY the moves in the provided line.
+Major threats: 2-4 bullets starting with "- ", each a concrete threat or obligation
+  tied to a specific piece/square from the facts (e.g. loose piece, hanging material,
+  king pressure, a validated fork/pin/mate). If there are none, write "- none".
 
 THINK IN OBLIGATIONS, not just material: a piece can be locally hanging yet the move
 still bad because the king must survive a bigger threat (or locally hanging yet fine
@@ -22,7 +29,8 @@ HARD RULES:
   piece, or move that is not explicitly listed. If you are unsure, say less.
 - Never claim a fork/pin/skewer/mate/etc. unless it appears in the facts.
 - Refer to pieces and squares exactly as given. Keep it concrete and encouraging.
-- If the facts say the move was solid/best with nothing important changed, say that briefly.`;
+- If the move was solid/best with nothing important changed, say so in Summary and keep
+  the other sections to one line each ("- none").`;
 
 /** Render the validated facts as a compact, unambiguous block for the LLM. */
 export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
@@ -35,6 +43,9 @@ export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
     for (const ins of a.rankedInsights.slice(0, 5)) lines.push(`  - ${insightLine(ins)}`);
   } else {
     lines.push('No salient change (nothing important happened).');
+  }
+  if (a.evalBefore.pv && a.evalBefore.pv.length) {
+    lines.push(`Engine's best line from this position: ${formatLine(a.positionBefore, a.evalBefore.pv, 6)}`);
   }
   if (features) {
     lines.push('Obligation facts (engine-derived, position after the move):');
@@ -75,6 +86,21 @@ export function obligationLines(features: PlyFeatures): string[] {
   const tactics = motifTally(features);
   if (tactics) out.push(`Proven tactics on the board: ${tactics}.`);
   return out;
+}
+
+/** Move-numbered SAN line from a position's side & move number (for "Best line"). */
+function formatLine(fen: string, pv: string[], maxPlies: number): string {
+  const parts = fen.trim().split(/\s+/);
+  let turn = (parts[1] as 'w' | 'b') ?? 'w';
+  let moveNo = parseInt(parts[5] ?? '1', 10);
+  const out: string[] = [];
+  for (let i = 0; i < pv.length && i < maxPlies; i++) {
+    if (turn === 'w') out.push(`${moveNo}.${pv[i]}`);
+    else out.push(out.length === 0 ? `${moveNo}...${pv[i]}` : pv[i]);
+    if (turn === 'b') moveNo += 1;
+    turn = turn === 'w' ? 'b' : 'w';
+  }
+  return out.join(' ');
 }
 
 function motifTally(features: PlyFeatures): string | null {

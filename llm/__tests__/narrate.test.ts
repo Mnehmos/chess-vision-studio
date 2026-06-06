@@ -62,6 +62,20 @@ describe('narrate — clamped facts', () => {
     expect(sys.toLowerCase()).toContain('only the facts');
     expect(sys.toLowerCase()).toContain('do not invent');
   });
+
+  it('the system prompt asks for Summary / Best line / Major threats sections', () => {
+    const sys = buildNarrationMessages(ANALYSIS).find((m) => m.role === 'system')!.content;
+    expect(sys).toContain('Summary');
+    expect(sys).toContain('Best line');
+    expect(sys).toContain('Major threats');
+  });
+
+  it('includes the engine best line in the facts when a PV is present', () => {
+    const withPv = { ...ANALYSIS, evalBefore: { cp: 20, depth: 14, pv: ['Bc5', 'Rfe8', 'b4'] } };
+    const b = factsBlock(withPv);
+    expect(b).toContain("Engine's best line");
+    expect(b).toContain('Bc5'); // the move-numbered line is rendered
+  });
 });
 
 // ── obligation layer ──────────────────────────────────────────────────────────

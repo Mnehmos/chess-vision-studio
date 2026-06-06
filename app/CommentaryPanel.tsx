@@ -124,7 +124,7 @@ export function CommentaryPanel({
           {/* Per-ply, on demand. */}
           <div style={{ marginTop: 10, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
             {currentText ? (
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>{currentText}</p>
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{currentText}</p>
             ) : (
               <button onClick={onExplainCurrent} disabled={!canExplain || explaining} style={btn}>
                 {explaining ? 'Thinking…' : 'Explain this move'}
