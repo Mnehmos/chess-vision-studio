@@ -26,6 +26,25 @@ const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
+// ── design tokens ─────────────────────────────────────────────────────────────
+const PAGE_BG = '#f5f6f8';
+const cardStyle: React.CSSProperties = {
+  background: '#fff',
+  border: '1px solid #e6e8eb',
+  borderRadius: 10,
+  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+};
+const primaryBtn: React.CSSProperties = {
+  border: 'none',
+  background: '#3b6fd4',
+  color: '#fff',
+  borderRadius: 8,
+  padding: '8px 14px',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+};
+
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export function App() {
@@ -417,32 +436,35 @@ export function App() {
   }, [view, analysis, plyIndex, currentGameKey, featureVersion]);
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 20, color: '#1a1a1a' }}>
+    <div style={{ minHeight: '100vh', background: PAGE_BG, color: '#1a1a1a', fontFamily: 'system-ui, sans-serif' }}>
       <style>{`@keyframes csvBlink{50%{opacity:0.1}}`}</style>
-      <h1 style={{ margin: '0 0 4px' }}>Chess Vision Studio</h1>
-      <div style={{ color: '#666', marginBottom: 12 }}>
-        2D chess perception — relations · SEE · diff · saliency · validated motifs.{' '}
-        <EngineBadge state={engineState} />{' '}
-        {engineState === 'ready' && analyses.size < plies.length && (
-          <span style={{ fontSize: 12, color: '#888' }}>
-            · analyzing {analyses.size}/{plies.length}…
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 24px 56px' }}>
+        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.01em' }}>Chess Vision Studio</h1>
+          <span style={{ color: '#667085', fontSize: 13 }}>
+            2D chess perception — relations · SEE · diff · saliency · validated motifs
           </span>
-        )}
-        {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
-          <span style={{ fontSize: 12, color: '#3fbf5f' }}>· analysis complete ✓</span>
-        )}
-      </div>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            <EngineBadge state={engineState} />
+            {engineState === 'ready' && analyses.size < plies.length && (
+              <span style={{ fontSize: 12, color: '#888' }}>analyzing {analyses.size}/{plies.length}…</span>
+            )}
+            {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
+              <span style={{ fontSize: 12, color: '#3fbf5f' }}>analysis complete ✓</span>
+            )}
+          </span>
+        </header>
 
-      {games.length > 1 && (
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-          <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
-            Board
-          </TabButton>
-          <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
-            Dataset · {games.length} games
-          </TabButton>
-        </div>
-      )}
+        <SourceBar
+          games={games}
+          gameIndex={gameIndex}
+          onSelectGame={selectGame}
+          tab={tab}
+          setTab={setTab}
+          pgnText={pgnText}
+          setPgnText={setPgnText}
+          onLoad={loadPgn}
+        />
 
       {tab === 'dataset' ? (
         <DatasetPanel
@@ -457,26 +479,9 @@ export function App() {
         />
       ) : (
         <>
-      {games.length > 1 && (
-        <div style={{ marginBottom: 12, fontSize: 13 }}>
-          <strong style={{ marginRight: 6 }}>Game {gameIndex + 1} / {games.length}:</strong>
-          <select
-            value={gameIndex}
-            onChange={(e) => selectGame(Number(e.target.value))}
-            style={{ maxWidth: 460, fontSize: 13 }}
-          >
-            {games.map((g, i) => (
-              <option key={i} value={i}>
-                {g.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Left: board + nav */}
-        <div>
+        <div style={{ ...cardStyle, width: 480, padding: 12 }}>
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
           <Board2D
             fen={fen}
@@ -505,7 +510,7 @@ export function App() {
         </div>
 
         {/* Middle: facts + mate-line card */}
-        <div>
+        <div style={{ flex: '1 1 360px', minWidth: 320, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <FactsPanel
             fen={fen}
             selected={selected}
@@ -533,7 +538,7 @@ export function App() {
         </div>
 
         {/* Right: LED twin + move list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LedPreview ledMap={ledMap} />
           <MoveHistory plies={plies} view={view} setView={setView} analyses={analyses} />
         </div>
@@ -544,19 +549,7 @@ export function App() {
       )}
         </>
       )}
-
-      <details style={{ marginTop: 20 }}>
-        <summary style={{ cursor: 'pointer' }}>Import PGN (single game or full export)</summary>
-        <textarea
-          value={pgnText}
-          onChange={(e) => setPgnText(e.target.value)}
-          placeholder="Paste a PGN — one game or a multi-game export"
-          style={{ width: 480, height: 120, display: 'block', marginTop: 8 }}
-        />
-        <button onClick={loadPgn} style={{ marginTop: 6 }}>
-          Load
-        </button>
-      </details>
+      </div>
     </div>
   );
 }
@@ -644,6 +637,103 @@ function getFeatureEntry(
   };
   gameCache.set(plyIndex, { analysis, entry });
   return entry;
+}
+
+// The data entry point — front and center. Import any PGN (one game or a full
+// Chess.com / Lichess / OpeningTree export), pick a game, and flip to the dataset view.
+function SourceBar({
+  games,
+  gameIndex,
+  onSelectGame,
+  tab,
+  setTab,
+  pgnText,
+  setPgnText,
+  onLoad,
+}: {
+  games: ParsedGame[];
+  gameIndex: number;
+  onSelectGame: (i: number) => void;
+  tab: 'board' | 'dataset';
+  setTab: (t: 'board' | 'dataset') => void;
+  pgnText: string;
+  setPgnText: (s: string) => void;
+  onLoad: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const multi = games.length > 1;
+  return (
+    <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <button onClick={() => setOpen((o) => !o)} style={primaryBtn}>
+          ⬆ Import PGN
+        </button>
+        <div style={{ fontSize: 13, color: '#475467' }}>
+          <strong style={{ color: '#101828' }}>{multi ? `${games.length} games loaded` : 'Sample game'}</strong>
+          <span style={{ color: '#98a2b3' }}> · paste your Chess.com / Lichess export to analyze your own games</span>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {multi && tab === 'board' && (
+            <select
+              value={gameIndex}
+              onChange={(e) => onSelectGame(Number(e.target.value))}
+              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid #d0d5dd', background: '#fff' }}
+            >
+              {games.map((g, i) => (
+                <option key={i} value={i}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {multi && (
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
+                Board
+              </TabButton>
+              <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
+                Dataset · {games.length}
+              </TabButton>
+            </div>
+          )}
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <textarea
+            value={pgnText}
+            onChange={(e) => setPgnText(e.target.value)}
+            placeholder="Paste a PGN — one game or a multi-game export (Chess.com / Lichess / OpeningTree)…"
+            style={{
+              width: '100%',
+              height: 120,
+              boxSizing: 'border-box',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontSize: 12,
+              padding: 10,
+              borderRadius: 8,
+              border: '1px solid #d0d5dd',
+              resize: 'vertical',
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+            <button
+              onClick={() => {
+                onLoad();
+                setOpen(false);
+              }}
+              style={primaryBtn}
+            >
+              Load games
+            </button>
+            <span style={{ fontSize: 12, color: '#98a2b3' }}>
+              Multi-game exports open a Dataset view: opening tree, results over time, per-game review.
+            </span>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
