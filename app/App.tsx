@@ -60,6 +60,19 @@ export function App() {
     [modeId, fen, selected, analysis],
   );
 
+  // Keyboard navigation: ← → step, Home/End jump.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      if (e.key === 'ArrowLeft') setView((v) => Math.max(0, v - 1));
+      else if (e.key === 'ArrowRight') setView((v) => Math.min(plies.length, v + 1));
+      else if (e.key === 'Home') setView(0);
+      else if (e.key === 'End') setView(plies.length);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [plies.length]);
+
   const loadPgn = () => {
     const p = safePlies(pgnText);
     if (p.length) {
@@ -85,6 +98,7 @@ export function App() {
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
           <Board2D fen={fen} ledMap={ledMap} selected={selected} onSelect={setSelected} />
           <Nav view={view} total={plies.length} setView={setView} />
+          <MoveStrip plies={plies} view={view} setView={setView} />
           <Legend modeId={modeId} />
         </div>
 
@@ -94,7 +108,7 @@ export function App() {
         {/* Right: LED twin + move list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LedPreview ledMap={ledMap} />
-          <MoveList plies={plies} view={view} setView={setView} analyses={analyses} />
+          <MoveHistory plies={plies} view={view} setView={setView} analyses={analyses} />
         </div>
       </div>
 
@@ -214,7 +228,63 @@ function Legend({ modeId }: { modeId: string }) {
   );
 }
 
-function MoveList({
+// Compact horizontal notation directly under the board (always visible).
+function MoveStrip({
+  plies,
+  view,
+  setView,
+}: {
+  plies: PlyRecord[];
+  view: number;
+  setView: (n: number) => void;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+  }, [view]);
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 4,
+        overflowX: 'auto',
+        whiteSpace: 'nowrap',
+        marginTop: 8,
+        padding: '6px 4px',
+        maxWidth: 8 * 56,
+        background: '#f3f1ea',
+        borderRadius: 6,
+        fontSize: 13,
+      }}
+    >
+      {plies.map((p, i) => {
+        const current = view === i + 1;
+        return (
+          <span
+            key={i}
+            ref={current ? ref : undefined}
+            onClick={() => setView(i + 1)}
+            style={{
+              cursor: 'pointer',
+              padding: '2px 5px',
+              borderRadius: 4,
+              background: current ? '#16a' : 'transparent',
+              color: current ? '#fff' : '#222',
+              fontWeight: current ? 700 : 400,
+            }}
+          >
+            {p.color === 'w' ? `${p.moveNumber}. ` : ''}
+            {p.san}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// Grouped notation table (move # · White · Black), current ply highlighted and
+// auto-scrolled into view as turns progress.
+function MoveHistory({
   plies,
   view,
   setView,
@@ -225,32 +295,63 @@ function MoveList({
   setView: (n: number) => void;
   analyses: Map<number, MoveAnalysis>;
 }) {
+  const currentRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    currentRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [view]);
+
+  // group plies into full moves
+  const rows: { no: number; w?: PlyRecord & { i: number }; b?: PlyRecord & { i: number } }[] = [];
+  plies.forEach((p, i) => {
+    const row = rows.find((r) => r.no === p.moveNumber) ?? { no: p.moveNumber };
+    if (!rows.includes(row)) rows.push(row);
+    if (p.color === 'w') row.w = { ...p, i };
+    else row.b = { ...p, i };
+  });
+
+  const cell = (m?: PlyRecord & { i: number }) => {
+    if (!m) return <td />;
+    const a = analyses.get(m.i);
+    const bad = a && (a.classification === 'blunder' || a.classification === 'mistake');
+    const current = view === m.i + 1;
+    return (
+      <td
+        onClick={() => setView(m.i + 1)}
+        style={{
+          cursor: 'pointer',
+          padding: '1px 6px',
+          borderRadius: 4,
+          background: current ? '#16a' : 'transparent',
+          color: current ? '#fff' : bad ? '#c01515' : '#222',
+          fontWeight: current ? 700 : 400,
+        }}
+      >
+        {m.san}
+        {bad ? (a!.classification === 'blunder' ? ' ??' : ' ?!') : ''}
+      </td>
+    );
+  };
+
   return (
-    <div style={{ maxHeight: 320, overflowY: 'auto', fontSize: 13, minWidth: 180 }}>
-      <h4 style={{ margin: '0 0 4px' }}>Moves</h4>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-        {plies.map((p, i) => {
-          const a = analyses.get(i);
-          const flag = a && (a.classification === 'blunder' || a.classification === 'mistake');
-          return (
-            <button
-              key={i}
-              onClick={() => setView(i + 1)}
-              style={{
-                padding: '1px 5px',
-                fontSize: 12,
-                border: view === i + 1 ? '2px solid #16a' : '1px solid #ddd',
-                background: flag ? '#ffe0e0' : '#fff',
-                borderRadius: 3,
-                cursor: 'pointer',
-              }}
-            >
-              {p.color === 'w' ? `${p.moveNumber}.` : ''}
-              {p.san}
-            </button>
-          );
-        })}
+    <div style={{ minWidth: 200 }}>
+      <h4 style={{ margin: '0 0 4px' }}>Move history</h4>
+      <div style={{ maxHeight: 360, overflowY: 'auto', fontSize: 13 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <tbody>
+            {rows.map((r) => {
+              const isCurrentRow = view === (r.w?.i ?? -2) + 1 || view === (r.b?.i ?? -2) + 1;
+              return (
+                <tr key={r.no} ref={isCurrentRow ? currentRef : undefined}>
+                  <td style={{ color: '#999', paddingRight: 6 }}>{r.no}.</td>
+                  {cell(r.w)}
+                  {cell(r.b)}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
+      <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>← → keys to step</div>
     </div>
   );
 }
