@@ -56,13 +56,12 @@ export function CommentaryPanel({
       {!hasKey ? (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
-            Paste an OpenAI API key to enable commentary (stored locally in this browser),
-            or set <code>VITE_OPENAI_API_KEY</code> in <code>.env</code>.
+            Set <code>OPENAI_API_KEY</code> in <code>.env</code> (stays server-side, never sent
+            to the browser), then restart the dev server. Or paste a key below for this browser.
           </div>
           <div style={{ fontSize: 11, color: '#c08515', background: '#fff7e6', border: '1px solid #f0d8a8', borderRadius: 4, padding: '4px 6px', marginBottom: 6 }}>
-            Already set a key in <code>.env</code> but see this? The browser only reads the
-            <code> VITE_</code> prefix — rename <code>OPENAI_API_KEY</code> →{' '}
-            <code>VITE_OPENAI_API_KEY</code> and restart the dev server.
+            Already set <code>OPENAI_API_KEY</code> in <code>.env</code> but see this? The dev
+            server reads <code>.env</code> only at startup — <strong>restart it</strong> and reload.
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
@@ -83,7 +82,7 @@ export function CommentaryPanel({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12 }}>
             <HandshakeBadge handshake={handshake} />
             <span style={{ color: '#999' }}>
-              key from {keySource === 'env' ? '.env (VITE_)' : 'this browser'}
+              key from {keySource === 'env' ? '.env (server-side)' : 'this browser'}
             </span>
             <button
               onClick={onHandshake}

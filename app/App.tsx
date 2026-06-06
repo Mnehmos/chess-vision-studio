@@ -19,13 +19,11 @@ import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
-import { createOpenAIClient } from '../llm/openai';
+import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
-const initialKeySource = (): 'env' | 'local' | 'none' =>
-  env.VITE_OPENAI_API_KEY ? 'env' : localStorage.getItem('cvs_openai_key') ? 'local' : 'none';
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -58,10 +56,36 @@ export function App() {
   currentGameKeyRef.current = currentGameKey;
 
   // LLM coach commentary — clamped narrator over the cached analyses (Invariant 8).
+  // Preferred path: the dev-server proxy holds the key server-side (.env). The browser
+  // key (VITE_/paste-in) is only a fallback when no proxy key exists.
   const [apiKey, setApiKey] = useState<string>(initialKey);
-  const [keySource, setKeySource] = useState<'env' | 'local' | 'none'>(initialKeySource);
+  const [proxy, setProxy] = useState<{ checked: boolean; hasKey: boolean; model: string }>({
+    checked: false,
+    hasKey: false,
+    model: OPENAI_MODEL,
+  });
   const [handshake, setHandshake] = useState<Handshake>({ state: 'idle', detail: '' });
   const handshakeForKeyRef = useRef('');
+  // Discover the server-side key (kept in .env, never shipped to the browser).
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/openai/health')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => alive && setProxy({ checked: true, hasKey: !!d?.hasKey, model: d?.model || OPENAI_MODEL }))
+      .catch(() => alive && setProxy((p) => ({ ...p, checked: true })));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const effectiveModel = proxy.hasKey ? proxy.model : OPENAI_MODEL;
+  const hasKey = proxy.hasKey || !!apiKey;
+  const keySource: 'env' | 'local' | 'none' = proxy.hasKey ? 'env' : apiKey ? 'local' : 'none';
+  // The right client: proxy (key server-side) if available, else the browser key.
+  const commentaryClient = (): ChatClient | null => {
+    if (proxy.hasKey) return createOpenAIClient({ apiKey: 'via-proxy', model: effectiveModel, baseUrl: '/api/openai' });
+    if (apiKey) return createOpenAIClient({ apiKey, model: OPENAI_MODEL });
+    return null;
+  };
   const [commentary, setCommentary] = useState<Map<number, string>>(new Map());
   const [commentaryJob, setCommentaryJob] = useState<CommentaryJob>({ running: false, done: 0, total: 0, error: '' });
   const [explaining, setExplaining] = useState(false);
@@ -94,35 +118,38 @@ export function App() {
   const saveKey = (key: string) => {
     localStorage.setItem('cvs_openai_key', key);
     setApiKey(key);
-    setKeySource('local');
   };
   const runHandshake = async () => {
-    if (!apiKey) return;
+    const client = commentaryClient();
+    if (!client) return;
     setHandshake({ state: 'testing', detail: '' });
     try {
-      const reply = await createOpenAIClient({ apiKey, model: OPENAI_MODEL }).ping();
+      const reply = await client.ping();
       setHandshake({ state: 'ok', detail: reply.slice(0, 60) });
     } catch (e) {
       setHandshake({ state: 'error', detail: String((e as Error)?.message ?? e) });
     }
   };
-  // Auto-handshake once whenever a (new) key becomes available, so the status is live
-  // without a surprise token cost on every reload.
+  // Auto-handshake once a usable key is known (server proxy or browser), so the status
+  // is live without a surprise token cost on every reload.
   useEffect(() => {
-    if (apiKey && handshakeForKeyRef.current !== apiKey) {
-      handshakeForKeyRef.current = apiKey;
+    if (!proxy.checked) return;
+    const token = proxy.hasKey ? `proxy:${effectiveModel}` : apiKey;
+    if (token && handshakeForKeyRef.current !== token) {
+      handshakeForKeyRef.current = token;
       void runHandshake();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey]);
+  }, [proxy.checked, proxy.hasKey, effectiveModel, apiKey]);
   const cacheCommentary = (gameKey: string, next: Map<number, string>) => {
     commentaryCacheRef.current.set(gameKey, new Map(next));
   };
   const explainCurrent = async () => {
-    if (!apiKey || !analysis || plyIndex < 0) return;
+    const client = commentaryClient();
+    if (!client || !analysis || plyIndex < 0) return;
     setExplaining(true);
     try {
-      const text = await narrate(createOpenAIClient({ apiKey, model: OPENAI_MODEL }), analysis);
+      const text = await narrate(client, analysis);
       setCommentary((prev) => {
         const next = new Map(prev).set(plyIndex, text);
         cacheCommentary(currentGameKey, next);
@@ -135,8 +162,8 @@ export function App() {
     }
   };
   const generateAllCommentary = async () => {
-    if (!apiKey) return;
-    const client = createOpenAIClient({ apiKey, model: OPENAI_MODEL });
+    const client = commentaryClient();
+    if (!client) return;
     const targets = [...analyses.keys()].sort((a, b) => a - b);
     const gameKey = currentGameKey;
     setCommentaryJob({ running: true, done: 0, total: targets.length, error: '' });
@@ -486,9 +513,9 @@ export function App() {
           />
           {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
           <CommentaryPanel
-            hasKey={!!apiKey}
+            hasKey={hasKey}
             keySource={keySource}
-            model={OPENAI_MODEL}
+            model={effectiveModel}
             onSaveKey={saveKey}
             handshake={handshake}
             onHandshake={runHandshake}
