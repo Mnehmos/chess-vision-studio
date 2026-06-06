@@ -4,13 +4,13 @@ import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { pliesFromPgn, type PlyRecord } from '../engine/position';
 import { computeLedMap } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
-import { buildRelationMap } from '../engine/relations';
 import { UciEngine } from '../engine/evaluation';
 import type { MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
+import { selectionArrows } from './annotate';
 import { FactsPanel } from './FactsPanel';
 import { LedPreview } from './LedPreview';
 
@@ -24,6 +24,7 @@ export function App() {
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   const [showThreats, setShowThreats] = useState(true);
   const [showAllThreats, setShowAllThreats] = useState(false);
+  const [cascade, setCascade] = useState(true);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
   const engineRef = useRef<UciEngine | null>(null);
@@ -72,24 +73,7 @@ export function App() {
   //     them, each numbered and colored by the moving side
   const arrows = useMemo<Arrow[]>(() => {
     const out: Arrow[] = [];
-    if (selected) {
-      const rel = buildRelationMap(fen);
-      const selRel = rel.bySquare[selected];
-      if (selRel) {
-        const selColor = selRel.piece[0];
-        const selId = selRel.piece + selected;
-        for (const id of selRel.defendedBy)
-          out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.defend });
-        for (const id of selRel.attackedBy)
-          out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.attack });
-        // outgoing: raycast what the selected piece attacks (red, like all attacks)
-        for (const sq of Object.keys(rel.bySquare)) {
-          const r = rel.bySquare[sq];
-          if (r.piece[0] !== selColor && r.attackedBy.includes(selId))
-            out.push({ from: selected, to: sq as Square, color: ARROW.attack });
-        }
-      }
-    }
+    if (selected) out.push(...selectionArrows(fen, selected, cascade));
 
     if (analysis && analysis.rankedInsights.length) {
       const top = analysis.rankedInsights[0];
@@ -125,7 +109,7 @@ export function App() {
       }
     }
     return out;
-  }, [fen, selected, analysis, showThreats, showAllThreats]);
+  }, [fen, selected, analysis, showThreats, showAllThreats, cascade]);
 
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
@@ -177,6 +161,8 @@ export function App() {
             setShowThreats={setShowThreats}
             showAllThreats={showAllThreats}
             setShowAllThreats={setShowAllThreats}
+            cascade={cascade}
+            setCascade={setCascade}
             hasSelection={!!selected}
             onClear={() => setSelected(undefined)}
           />
@@ -290,6 +276,8 @@ function AnnotationLegend({
   setShowThreats,
   showAllThreats,
   setShowAllThreats,
+  cascade,
+  setCascade,
   hasSelection,
   onClear,
 }: {
@@ -297,6 +285,8 @@ function AnnotationLegend({
   setShowThreats: (v: boolean) => void;
   showAllThreats: boolean;
   setShowAllThreats: (v: boolean) => void;
+  cascade: boolean;
+  setCascade: (v: boolean) => void;
   hasSelection: boolean;
   onClear: () => void;
 }) {
@@ -333,6 +323,10 @@ function AnnotationLegend({
           onChange={(e) => setShowAllThreats(e.target.checked)}
         />{' '}
         all threats
+      </label>
+      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="surface the next hop in the chain">
+        <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} />{' '}
+        cascade
       </label>
       {hasSelection && (
         <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>
