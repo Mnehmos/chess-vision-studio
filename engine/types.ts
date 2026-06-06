@@ -162,7 +162,8 @@ export type LedColor =
   | 'yellow'
   | 'orange'
   | 'purple'
-  | 'dark_red'
+  | 'dark_red' // Black king zone (darker shade of Black's base red)
+  | 'dark_blue' // White king zone (darker shade of White's base blue)
   | 'gray'
   | 'red_blink'
   | 'off';

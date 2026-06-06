@@ -92,12 +92,14 @@ describe('M7 — What Changed mode matches the ply MoveAnalysis', () => {
 });
 
 describe('M7 — Threat & Defense modes show BOTH sides with per-side schemes', () => {
-  it('threat map: White control blue, Black control orange, contested purple', () => {
+  it('threat map: White=blue, Black=red, contested=purple, king zones in darker team shades', () => {
     const map = computeLedMap('threat', { fen: G4_FEN });
     const colors = new Set(Object.values(map.squares));
-    expect(colors.has('blue')).toBe(true); // White controls something
-    expect(colors.has('orange')).toBe(true); // Black controls something
-    expect(colors.has('purple')).toBe(true); // some square is contested
+    expect(colors.has('blue')).toBe(true); // White controls
+    expect(colors.has('red')).toBe(true); // Black controls (base color)
+    expect(colors.has('purple')).toBe(true); // contested
+    // both kings have enemy pressure in this sharp position → darker team shades
+    expect(colors.has('dark_blue') || colors.has('dark_red')).toBe(true);
   });
   it('defense map: White=blue/yellow, Black=green/orange', () => {
     const map = computeLedMap('defense', { fen: G4_FEN });

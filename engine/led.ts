@@ -110,21 +110,17 @@ function threatMode(ctx: LedContext): LedMap {
     const byW = w.has(sq);
     const byB = b.has(sq);
     if (byW && byB) map.squares[sq] = 'purple';
-    else if (byW) map.squares[sq] = 'blue'; // White controls
-    else if (byB) map.squares[sq] = 'orange'; // Black controls
+    else if (byW) map.squares[sq] = 'blue'; // White's base color
+    else if (byB) map.squares[sq] = 'red'; // Black's base color
   }
-  // King zone — a RED spectrum is the primary danger scheme:
-  //   red_blink = the king itself is attacked (in check)
-  //   dark_red  = an adjacent square the enemy holds and the king's side does NOT
-  //   red       = an adjacent danger square the king's side still contests/defends
+  // King safety — a DARKER shade of each team's OWN base color marks the squares
+  // around its king that the enemy holds: White king zone = dark_blue, Black = dark_red.
   const board = parseFen(ctx.fen);
   for (const king of allPieces(board).filter((p) => p.type === 'k')) {
-    const own = king.color === 'w' ? w : b;
     const enemy = king.color === 'w' ? b : w;
-    if (enemy.has(king.square)) map.squares[king.square] = 'red_blink';
-    for (const sq of adjacent(king.square)) {
-      if (enemy.has(sq)) map.squares[sq] = own.has(sq) ? 'red' : 'dark_red';
-    }
+    const zoneColor: LedColor = king.color === 'w' ? 'dark_blue' : 'dark_red';
+    if (enemy.has(king.square)) map.squares[king.square] = zoneColor; // in check
+    for (const sq of adjacent(king.square)) if (enemy.has(sq)) map.squares[sq] = zoneColor;
   }
   return map;
 }

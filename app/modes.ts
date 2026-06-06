@@ -26,11 +26,10 @@ export const MODES: ModeDef[] = [
     label: 'Threat Map',
     legend: [
       { color: 'blue', meaning: 'White controls' },
-      { color: 'orange', meaning: 'Black controls' },
+      { color: 'red', meaning: 'Black controls' },
       { color: 'purple', meaning: 'contested' },
-      { color: 'red', meaning: 'king zone (held)' },
-      { color: 'dark_red', meaning: 'king danger' },
-      { color: 'red_blink', meaning: 'king in check' },
+      { color: 'dark_blue', meaning: 'White king zone' },
+      { color: 'dark_red', meaning: 'Black king zone' },
     ],
   },
   {
@@ -94,6 +93,7 @@ export const LED_CSS: Record<LedColor, string> = {
   orange: '#e8923b',
   purple: '#a14fe0',
   dark_red: '#7a1010',
+  dark_blue: '#16306b',
   gray: '#8a8a8a',
   red_blink: '#ff2a2a',
   off: 'transparent',
