@@ -9,16 +9,20 @@ export interface Arrow {
   color: string;
   label?: string; // sequence number for threat lines
   dashed?: boolean;
+  move?: boolean; // the played move — subtle slate, thin, small arrowhead
+  dim?: boolean; // de-emphasized (focus mode)
 }
 
 // The app's visual grammar (consistent everywhere):
 //   red    = attacks / threats / captures (incoming AND the selected piece's own)
 //   green  = defenders / protection
 //   orange = tactical candidate / threat line (numbered for call-and-response)
+//   slate  = the move that was just PLAYED (so "moved here" never reads as "attacks here")
 export const ARROW = {
   defend: '#2f855a', // green
   attack: '#c53030', // red
   tactical: '#dd6b20', // orange
+  move: '#4a5568', // slate — the played move
 };
 
 const CELL = 56;
@@ -52,6 +56,19 @@ export function BoardArrows({ arrows }: { arrows: Arrow[] }) {
             <path d="M0,0 L6,3 L0,6 Z" fill={c} />
           </marker>
         ))}
+        {colors.map((c) => (
+          <marker
+            key={`s-${c}`}
+            id={`ahs-${c.replace('#', '')}`}
+            markerWidth="4"
+            markerHeight="4"
+            refX="3"
+            refY="2"
+            orient="auto"
+          >
+            <path d="M0,0 L4,2 L0,4 Z" fill={c} />
+          </marker>
+        ))}
       </defs>
       {arrows.map((a, i) => {
         const A = center(a.from);
@@ -74,11 +91,11 @@ export function BoardArrows({ arrows }: { arrows: Arrow[] }) {
               x2={x2}
               y2={y2}
               stroke={a.color}
-              strokeWidth={4}
-              strokeOpacity={0.85}
+              strokeWidth={a.move ? 3 : 4}
+              strokeOpacity={a.dim ? 0.18 : a.move ? 0.5 : 0.85}
               strokeLinecap="round"
               strokeDasharray={a.dashed ? '6 5' : undefined}
-              markerEnd={`url(#ah-${a.color.replace('#', '')})`}
+              markerEnd={`url(#ah${a.move ? 's' : ''}-${a.color.replace('#', '')})`}
             />
             {a.label && (
               <>

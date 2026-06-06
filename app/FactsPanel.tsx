@@ -2,7 +2,7 @@
 // move analysis. The loop: click square → arrows show relationships → this card
 // explains in words → LED preview mirrors it. A visual debugger for positions.
 import { squareReport, type SquareStatus } from '../engine/relationship';
-import type { MoveAnalysis, Square } from '../engine/types';
+import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
 
 const STATUS_COLOR: Record<SquareStatus, string> = {
   empty: '#9aa',
@@ -18,13 +18,22 @@ export function FactsPanel({
   selected,
   analysis,
   move,
+  focused,
+  onFocus,
 }: {
   fen: string;
   selected?: Square;
   analysis?: MoveAnalysis;
   move?: string;
+  focused?: InsightCandidate | null;
+  onFocus?: (ins: InsightCandidate) => void;
 }) {
   const report = selected ? squareReport(fen, selected) : undefined;
+  // "What tactic depends on this square?" — insights whose squares include it.
+  const dependentTactics =
+    selected && analysis
+      ? analysis.rankedInsights.filter((i) => i.squares.includes(selected))
+      : [];
 
   return (
     <div style={{ minWidth: 300, fontSize: 14, lineHeight: 1.55 }}>
@@ -89,6 +98,22 @@ export function FactsPanel({
               {report.statusLabel}
             </span>
           </div>
+          {dependentTactics.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <span style={{ color: '#666' }}>Part of:</span>{' '}
+              {dependentTactics.map((ins, i) => (
+                <span key={ins.id}>
+                  <span
+                    onClick={() => onFocus?.(ins)}
+                    style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {ins.type.replace(/_/g, ' ')}
+                  </span>
+                  {i < dependentTactics.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       ) : selected ? (
         <div style={{ color: '#888', marginBottom: 12 }}>Empty square — {selected}</div>
@@ -98,14 +123,36 @@ export function FactsPanel({
 
       {analysis && analysis.rankedInsights.length > 0 && (
         <div>
-          <h4 style={{ margin: '0 0 4px' }}>Ranked insights</h4>
+          <h4 style={{ margin: '0 0 4px' }}>
+            Ranked insights{' '}
+            {focused && (
+              <button onClick={() => onFocus?.(focused)} style={{ fontSize: 11, marginLeft: 6 }}>
+                unfocus
+              </button>
+            )}
+          </h4>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
-            {analysis.rankedInsights.slice(0, 5).map((ins) => (
-              <li key={ins.id} style={{ marginBottom: 2 }}>
-                <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {ins.type} @{' '}
-                {ins.squares.join(',')}
-              </li>
-            ))}
+            {analysis.rankedInsights.slice(0, 6).map((ins) => {
+              const isFocused = focused === ins;
+              return (
+                <li key={ins.id} style={{ marginBottom: 2 }}>
+                  <span
+                    onClick={() => onFocus?.(ins)}
+                    title="focus the board on this insight"
+                    style={{
+                      cursor: 'pointer',
+                      padding: '0 4px',
+                      borderRadius: 4,
+                      background: isFocused ? '#fde68a' : 'transparent',
+                      fontWeight: isFocused ? 700 : 400,
+                    }}
+                  >
+                    <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {ins.type} @{' '}
+                    {ins.squares.join(',')}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
         </div>
       )}

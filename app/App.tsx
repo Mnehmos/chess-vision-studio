@@ -2,10 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { pliesFromPgn, type PlyRecord } from '../engine/position';
-import { computeLedMap } from '../engine/led';
+import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
 import { UciEngine } from '../engine/evaluation';
-import type { MoveAnalysis, Square } from '../engine/types';
+import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
@@ -25,6 +25,8 @@ export function App() {
   const [showThreats, setShowThreats] = useState(true);
   const [showAllThreats, setShowAllThreats] = useState(false);
   const [cascade, setCascade] = useState(true);
+  const [followMove, setFollowMove] = useState(true);
+  const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
   const engineRef = useRef<UciEngine | null>(null);
@@ -61,17 +63,20 @@ export function App() {
     };
   }, [view, engineState, plyIndex, plies, analyses]);
 
-  // On move advance, snap the inspection to the piece that JUST MOVED, so the
-  // arrows annotate the move that just happened. A manual click overrides this
-  // until the next advance (then it snaps back to the new move).
+  // On move advance, snap the inspection to the piece that JUST MOVED ("follow
+  // move"), so BOTH the arrows and the active mode (e.g. Legal Move) broadcast the
+  // move that just happened. A manual click overrides until the next advance.
+  // Also clear any focused insight when the ply changes.
   useEffect(() => {
-    setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
-  }, [view, plies]);
+    setFocused(null);
+    if (followMove) setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
+  }, [view, plies, followMove]);
 
-  const ledMap = useMemo(
-    () => computeLedMap(modeId, { fen, selectedSquare: selected, analysis }),
-    [modeId, fen, selected, analysis],
-  );
+  // LED: a focused insight overrides the mode overlay to spotlight just that motif.
+  const ledMap = useMemo(() => {
+    if (focused) return focusLedMap(focused);
+    return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
+  }, [modeId, fen, selected, analysis, focused]);
 
   // Annotation arrows:
   //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
@@ -79,7 +84,19 @@ export function App() {
   //   • threat lines — the top refutation's call-and-response sequence, or ALL of
   //     them, each numbered and colored by the moving side
   const arrows = useMemo<Arrow[]>(() => {
+    // FOCUS MODE: a clicked insight spotlights only its own line; everything else
+    // is suppressed so the user sees exactly that one tactic.
+    if (focused) return lineArrows(fen, focused, false);
+
     const out: Arrow[] = [];
+
+    // The played move itself — a subtle slate arrow (thin, small head) so "moved
+    // here" never reads as "attacks here".
+    if (followMove && view > 0) {
+      const p = plies[view - 1];
+      if (p) out.push({ from: p.from as Square, to: p.to as Square, color: ARROW.move, move: true });
+    }
+
     if (selected) out.push(...selectionArrows(fen, selected, cascade));
 
     if (analysis && analysis.rankedInsights.length) {
@@ -89,34 +106,10 @@ export function App() {
         : showThreats && top.source === 'refutation'
           ? [top]
           : [];
-      for (const ins of threats) {
-        const line = ins.kind === 'motif' ? ins.line : [];
-        if (line.length) {
-          const c = new Chess(fen);
-          line.slice(0, 6).forEach((san, i) => {
-            let m: ReturnType<Chess['move']> | null = null;
-            try {
-              m = c.move(san);
-            } catch {
-              m = null;
-            }
-            if (m)
-              out.push({
-                from: m.from,
-                to: m.to,
-                color: ARROW.tactical, // orange — tactical candidate line
-                label: String(i + 1), // numbered for call-and-response order
-                dashed: ins !== top,
-              });
-          });
-        } else {
-          for (const [from, to] of ins.arrows)
-            out.push({ from, to, color: ARROW.attack, dashed: ins !== top });
-        }
-      }
+      for (const ins of threats) out.push(...lineArrows(fen, ins, ins !== top));
     }
     return out;
-  }, [fen, selected, analysis, showThreats, showAllThreats, cascade]);
+  }, [fen, selected, analysis, showThreats, showAllThreats, cascade, focused, followMove, view, plies]);
 
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
@@ -170,6 +163,8 @@ export function App() {
             setShowAllThreats={setShowAllThreats}
             cascade={cascade}
             setCascade={setCascade}
+            followMove={followMove}
+            setFollowMove={setFollowMove}
             hasSelection={!!selected}
             onClear={() => setSelected(undefined)}
           />
@@ -177,7 +172,14 @@ export function App() {
         </div>
 
         {/* Middle: facts */}
-        <FactsPanel fen={fen} selected={selected} analysis={analysis} move={moveLabel} />
+        <FactsPanel
+          fen={fen}
+          selected={selected}
+          analysis={analysis}
+          move={moveLabel}
+          focused={focused}
+          onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+        />
 
         {/* Right: LED twin + move list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -199,6 +201,38 @@ export function App() {
       </details>
     </div>
   );
+}
+
+/** Replay an insight's forcing line into numbered tactical arrows. */
+function lineArrows(fen: string, ins: InsightCandidate, dashed: boolean): Arrow[] {
+  const out: Arrow[] = [];
+  const line = ins.kind === 'motif' ? ins.line : [];
+  if (line.length) {
+    const c = new Chess(fen);
+    line.slice(0, 6).forEach((san, i) => {
+      let m: ReturnType<Chess['move']> | null = null;
+      try {
+        m = c.move(san);
+      } catch {
+        m = null;
+      }
+      if (m)
+        out.push({ from: m.from, to: m.to, color: ARROW.tactical, label: String(i + 1), dashed });
+    });
+  } else {
+    for (const [from, to] of ins.arrows) out.push({ from, to, color: ARROW.attack, dashed });
+  }
+  return out;
+}
+
+/** Spotlight one insight on the LED grid: executor purple, targets orange. */
+function focusLedMap(ins: InsightCandidate): LedMap {
+  const squares: Record<string, LedColor> = {};
+  for (const sq of allSquares()) squares[sq] = 'off';
+  const execSq = ins.kind === 'motif' && ins.byPiece.length >= 3 ? ins.byPiece.slice(2) : ins.squares[0];
+  if (execSq) squares[execSq] = 'purple';
+  for (const sq of ins.squares.slice(1)) if (squares[sq] === 'off') squares[sq] = 'orange';
+  return { mode: 'focus', squares };
 }
 
 function safePlies(pgn: string): PlyRecord[] {
@@ -285,6 +319,8 @@ function AnnotationLegend({
   setShowAllThreats,
   cascade,
   setCascade,
+  followMove,
+  setFollowMove,
   hasSelection,
   onClear,
 }: {
@@ -294,6 +330,8 @@ function AnnotationLegend({
   setShowAllThreats: (v: boolean) => void;
   cascade: boolean;
   setCascade: (v: boolean) => void;
+  followMove: boolean;
+  setFollowMove: (v: boolean) => void;
   hasSelection: boolean;
   onClear: () => void;
 }) {
@@ -319,6 +357,11 @@ function AnnotationLegend({
       {swatch(ARROW.attack, 'attacks / threats')}
       {swatch(ARROW.defend, 'defends / protects')}
       {swatch(ARROW.tactical, 'tactical line (1·2·3)')}
+      {swatch(ARROW.move, 'played move')}
+      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="track the move that just happened">
+        <input type="checkbox" checked={followMove} onChange={(e) => setFollowMove(e.target.checked)} />{' '}
+        follow move
+      </label>
       <label style={{ marginLeft: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={showThreats} onChange={(e) => setShowThreats(e.target.checked)} />{' '}
         threat line
