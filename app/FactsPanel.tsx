@@ -1,8 +1,17 @@
-// Facts panel — shared across modes. Shows the selected piece's PieceRelation +
-// SEE status, plus this ply's classification and topExplanation.
-import { buildRelationMap } from '../engine/relations';
-import { seeOnSquare } from '../engine/see';
+// Facts panel — a "relationship card" for the inspected square plus this ply's
+// move analysis. The loop: click square → arrows show relationships → this card
+// explains in words → LED preview mirrors it. A visual debugger for positions.
+import { squareReport, type SquareStatus } from '../engine/relationship';
 import type { MoveAnalysis, Square } from '../engine/types';
+
+const STATUS_COLOR: Record<SquareStatus, string> = {
+  empty: '#9aa',
+  hanging: '#e23b3b', // red — losing material
+  defended_target: '#8a6d3b', // contested but holds
+  loose: '#e8b33b', // yellow — loose / tactically relevant
+  defended: '#3f813f', // green — safe & protected
+  undefended: '#888',
+};
 
 export function FactsPanel({
   fen,
@@ -15,13 +24,12 @@ export function FactsPanel({
   analysis?: MoveAnalysis;
   move?: string;
 }) {
-  const rel = buildRelationMap(fen);
-  const r = selected ? rel.bySquare[selected] : undefined;
-  const see = selected ? seeOnSquare(fen, selected) : undefined;
+  const report = selected ? squareReport(fen, selected) : undefined;
 
   return (
-    <div style={{ minWidth: 280, fontSize: 14, lineHeight: 1.5 }}>
+    <div style={{ minWidth: 300, fontSize: 14, lineHeight: 1.55 }}>
       <h3 style={{ margin: '0 0 6px' }}>Facts</h3>
+
       {move && (
         <div style={{ marginBottom: 8 }}>
           <strong>{move}</strong>
@@ -47,36 +55,77 @@ export function FactsPanel({
         </div>
       )}
 
-      {selected && r ? (
-        <div>
-          <div>
-            <strong>{selected}</strong> — {r.piece}
+      {/* The relationship card */}
+      {report && report.occupied ? (
+        <div
+          style={{
+            border: '2px solid #2563c9', // blue outline = inspected piece
+            borderRadius: 8,
+            padding: '10px 12px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            {report.square} — {report.color} {report.pieceName?.toLowerCase()}
           </div>
-          <div>Attacked by: {r.attackedBy.length ? r.attackedBy.join(', ') : '—'}</div>
-          <div>Defended by: {r.defendedBy.length ? r.defendedBy.join(', ') : '—'}</div>
+          <Row label="Attacked by" items={report.attackedBy.map((a) => a.label)} color="#c53030" />
+          <Row label="Defended by" items={report.defendedBy.map((d) => d.label)} color="#2f855a" />
           <div>
-            SEE: {see!.swing > 0 ? `losing ${see!.swing}` : 'safe'}{' '}
-            {see!.losingSideToMove ? '⚠️' : ''}
+            <span style={{ color: '#666' }}>SEE:</span>{' '}
+            {report.safe ? 'safe' : `losing ${report.see}`}
+          </div>
+          <div style={{ marginTop: 6 }}>
+            <span style={{ color: '#666' }}>Status:</span>{' '}
+            <span
+              style={{
+                padding: '1px 8px',
+                borderRadius: 10,
+                background: STATUS_COLOR[report.status],
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {report.statusLabel}
+            </span>
           </div>
         </div>
       ) : selected ? (
-        <div style={{ color: '#888' }}>Empty square — {selected}</div>
+        <div style={{ color: '#888', marginBottom: 12 }}>Empty square — {selected}</div>
       ) : (
-        <div style={{ color: '#888' }}>Click a square to inspect.</div>
+        <div style={{ color: '#888', marginBottom: 12 }}>Click a square to inspect.</div>
       )}
 
       {analysis && analysis.rankedInsights.length > 0 && (
-        <div style={{ marginTop: 12 }}>
+        <div>
           <h4 style={{ margin: '0 0 4px' }}>Ranked insights</h4>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
             {analysis.rankedInsights.slice(0, 5).map((ins) => (
               <li key={ins.id} style={{ marginBottom: 2 }}>
-                <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span>{' '}
-                {ins.kind === 'motif' ? ins.type : ins.type} @ {ins.squares.join(',')}
+                <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {ins.type} @{' '}
+                {ins.squares.join(',')}
               </li>
             ))}
           </ol>
         </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, items, color }: { label: string; items: string[]; color: string }) {
+  return (
+    <div>
+      <span style={{ color: '#666' }}>{label}:</span>{' '}
+      {items.length ? (
+        items.map((it, i) => (
+          <span key={it}>
+            <span style={{ color }}>{it}</span>
+            {i < items.length - 1 ? ', ' : ''}
+          </span>
+        ))
+      ) : (
+        <span style={{ color: '#999' }}>none</span>
       )}
     </div>
   );

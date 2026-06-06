@@ -23,6 +23,7 @@ export function App() {
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   const [showThreats, setShowThreats] = useState(true);
+  const [showAllThreats, setShowAllThreats] = useState(false);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
   const engineRef = useRef<UciEngine | null>(null);
@@ -64,23 +65,41 @@ export function App() {
     [modeId, fen, selected, analysis],
   );
 
-  // Annotation arrows: selected-piece relations (defenders/attackers) + the top
-  // refutation's call-and-response threat line (numbered, colored by mover).
+  // Annotation arrows:
+  //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
+  //     OWN attacks raycast OUTWARD (magenta out)
+  //   • threat lines — the top refutation's call-and-response sequence, or ALL of
+  //     them, each numbered and colored by the moving side
   const arrows = useMemo<Arrow[]>(() => {
     const out: Arrow[] = [];
     if (selected) {
-      const rel = buildRelationMap(fen).bySquare[selected];
-      if (rel) {
-        for (const id of rel.defendedBy)
+      const rel = buildRelationMap(fen);
+      const selRel = rel.bySquare[selected];
+      if (selRel) {
+        const selColor = selRel.piece[0];
+        const selId = selRel.piece + selected;
+        for (const id of selRel.defendedBy)
           out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.defend });
-        for (const id of rel.attackedBy)
+        for (const id of selRel.attackedBy)
           out.push({ from: id.slice(2) as Square, to: selected, color: ARROW.attack });
+        // outgoing: raycast what the selected piece attacks (red, like all attacks)
+        for (const sq of Object.keys(rel.bySquare)) {
+          const r = rel.bySquare[sq];
+          if (r.piece[0] !== selColor && r.attackedBy.includes(selId))
+            out.push({ from: selected, to: sq as Square, color: ARROW.attack });
+        }
       }
     }
-    if (showThreats && analysis && analysis.rankedInsights.length) {
+
+    if (analysis && analysis.rankedInsights.length) {
       const top = analysis.rankedInsights[0];
-      if (top.source === 'refutation') {
-        const line = top.kind === 'motif' ? top.line : [];
+      const threats = showAllThreats
+        ? analysis.rankedInsights.filter((i) => i.source === 'refutation' || i.source === 'available')
+        : showThreats && top.source === 'refutation'
+          ? [top]
+          : [];
+      for (const ins of threats) {
+        const line = ins.kind === 'motif' ? ins.line : [];
         if (line.length) {
           const c = new Chess(fen);
           line.slice(0, 6).forEach((san, i) => {
@@ -94,18 +113,19 @@ export function App() {
               out.push({
                 from: m.from,
                 to: m.to,
-                color: m.color === 'w' ? ARROW.white : ARROW.black,
-                label: String(i + 1),
+                color: ARROW.tactical, // orange — tactical candidate line
+                label: String(i + 1), // numbered for call-and-response order
+                dashed: ins !== top,
               });
           });
         } else {
-          for (const [from, to] of top.arrows)
-            out.push({ from, to, color: ARROW.attack, dashed: true });
+          for (const [from, to] of ins.arrows)
+            out.push({ from, to, color: ARROW.attack, dashed: ins !== top });
         }
       }
     }
     return out;
-  }, [fen, selected, analysis, showThreats]);
+  }, [fen, selected, analysis, showThreats, showAllThreats]);
 
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
@@ -155,6 +175,8 @@ export function App() {
           <AnnotationLegend
             showThreats={showThreats}
             setShowThreats={setShowThreats}
+            showAllThreats={showAllThreats}
+            setShowAllThreats={setShowAllThreats}
             hasSelection={!!selected}
             onClear={() => setSelected(undefined)}
           />
@@ -266,11 +288,15 @@ function Nav({ view, total, setView }: { view: number; total: number; setView: (
 function AnnotationLegend({
   showThreats,
   setShowThreats,
+  showAllThreats,
+  setShowAllThreats,
   hasSelection,
   onClear,
 }: {
   showThreats: boolean;
   setShowThreats: (v: boolean) => void;
+  showAllThreats: boolean;
+  setShowAllThreats: (v: boolean) => void;
   hasSelection: boolean;
   onClear: () => void;
 }) {
@@ -293,13 +319,20 @@ function AnnotationLegend({
   return (
     <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
       <strong style={{ marginRight: 6 }}>Arrows:</strong>
-      {swatch(ARROW.defend, 'defends (friendly)')}
-      {swatch(ARROW.attack, 'attacks (adversary)')}
-      {swatch(ARROW.white, 'White move')}
-      {swatch(ARROW.black, 'Black move')}
+      {swatch(ARROW.attack, 'attacks / threats')}
+      {swatch(ARROW.defend, 'defends / protects')}
+      {swatch(ARROW.tactical, 'tactical line (1·2·3)')}
       <label style={{ marginLeft: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={showThreats} onChange={(e) => setShowThreats(e.target.checked)} />{' '}
         threat line
+      </label>
+      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={showAllThreats}
+          onChange={(e) => setShowAllThreats(e.target.checked)}
+        />{' '}
+        all threats
       </label>
       {hasSelection && (
         <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>

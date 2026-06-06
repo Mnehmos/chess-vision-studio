@@ -11,12 +11,14 @@ export interface Arrow {
   dashed?: boolean;
 }
 
-// One coherent scheme used across the app.
+// The app's visual grammar (consistent everywhere):
+//   red    = attacks / threats / captures (incoming AND the selected piece's own)
+//   green  = defenders / protection
+//   orange = tactical candidate / threat line (numbered for call-and-response)
 export const ARROW = {
-  defend: '#2f855a', // friendly — green
-  attack: '#c53030', // adversary — red
-  white: '#2b6cb0', // White's move — blue
-  black: '#dd6b20', // Black's move — orange
+  defend: '#2f855a', // green
+  attack: '#c53030', // red
+  tactical: '#dd6b20', // orange
 };
 
 const CELL = 56;
