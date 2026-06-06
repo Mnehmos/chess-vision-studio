@@ -3,6 +3,7 @@
 // WRONG. A piece is losing material iff SEE on its square is negative for its
 // owner. Two rooks aimed at a pawn-defended knight is SAFE — the attackers are
 // too expensive. SEE knows this; counting doesn't.
+import { Chess } from 'chess.js';
 import {
   parseFen,
   pieceAt,
@@ -92,6 +93,33 @@ export function seeOnSquareBoard(board: Board, square: Square): SEEResult {
   const attackerColor = other(victim.color);
   const swing = seeRec(board, square, attackerColor, PIECE_VALUE[victim.type], new Set());
   return { square, swing, losingSideToMove: swing > 0 };
+}
+
+/**
+ * Poisoned captures (UC2) — moves that are physically legal but tactically
+ * unsafe: the capture wins a piece that is defended, so SEE on the move is
+ * negative for the mover. "Qxc2 ?? …Bxc2" — legal, but loses the queen.
+ */
+export interface PoisonedCapture {
+  san: string;
+  from: Square;
+  to: Square;
+  loss: number; // pawns the mover loses (positive number)
+}
+export function findPoisonedCaptures(fen: string): PoisonedCapture[] {
+  const chess = new Chess(fen);
+  const out: PoisonedCapture[] = [];
+  for (const m of chess.moves({ verbose: true }) as Array<{
+    san: string;
+    from: Square;
+    to: Square;
+    flags: string;
+  }>) {
+    if (!(m.flags.includes('c') || m.flags.includes('e'))) continue; // captures only
+    const see = seeCapture(fen, m.from, m.to);
+    if (see < 0) out.push({ san: m.san, from: m.from, to: m.to, loss: -see });
+  }
+  return out;
 }
 
 /**

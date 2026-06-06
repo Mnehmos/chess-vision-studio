@@ -255,7 +255,7 @@ function validateForkByEnumeration(
 
   let guaranteed = Infinity;
   let worstLine: string[] = [];
-  const targetSquares = new Set(targets.filter((t) => t.type !== 'k').map((t) => t.square));
+  const targetSquares = targets.filter((t) => t.type !== 'k').map((t) => t.square);
 
   for (const r of replies) {
     const afterReply = new Chess(forkFen);
@@ -263,15 +263,21 @@ function validateForkByEnumeration(
     const replyFen = afterReply.fen();
     const replyBoard = parseFen(replyFen);
 
-    // Best material the forker side can grab on a still-present target square.
+    // What the opponent's reply COST the forker (e.g. capturing the forker piece).
+    const lostToOpp = r.captured ? PIECE_VALUE[r.captured as keyof typeof PIECE_VALUE] : 0;
+
+    // The forker's best recapture/grab. Crucially this includes RECAPTURING on the
+    // square the opponent just captured on — so a poisoned defense (…Qxc2 ?? …Bxc2)
+    // is correctly scored as winning, not as "the fork was defused".
+    const candidateSquares = new Set<string>(targetSquares);
+    if (r.captured) candidateSquares.add(r.to); // recapture the piece that just took ours
+
     let bestGain = 0;
     let bestLine: string[] = [];
-    for (const sq of targetSquares) {
+    for (const sq of candidateSquares) {
       const victim = pieceAt(replyBoard, sq);
-      if (!victim || victim.color === forkerColor) continue; // target saved/gone
-      // any forker-side attacker capturing the target
-      const attackers = attackersOf(replyBoard, sq, forkerColor);
-      for (const a of attackers) {
+      if (!victim || victim.color === forkerColor) continue;
+      for (const a of attackersOf(replyBoard, sq, forkerColor)) {
         const gain = seeCapture(replyFen, a.square, sq);
         if (gain > bestGain) {
           bestGain = gain;
@@ -279,15 +285,17 @@ function validateForkByEnumeration(
         }
       }
     }
-    if (bestGain < guaranteed) {
-      guaranteed = bestGain;
+
+    const netForForker = bestGain - lostToOpp;
+    if (netForForker < guaranteed) {
+      guaranteed = netForForker;
       worstLine = bestLine;
     }
     if (guaranteed <= 0) {
       return {
         win: 0,
         line: [],
-        reason: `opponent reply ${r.san} defuses the fork (forker may be hanging or a target is saved)`,
+        reason: `opponent reply ${r.san} defuses the fork (forker hangs or both targets are saved)`,
       };
     }
   }
