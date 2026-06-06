@@ -1,74 +1,142 @@
 # Chess Vision Studio
 
-A 2D **chess perception engine** that turns hidden board relationships — attacks,
-defenses, loose pieces, SEE trades, what-changed diffs, and validated tactical
-motifs — into mode-scoped visual layers and plain-language coaching.
+**See the forces on the board, not just the evaluation.**
 
-The moat is **structured perception + saliency ranking**: detect every
-relationship that changed on a move, surface the one that matters, stay silent
-about the eleven that don't — with **proven evidence** under every claim, no LLM
-required.
+Chess engines tell you a move is a *−2.4 blunder*. They don't tell you **why**.
+Chess Vision Studio is a 2D chess *perception* engine for improving players
+(~300–1400) that makes the hidden structure of a position visible — every attack,
+defender, loose piece, winning trade (SEE), mate net, and who controls which
+territory — rendered as color-coded board overlays with plain-language coaching.
 
-## Status — MVP complete (M0–M7)
+The moat is **structured perception + saliency, with proven evidence under every
+claim**: detect every relationship that changed on a move, surface the one that
+matters, stay silent about the eleven that don't — and never assert a tactic the
+engine hasn't already validated. The optional AI coach only *narrates facts the
+engine confirmed*; it never even sees the position, so it can't make things up.
 
-96 tests green. The headless analysis core is finished through the crown jewel
-(saliency), the hardest puzzle (validated motifs), deterministic explanations,
-and the mode→LED layer; the React app renders it.
+> **Status: 0.01 MVP.** Runs locally in the browser. 230+ tests green, typecheck
+> clean. This is an early public preview — feedback welcome.
 
-| Milestone | What it proves |
-|---|---|
-| **M0** Scaffold | Stockfish WASM (mockable transport) + chess.js + Vitest |
-| **M1** Relations | per-square attacker/defender maps (g4 knight: attacked only by wQd1) |
-| **M2** SEE | static exchange eval — free / too-expensive / x-ray battery |
-| **M3** cpLoss | side-to-move sign flip; blunder vs only-move (live Stockfish) |
-| **M4** Saliency | eval-gated, PV-attributed ranking — quiet / silence / refutation |
-| **M5** Motifs | Tier-1 PROPOSE→VALIDATE→LOG; every type has a proven-negative fixture |
-| **M6** Explain | deterministic templates keyed by ChangeType / MotifType |
-| **M7** UI | 7 mode-scoped LED maps + 2D board; Hanging flags g4, Tactics draws R1e7# |
+---
+
+## What it does
+
+### 🔍 Analyze — one game
+
+Step through any game and the board lights up with its hidden structure, with a
+facts panel that spells out every piece in plain English.
+
+![Analyze a game — board overlay, per-piece facts, ranked insights, and a full game review](screens/analyze-board-facts.png)
+
+- **Seven mode-scoped overlays:** Legal Move · Threat Map · Defense Map ·
+  Hanging (SEE) · What Changed · Pawn Structure · Tactics (Motif).
+- **Per-piece facts:** *"f7 bishop — attacked by Ke7, defended by Qg7, SEE: safe,
+  part of: mating net."* Tied to specific squares, never hand-wavy.
+- **Ranked insights + board-control %** — who owns which territory, and the one
+  relationship that actually mattered this move.
+- **Game review** — accuracy by side, recurring patterns, motifs created vs
+  suffered, loss by phase, and a move-by-move "what happened".
+- **Optional AI coach** — narrates only engine-validated facts (clamped; the key
+  stays server-side, never bundled in the browser).
+
+Each overlay is a different lens on the same position:
+
+| Threat Map | Defense Map | Hanging (SEE) |
+|---|---|---|
+| ![Threat map overlay](screens/overlay-threat-map.png) | ![Defense map overlay](screens/overlay-defense-map.png) | ![Hanging / SEE overlay](screens/overlay-hanging-see.png) |
+
+![Coach commentary — Summary, best line, and major threats, all from validated facts](screens/coach-commentary.png)
+
+### 📊 Insights — all your games
+
+Paste your full Chess.com / Lichess export and it analyzes every game **locally**
+with Stockfish (a parallel engine pool), caches results in the browser, and shows
+your real patterns.
+
+![Dataset insights — record, openings, move explorer, time-of-day performance, accuracy by side, and biggest teaching moments](screens/dataset-insights.png)
+
+- **Opening tree & move explorer** across your whole history.
+- **Accuracy by color** + recurring mistake patterns (motifs created vs suffered).
+- **Loss by phase** — opening / middlegame / endgame.
+- **When you play your best** — win rate *and* accuracy bucketed by your local
+  time of day (it really does surface "you score highest in the morning").
+- **Biggest teaching moments** — your worst moves across all games, one click to
+  open the position.
+- **Durable + incremental** — analysis is cached (IndexedDB) with a per-game ✓,
+  so it survives reloads and only analyzes what's new.
+
+---
+
+## The wedge
+
+Evaluation says *how bad*. Chess Vision Studio says *what safety rule you broke*.
+The **Control Lens** (engine core shipped in this release) frames a position as a
+constraint graph and a move as a control action over hazards — it names what each
+move *eliminated, defended, created, walked into, or left unanswered*, and which
+threats **must be answered** vs can be **safely ignored** (e.g. a loose piece you
+can ignore *because a forced mate ends the game first*). Every hazard is
+engine-validated — SEE, king-pressure, or a proven mate — never invented.
+
+---
 
 ## Architecture
 
 A one-directional pipeline. Everything downstream consumes one validated seam,
-`MoveAnalysis` (Invariant 2). The engine core is **pure and headless** — no
-React, no DOM (Invariant 1); Stockfish is the only async dependency and it sits
-behind a mockable `EngineTransport`.
+`MoveAnalysis`. The engine core is **pure and headless** — no React, no DOM;
+Stockfish is the only async dependency and sits behind a mockable transport.
 
 ```
-PGN/FEN → position → relations → evaluation(Stockfish) → SEE
+PGN/FEN → position → relations → evaluation (Stockfish) → SEE
         → diff → motif (PROPOSE→VALIDATE→LOG) → saliency → explain
-        → led (mode → 64-square map) → React board + LED twin
+        → features → control-lens → led (mode → 64-square map)
+        → React board + LED twin   ·   dataset analytics (parallel pool)
 ```
 
 - `engine/` — the headless library (pure; runs in Node tests, no browser).
-- `app/` — React UI that imports the engine and renders its LedMaps + facts.
+- `app/` — the React UI: board, overlays, facts, game review, dataset insights.
+- `llm/` — the optional, clamped narrator (server-side key via a dev proxy).
 
-### Non-negotiable invariants honored
+### Non-negotiable invariants
 
-3. **Hanging = SEE, never naive counting** — `see.ts`, with x-ray reveal.
-4. **Saliency gates on eval-delta, then attributes via the PV** — no magic score;
-   weights sum to 1 and only attribute the swing the gate already measured.
-5. **Blunders live in the refutation** — `diffRefutation` walks the opponent's PV.
-7. **No motif reaches the player unvalidated** — forks proven by enumerating
-   every reply; mates by `isCheckmate`; pins by ray geometry. Every type ships a
-   proven-negative fixture and the **rejection is the test of record**.
+- **Validated facts only.** No motif reaches the player unvalidated — forks proven
+  by enumerating every reply, mates by `isCheckmate`, pins by ray geometry. Every
+  motif type ships a **proven-negative fixture**, and the rejection is the test of
+  record.
+- **Hanging = SEE, never naive counting** (with x-ray reveal).
+- **Saliency gates on eval-delta, then attributes via the PV** — no magic score.
+- **The LLM is a narrator, not an oracle.** It explains validated `MoveAnalysis`;
+  it never asserts a tactic that isn't already proven.
+
+---
 
 ## Run
 
 ```bash
 npm install
-npm test          # 96 tests (headless engine + jsdom render)
+npm test          # 230+ tests (headless engine + jsdom render)
 npm run dev       # the app at http://localhost:5173
 npm run build     # production build
 ```
 
-6 of the 7 modes are engine-free; only **What Changed** needs Stockfish. If the
-in-browser engine fails to load, the app degrades gracefully to the pure modes.
+6 of the 7 overlays are engine-free; the in-browser Stockfish powers What
+Changed and the dataset analysis. If the engine fails to load, the app degrades
+gracefully to the pure modes.
 
-## Next wave (not started — needs sign-off)
+**Optional AI coach:** copy `.env.example` → `.env` and add an OpenAI key. The key
+is read server-side by the Vite dev proxy and never bundled into the browser; you
+can also paste a key into the in-app panel (kept in `localStorage`, never
+committed). The app is fully usable without it.
 
-- **M8** — LLM as a *proposer* of Tier-2 motif candidates and a *narrator* over
-  validated `MoveAnalysis` (same contract). The LLM proposes; the engine
-  adjudicates (Invariant 8). Adds a paid API dependency.
+---
+
+## Roadmap
+
+- **Control Lens UI** — surface the engine core (shipped here) in the facts panel,
+  move history tags, and a dataset "most common failed controls" aggregate.
 - **Tier-2 motifs** — overload, deflection, decoy, interference, zwischenzug,
   trapped piece — proposed then PV-shape-validated.
-- **M9 (hard-out)** — 3D board, LED hardware, accounts, opening book.
+- **Further out** — 3D board, opening book, accounts.
+
+## License
+
+[MIT](LICENSE)

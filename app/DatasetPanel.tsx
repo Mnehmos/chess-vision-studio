@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 import type { ParsedGame } from '../engine/position';
 import { computeDataset, type Record4 } from '../engine/dataset';
 import { buildOpeningTree, movesFrom, type MoveStat } from '../engine/repertoire';
+import { computeDatasetAnalysis, type AnalysisCache } from '../engine/dataset-analytics';
+import { DatasetAnalysisViz } from './DatasetAnalysisViz';
 
 const WIN = '#3fbf5f';
 const DRAW = '#b9b9b9';
@@ -28,51 +30,125 @@ export function DatasetPanel({
   games,
   engineReady,
   analysisProgress,
+  cache,
+  cacheVersion,
+  keyOf,
   onAnalyzeAll,
   onOpenGame,
 }: {
   games: ParsedGame[];
   engineReady: boolean;
-  analysisProgress: { running: boolean; done: number; total: number };
+  analysisProgress: {
+    running: boolean;
+    done: number;
+    total: number;
+    gamesDone: number;
+    gamesTotal: number;
+    currentGame: string;
+  };
+  cache: AnalysisCache;
+  cacheVersion: number; // bump signal: `cache` is a stable ref, so memos key on this
+  keyOf: (g: ParsedGame) => string;
   onAnalyzeAll: () => void;
   onOpenGame: (index: number) => void;
 }) {
   const ds = useMemo(() => computeDataset(games), [games]);
   const tree = useMemo(() => buildOpeningTree(games), [games]);
+  // Dataset-wide analysis points + time-of-day (recompute as the cache fills).
+  const hero = ds.hero ?? null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const datasetAnalysis = useMemo(
+    () => computeDatasetAnalysis(games, cache, keyOf, hero),
+    [games, cache, keyOf, hero, cacheVersion],
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const analyzedByIndex = useMemo(() => {
+    const m = new Map<number, { done: number; total: number }>();
+    for (const g of games) m.set(g.index, { done: cache.get(keyOf(g))?.size ?? 0, total: g.plies.length });
+    return m;
+  }, [games, cache, keyOf, cacheVersion]);
 
+  const pct = analysisProgress.total
+    ? Math.round((analysisProgress.done / analysisProgress.total) * 100)
+    : 0;
+  const disabled = !engineReady || analysisProgress.running;
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 12,
-          marginBottom: 12,
-          minHeight: 34,
-        }}
-      >
-        <div style={{ fontSize: 13, color: '#666' }}>
-          {analysisProgress.running
-            ? `Analyzing dataset ${analysisProgress.done}/${analysisProgress.total}`
-            : 'Dataset analysis is cached per game once run.'}
-        </div>
-        <button
-          onClick={onAnalyzeAll}
-          disabled={!engineReady || analysisProgress.running}
+      <div style={{ marginBottom: 12 }}>
+        <div
           style={{
-            border: '1px solid #3b6fd4',
-            background: engineReady && !analysisProgress.running ? '#3b6fd4' : '#f3f3f3',
-            color: engineReady && !analysisProgress.running ? '#fff' : '#888',
-            borderRadius: 4,
-            padding: '6px 10px',
-            fontSize: 13,
-            cursor: engineReady && !analysisProgress.running ? 'pointer' : 'not-allowed',
-            minWidth: 148,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            minHeight: 34,
           }}
         >
-          Analyze all games
-        </button>
+          <div style={{ fontSize: 13, color: '#475467' }}>
+            {analysisProgress.running ? (
+              <>
+                <strong style={{ color: '#101828' }}>
+                  Analyzing game {Math.min(analysisProgress.gamesDone + 1, analysisProgress.gamesTotal)}
+                  /{analysisProgress.gamesTotal}
+                </strong>{' '}
+                · {analysisProgress.done.toLocaleString()}/{analysisProgress.total.toLocaleString()} moves · {pct}%
+                {analysisProgress.currentGame && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: '#98a2b3',
+                      marginTop: 2,
+                      maxWidth: 520,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {analysisProgress.currentGame}
+                  </div>
+                )}
+              </>
+            ) : (
+              'Dataset analysis is cached per game once run.'
+            )}
+          </div>
+          <button
+            onClick={onAnalyzeAll}
+            disabled={disabled}
+            style={{
+              border: '1px solid #3b6fd4',
+              background: !disabled ? '#3b6fd4' : '#f3f3f3',
+              color: !disabled ? '#fff' : '#888',
+              borderRadius: 4,
+              padding: '6px 10px',
+              fontSize: 13,
+              cursor: !disabled ? 'pointer' : 'not-allowed',
+              minWidth: 148,
+            }}
+          >
+            {analysisProgress.running ? `Analyzing… ${pct}%` : 'Analyze all games'}
+          </button>
+        </div>
+        {analysisProgress.running && (
+          <div
+            style={{
+              height: 6,
+              background: '#eef0f3',
+              borderRadius: 3,
+              marginTop: 8,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                background: '#3b6fd4',
+                transition: 'width 0.2s',
+              }}
+            />
+          </div>
+        )}
       </div>
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Left column: the numbers */}
@@ -113,8 +189,13 @@ export function DatasetPanel({
         </div>
       </div>
 
+      {/* Dataset-wide analysis points + the time-of-day breakdown. */}
+      <div style={{ marginTop: 20 }}>
+        <DatasetAnalysisViz analysis={datasetAnalysis} onOpenGame={onOpenGame} />
+      </div>
+
       <div style={{ ...card, marginTop: 20 }}>
-        <GamesList ds={ds} onOpenGame={onOpenGame} />
+        <GamesList ds={ds} onOpenGame={onOpenGame} analyzedByIndex={analyzedByIndex} />
       </div>
     </div>
   );
@@ -340,7 +421,15 @@ function MoveRow({ m, here, onPlay }: { m: MoveStat; here: number; onPlay: () =>
 // ── full games list ──────────────────────────────────────────────────────────
 type GameFilter = 'interesting' | 'losses' | 'recent' | 'all';
 
-function GamesList({ ds, onOpenGame }: { ds: ReturnType<typeof computeDataset>; onOpenGame: (i: number) => void }) {
+function GamesList({
+  ds,
+  onOpenGame,
+  analyzedByIndex,
+}: {
+  ds: ReturnType<typeof computeDataset>;
+  onOpenGame: (i: number) => void;
+  analyzedByIndex: Map<number, { done: number; total: number }>;
+}) {
   const [filter, setFilter] = useState<GameFilter>('interesting');
   const interestByIndex = new Map(ds.interestingGames.map((g) => [g.index, g]));
   const rows = [...ds.summaries]
@@ -392,6 +481,9 @@ function GamesList({ ds, onOpenGame }: { ds: ReturnType<typeof computeDataset>; 
                   <td style={{ padding: '3px 6px', width: 6 }}>
                     <div style={{ width: 6, height: 14, background: c, borderRadius: 2 }} />
                   </td>
+                  <td style={{ padding: '3px 4px', width: 30, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <AnalyzedMark a={analyzedByIndex.get(s.index)} />
+                  </td>
                   <td style={{ padding: '3px 8px', color: '#888', whiteSpace: 'nowrap' }}>{s.date ?? '—'}</td>
                   <td style={{ padding: '3px 8px', whiteSpace: 'nowrap' }}>
                     {s.white} vs {s.black}
@@ -423,6 +515,17 @@ function GamesList({ ds, onOpenGame }: { ds: ReturnType<typeof computeDataset>; 
         </table>
       </div>
     </details>
+  );
+}
+
+// Per-game cache state: ✓ when fully analyzed (durable), a count while partial.
+function AnalyzedMark({ a }: { a?: { done: number; total: number } }) {
+  if (!a || a.total === 0 || a.done === 0) return <span style={{ color: '#d0d5dd' }} title="Not analyzed">·</span>;
+  if (a.done >= a.total) return <span style={{ color: '#2f855a', fontWeight: 700 }} title="Analyzed (cached locally)">✓</span>;
+  return (
+    <span style={{ color: '#e8923b', fontSize: 11 }} title={`${a.done}/${a.total} plies analyzed`}>
+      {Math.round((a.done / a.total) * 100)}%
+    </span>
   );
 }
 

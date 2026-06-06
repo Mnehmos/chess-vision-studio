@@ -148,7 +148,7 @@ const CENTER = new Set(['d4', 'e4', 'd5', 'e5']);
 const emptyPieceCounts = (): Record<PieceType, number> => ({ p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 });
 const emptySide = (): CountBySide => ({ w: 0, b: 0 });
 
-export function extractPlyFeatures(fenBefore: string, fenAfter: string, san: string, analysis: MoveAnalysis): PlyFeatures {
+function extractPlyFeaturesRaw(fenBefore: string, fenAfter: string, san: string, analysis: MoveAnalysis): PlyFeatures {
   const mover = parseFen(fenBefore).turn;
   const legalBefore = legalSummary(fenBefore);
   const opponentLegalAfter = legalSummary(fenAfter);
@@ -198,6 +198,55 @@ export function extractPlyFeatures(fenBefore: string, fenAfter: string, san: str
     motifs,
     patterns,
     badges: badgesFor(mover, legalBefore, opponentLegalAfter, defenseAfter, see, motifs),
+  };
+}
+
+// ── feature-entry quarantine ───────────────────────────────────────────────────
+// The summaries above build hypothetical/flipped positions; a malformed or illegal
+// intermediate FEN can make a sub-detector throw. Quarantine it HERE so a single bad
+// ply degrades to zeroed features instead of bubbling through React and crashing the
+// load (treat it like a skipped malformed PGN game). This is the containment boundary.
+export function extractPlyFeatures(fenBefore: string, fenAfter: string, san: string, analysis: MoveAnalysis): PlyFeatures {
+  try {
+    return extractPlyFeaturesRaw(fenBefore, fenAfter, san, analysis);
+  } catch {
+    return emptyPlyFeatures(fenBefore, san, analysis);
+  }
+}
+
+const emptyLegal = (): LegalFeatureSummary => ({
+  total: 0, safe: 0, captures: 0, checks: 0, forcing: 0, tacticalCandidates: 0, byPiece: emptyPieceCounts(), kingEscapes: 0,
+});
+const emptyThreat = (): ThreatFeatureSummary => ({
+  whiteControl: 0, blackControl: 0, contested: 0, centerWhite: 0, centerBlack: 0,
+  whiteKingPressure: 0, blackKingPressure: 0, checksAvailable: emptySide(), initiative: emptySide(),
+});
+const emptyDefense = (): DefenseFeatureSummary => ({
+  loosePieces: emptySide(), undefendedHighValue: emptySide(), hangingPieces: emptySide(), hangingValue: emptySide(), overDefended: emptySide(),
+});
+const emptyPawn = (): PawnFeatureSummary => ({
+  isolated: emptySide(), doubled: emptySide(), passed: emptySide(), islands: emptySide(),
+  openFiles: 0, semiOpenFiles: emptySide(), kingShieldMissing: emptySide(),
+});
+const emptySee = (): SeeFeatureSummary => ({ bestWin: emptySide(), poisonedCaptures: emptySide(), playedCaptureSee: null, missedFreeMaterial: false });
+
+/** Zeroed features for a quarantined ply (unparseable/illegal position). */
+export function emptyPlyFeatures(fenBefore: string, san: string, analysis: MoveAnalysis): PlyFeatures {
+  let mover: Color = 'w';
+  try {
+    mover = parseFen(fenBefore).turn;
+  } catch {
+    /* default to white */
+  }
+  return {
+    phase: 'middlegame', mover, move: analysis.move ?? san,
+    legalBefore: emptyLegal(), opponentLegalAfter: emptyLegal(),
+    mobilityDelta: 0, safeMoveDelta: 0,
+    threatBefore: emptyThreat(), threatAfter: emptyThreat(), threatVolatility: 0,
+    defenseBefore: emptyDefense(), defenseAfter: emptyDefense(),
+    see: emptySee(), pawnBefore: emptyPawn(), pawnAfter: emptyPawn(),
+    motifs: { availableBefore: {}, createdAfter: {}, missedByMover: {}, refutation: {} },
+    patterns: [], badges: [],
   };
 }
 

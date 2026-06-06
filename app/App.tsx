@@ -9,6 +9,8 @@ import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures }
 import { UciEngine } from '../engine/evaluation';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
+import { createEnginePool, defaultPoolSize, type EnginePool } from './engine-pool';
+import { loadAnalysisCache, saveGameAnalysis } from './analysis-store';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
@@ -47,6 +49,25 @@ const primaryBtn: React.CSSProperties = {
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+// "Analyze all games" progress. done/total count PLIES (drives the bar);
+// gamesDone/gamesTotal + currentGame give a human-meaningful "Game X/Y".
+export interface DatasetJob {
+  running: boolean;
+  done: number;
+  total: number;
+  gamesDone: number;
+  gamesTotal: number;
+  currentGame: string;
+}
+const IDLE_DATASET_JOB: DatasetJob = {
+  running: false,
+  done: 0,
+  total: 0,
+  gamesDone: 0,
+  gamesTotal: 0,
+  currentGame: '',
+};
+
 export function App() {
   const [pgnText, setPgnText] = useState(samplePgn);
   const [games, setGames] = useState<ParsedGame[]>(() => safeGames(samplePgn));
@@ -65,10 +86,14 @@ export function App() {
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
-  const [datasetJob, setDatasetJob] = useState({ running: false, done: 0, total: 0 });
+  const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const analysisCacheRef = useRef<Map<string, Map<number, MoveAnalysis>>>(new Map());
   const featureCacheRef = useRef<Map<string, Map<number, CachedFeatureEntry>>>(new Map());
+  // analysisCacheRef is a ref (stable identity), so bump this to signal the dataset
+  // views that its contents changed (after a load, a saved game, or a single ply).
+  const [cacheVersion, setCacheVersion] = useState(0);
+  const enginePoolRef = useRef<EnginePool | null>(null);
   const [featureVersion, setFeatureVersion] = useState(0);
   const datasetRunRef = useRef(0);
   const currentGameKeyRef = useRef(currentGameKey);
@@ -125,6 +150,25 @@ export function App() {
     return () => {
       alive = false;
       engineRef.current?.dispose();
+      enginePoolRef.current?.dispose();
+    };
+  }, []);
+
+  // Rehydrate analyses persisted from a previous session (IndexedDB, keyed by the
+  // content-based game key) so 23k moves aren't re-ground after a reload.
+  useEffect(() => {
+    let alive = true;
+    loadAnalysisCache().then((loaded) => {
+      if (!alive || loaded.size === 0) return;
+      for (const [k, v] of loaded) {
+        if (!analysisCacheRef.current.has(k)) analysisCacheRef.current.set(k, v);
+      }
+      setCacheVersion((n) => n + 1);
+      const cur = analysisCacheRef.current.get(currentGameKeyRef.current);
+      if (cur && cur.size) setAnalyses(new Map(cur));
+    });
+    return () => {
+      alive = false;
     };
   }, []);
 
@@ -254,6 +298,12 @@ export function App() {
           claimedRef.current.delete(target); // let it retry later
         }
       }
+      // Whole game analyzed in the background → make it durable + flip its ✓.
+      const done = analysisCacheRef.current.get(currentGameKey);
+      if (alive && total > 0 && done && done.size >= total) {
+        void saveGameAnalysis(currentGameKey, done);
+        setCacheVersion((n) => n + 1);
+      }
     })();
 
     return () => {
@@ -333,12 +383,14 @@ export function App() {
     const g = gamesFromPgn(pgnText);
     if (g.length) {
       datasetRunRef.current += 1;
-      setDatasetJob({ running: false, done: 0, total: 0 });
-      analysisCacheRef.current = new Map();
+      setDatasetJob({ ...IDLE_DATASET_JOB });
+      // Keep analysisCacheRef: it's keyed by content, so re-importing the same games
+      // reuses their persisted analyses. Feature cache is cheap/derived — drop it.
       featureCacheRef.current = new Map();
       setGames(g);
       setGameIndex(0);
-      resetViewState(new Map());
+      resetViewState(analysisCacheRef.current.get(gameCacheKey(g[0])) ?? new Map());
+      setCacheVersion((n) => n + 1);
     }
   };
   const selectGame = (i: number) => {
@@ -346,8 +398,7 @@ export function App() {
     resetViewState(analysisCacheRef.current.get(gameCacheKey(games[i])) ?? new Map());
   };
   const analyzeAllGames = async () => {
-    const engine = engineRef.current;
-    if (!engine || engineState !== 'ready' || datasetJob.running) return;
+    if (engineState !== 'ready' || datasetJob.running) return;
     const runId = ++datasetRunRef.current;
     const tasks = games.flatMap((game) => {
       const key = gameCacheKey(game);
@@ -356,23 +407,72 @@ export function App() {
         .map((ply, plyIndex) => ({ game, key, ply, plyIndex }))
         .filter((task) => !cached.has(task.plyIndex));
     });
-    setDatasetJob({ running: true, done: 0, total: tasks.length });
     if (tasks.length === 0) {
-      setDatasetJob({ running: false, done: 0, total: 0 });
+      setDatasetJob({ ...IDLE_DATASET_JOB });
       return;
     }
-    for (const task of tasks) {
+    // Per-game remaining counts → we can mark a game "done" + persist it the instant
+    // its last ply lands, even though many games are in flight at once.
+    const remainingByKey = new Map<string, number>();
+    for (const t of tasks) remainingByKey.set(t.key, (remainingByKey.get(t.key) ?? 0) + 1);
+    const gamesTotal = remainingByKey.size;
+    setDatasetJob({
+      running: true, done: 0, total: tasks.length,
+      gamesDone: 0, gamesTotal, currentGame: 'starting engines…',
+    });
+
+    // The actual work for one ply — shared by the pool and the single-engine fallback.
+    const analyzeTask = async (engine: UciEngine, task: (typeof tasks)[number]) => {
       if (datasetRunRef.current !== runId) return;
       const a = await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san);
+      if (datasetRunRef.current !== runId) return;
       const cached = analysisCacheRef.current.get(task.key) ?? new Map<number, MoveAnalysis>();
       cached.set(task.plyIndex, a);
       analysisCacheRef.current.set(task.key, cached);
       if (task.key === currentGameKeyRef.current) {
         setAnalyses((prev) => new Map(prev).set(task.plyIndex, a));
       }
-      setDatasetJob((prev) => ({ ...prev, done: Math.min(prev.done + 1, prev.total) }));
+      const rem = (remainingByKey.get(task.key) ?? 1) - 1;
+      remainingByKey.set(task.key, rem);
+      if (rem === 0) {
+        gamesDone += 1;
+        const gd = gamesDone;
+        setDatasetJob((prev) => ({ ...prev, gamesDone: gd, currentGame: task.game.label }));
+        void saveGameAnalysis(task.key, analysisCacheRef.current.get(task.key)!); // durable
+        setCacheVersion((n) => n + 1);
+      }
+    };
+    const onProgress = (done: number) => {
+      if (datasetRunRef.current === runId) setDatasetJob((prev) => ({ ...prev, done: Math.min(done, prev.total) }));
+    };
+
+    let gamesDone = 0;
+    // A pool of independent engines turns this from serial (one worker) into parallel
+    // (≈cores) throughput — the only way 20k+ positions finish in reasonable time.
+    const pool = await createEnginePool(defaultPoolSize());
+    if (datasetRunRef.current !== runId) { pool.dispose(); return; }
+    enginePoolRef.current = pool;
+    try {
+      if (pool.size > 0) {
+        setDatasetJob((prev) => ({ ...prev, currentGame: `${pool.size} engine${pool.size === 1 ? '' : 's'} working…` }));
+        await pool.run(tasks, analyzeTask, onProgress);
+      } else if (engineRef.current) {
+        // No extra workers booted — fall back to the single shared engine.
+        let done = 0;
+        for (const task of tasks) {
+          if (datasetRunRef.current !== runId) break;
+          await analyzeTask(engineRef.current, task);
+          onProgress(++done);
+        }
+      }
+    } finally {
+      pool.dispose();
+      if (enginePoolRef.current === pool) enginePoolRef.current = null;
     }
-    if (datasetRunRef.current === runId) setDatasetJob((prev) => ({ ...prev, running: false }));
+    if (datasetRunRef.current === runId) {
+      setDatasetJob((prev) => ({ ...prev, running: false, gamesDone: prev.gamesTotal, currentGame: '' }));
+      setCacheVersion((n) => n + 1);
+    }
   };
 
   // Per-ply analyzed entries (the panel scopes + aggregates these itself).
@@ -466,6 +566,7 @@ export function App() {
           onSelectGame={selectGame}
           tab={tab}
           setTab={setTab}
+          datasetJob={datasetJob}
           pgnText={pgnText}
           setPgnText={setPgnText}
           onLoad={loadPgn}
@@ -476,6 +577,9 @@ export function App() {
           games={games}
           engineReady={engineState === 'ready'}
           analysisProgress={datasetJob}
+          cache={analysisCacheRef.current}
+          cacheVersion={cacheVersion}
+          keyOf={gameCacheKey}
           onAnalyzeAll={analyzeAllGames}
           onOpenGame={(i) => {
             selectGame(i);
@@ -652,6 +756,7 @@ function SourceBar({
   onSelectGame,
   tab,
   setTab,
+  datasetJob,
   pgnText,
   setPgnText,
   onLoad,
@@ -661,12 +766,14 @@ function SourceBar({
   onSelectGame: (i: number) => void;
   tab: 'board' | 'dataset';
   setTab: (t: 'board' | 'dataset') => void;
+  datasetJob: DatasetJob;
   pgnText: string;
   setPgnText: (s: string) => void;
   onLoad: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const multi = games.length > 1;
+  const jobPct = datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0;
   return (
     <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -697,7 +804,7 @@ function SourceBar({
                 Board
               </TabButton>
               <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
-                Dataset · {games.length}
+                {datasetJob.running ? `Dataset · analyzing ${jobPct}%` : `Dataset · ${games.length}`}
               </TabButton>
             </div>
           )}

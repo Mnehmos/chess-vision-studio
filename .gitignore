@@ -6,5 +6,6 @@ dist-ssr
 .vite
 coverage
 .env
+*.log
 fixtures/llm-eval-output.json
 engine/__throwaway_*
