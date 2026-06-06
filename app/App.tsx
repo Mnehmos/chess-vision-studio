@@ -17,7 +17,14 @@ import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
+import { CommentaryPanel, type CommentaryJob } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
+import { createOpenAIClient } from '../llm/openai';
+import { narrate } from '../llm/narrate';
+
+const env = import.meta.env as Record<string, string | undefined>;
+const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
+const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -48,6 +55,17 @@ export function App() {
   const currentGameKeyRef = useRef(currentGameKey);
   currentGameKeyRef.current = currentGameKey;
 
+  // LLM coach commentary — clamped narrator over the cached analyses (Invariant 8).
+  const [apiKey, setApiKey] = useState<string>(initialKey);
+  const [commentary, setCommentary] = useState<Map<number, string>>(new Map());
+  const [commentaryJob, setCommentaryJob] = useState<CommentaryJob>({ running: false, done: 0, total: 0, error: '' });
+  const [explaining, setExplaining] = useState(false);
+  const commentaryCacheRef = useRef<Map<string, Map<number, string>>>(new Map());
+  // Per-game commentary cache: switch games and your generated notes come right back.
+  useEffect(() => {
+    setCommentary(new Map(commentaryCacheRef.current.get(currentGameKey) ?? new Map()));
+  }, [currentGameKey]);
+
   // Boot Stockfish (best-effort). Pure modes work regardless.
   useEffect(() => {
     let alive = true;
@@ -66,6 +84,60 @@ export function App() {
   const plyIndex = view - 1; // index into plies for the move that produced `fen`
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
   const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
+
+  // ── LLM commentary handlers ────────────────────────────────────────────────
+  const saveKey = (key: string) => {
+    localStorage.setItem('cvs_openai_key', key);
+    setApiKey(key);
+  };
+  const cacheCommentary = (gameKey: string, next: Map<number, string>) => {
+    commentaryCacheRef.current.set(gameKey, new Map(next));
+  };
+  const explainCurrent = async () => {
+    if (!apiKey || !analysis || plyIndex < 0) return;
+    setExplaining(true);
+    try {
+      const text = await narrate(createOpenAIClient({ apiKey, model: OPENAI_MODEL }), analysis);
+      setCommentary((prev) => {
+        const next = new Map(prev).set(plyIndex, text);
+        cacheCommentary(currentGameKey, next);
+        return next;
+      });
+    } catch (e) {
+      setCommentaryJob((j) => ({ ...j, error: String((e as Error)?.message ?? e) }));
+    } finally {
+      setExplaining(false);
+    }
+  };
+  const generateAllCommentary = async () => {
+    if (!apiKey) return;
+    const client = createOpenAIClient({ apiKey, model: OPENAI_MODEL });
+    const targets = [...analyses.keys()].sort((a, b) => a - b);
+    const gameKey = currentGameKey;
+    setCommentaryJob({ running: true, done: 0, total: targets.length, error: '' });
+    try {
+      for (let k = 0; k < targets.length; k++) {
+        const idx = targets[k];
+        if (!commentaryCacheRef.current.get(gameKey)?.has(idx)) {
+          const a = analyses.get(idx);
+          if (a) {
+            const text = await narrate(client, a);
+            if (currentGameKeyRef.current !== gameKey) return; // user switched games — stop
+            setCommentary((prev) => {
+              const next = new Map(prev).set(idx, text);
+              cacheCommentary(gameKey, next);
+              return next;
+            });
+          }
+        }
+        setCommentaryJob((j) => ({ ...j, done: k + 1 }));
+      }
+    } catch (e) {
+      setCommentaryJob((j) => ({ ...j, error: String((e as Error)?.message ?? e) }));
+    } finally {
+      setCommentaryJob((j) => ({ ...j, running: false }));
+    }
+  };
 
   // Track the live view so the preloader can prioritize the position being looked at.
   const viewRef = useRef(view);
@@ -388,6 +460,18 @@ export function App() {
             onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
           />
           {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
+          <CommentaryPanel
+            hasKey={!!apiKey}
+            model={OPENAI_MODEL}
+            onSaveKey={saveKey}
+            currentText={plyIndex >= 0 ? commentary.get(plyIndex) : undefined}
+            onExplainCurrent={explainCurrent}
+            canExplain={!!analysis}
+            explaining={explaining}
+            job={commentaryJob}
+            onGenerateAll={generateAllCommentary}
+            totalAnalyzed={analyses.size}
+          />
         </div>
 
         {/* Right: LED twin + move list */}
