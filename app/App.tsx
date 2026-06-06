@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
-import { pliesFromPgn, type PlyRecord } from '../engine/position';
+import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
 import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
+import type { AnalyzedEntry } from '../engine/analytics';
 import { UciEngine } from '../engine/evaluation';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
@@ -13,13 +14,16 @@ import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows } from './annotate';
 import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
+import { AnalyticsPanel } from './AnalyticsPanel';
 import { LedPreview } from './LedPreview';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export function App() {
   const [pgnText, setPgnText] = useState(samplePgn);
-  const [plies, setPlies] = useState<PlyRecord[]>(() => safePlies(samplePgn));
+  const [games, setGames] = useState<ParsedGame[]>(() => safeGames(samplePgn));
+  const [gameIndex, setGameIndex] = useState(0);
+  const plies = useMemo(() => games[gameIndex]?.plies ?? [], [games, gameIndex]);
   const [view, setView] = useState(0); // 0 = start; k = after move k
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
@@ -154,15 +158,35 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [plies.length]);
 
+  const resetForGame = () => {
+    setView(0);
+    setSelected(undefined);
+    setFocused(null);
+    setAnalyses(new Map());
+    claimedRef.current = new Set();
+  };
   const loadPgn = () => {
-    const p = safePlies(pgnText);
-    if (p.length) {
-      setPlies(p);
-      setView(0);
-      setSelected(undefined);
-      setAnalyses(new Map());
+    const g = gamesFromPgn(pgnText);
+    if (g.length) {
+      setGames(g);
+      setGameIndex(0);
+      resetForGame();
     }
   };
+  const selectGame = (i: number) => {
+    setGameIndex(i);
+    resetForGame();
+  };
+
+  // Per-ply analyzed entries (the panel scopes + aggregates these itself).
+  const entries = useMemo(() => {
+    const out: AnalyzedEntry[] = [];
+    plies.forEach((p, i) => {
+      const a = analyses.get(i);
+      if (a) out.push({ ply: p.ply, color: p.color, analysis: a });
+    });
+    return out;
+  }, [plies, analyses]);
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: 20, color: '#1a1a1a' }}>
@@ -180,6 +204,23 @@ export function App() {
           <span style={{ fontSize: 12, color: '#3fbf5f' }}>· analysis complete ✓</span>
         )}
       </div>
+
+      {games.length > 1 && (
+        <div style={{ marginBottom: 12, fontSize: 13 }}>
+          <strong style={{ marginRight: 6 }}>Game {gameIndex + 1} / {games.length}:</strong>
+          <select
+            value={gameIndex}
+            onChange={(e) => selectGame(Number(e.target.value))}
+            style={{ maxWidth: 460, fontSize: 13 }}
+          >
+            {games.map((g, i) => (
+              <option key={i} value={i}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Left: board + nav */}
@@ -229,11 +270,16 @@ export function App() {
         </div>
       </div>
 
+      {entries.length > 0 && (
+        <AnalyticsPanel entries={entries} view={view} onJump={(ply) => setView(ply)} />
+      )}
+
       <details style={{ marginTop: 20 }}>
-        <summary style={{ cursor: 'pointer' }}>Import PGN</summary>
+        <summary style={{ cursor: 'pointer' }}>Import PGN (single game or full export)</summary>
         <textarea
           value={pgnText}
           onChange={(e) => setPgnText(e.target.value)}
+          placeholder="Paste a PGN — one game or a multi-game export"
           style={{ width: 480, height: 120, display: 'block', marginTop: 8 }}
         />
         <button onClick={loadPgn} style={{ marginTop: 6 }}>
@@ -276,9 +322,9 @@ function focusLedMap(ins: InsightCandidate): LedMap {
   return { mode: 'focus', squares };
 }
 
-function safePlies(pgn: string): PlyRecord[] {
+function safeGames(pgn: string): ParsedGame[] {
   try {
-    return pliesFromPgn(pgn);
+    return gamesFromPgn(pgn);
   } catch {
     return [];
   }

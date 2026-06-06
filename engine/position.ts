@@ -28,9 +28,12 @@ export interface PlyRecord {
 export function pliesFromPgn(pgn: string): PlyRecord[] {
   const chess = new Chess();
   chess.loadPgn(pgn);
-  const history = chess.history({ verbose: true });
+  return pliesFromHistory(chess.history({ verbose: true }));
+}
 
-  // Replay to capture before/after FENs for each ply.
+function pliesFromHistory(
+  history: { san: string; color: 'w' | 'b'; from: string; to: string }[],
+): PlyRecord[] {
   const replay = new Chess();
   const records: PlyRecord[] = [];
   history.forEach((move, i) => {
@@ -48,4 +51,65 @@ export function pliesFromPgn(pgn: string): PlyRecord[] {
     });
   });
   return records;
+}
+
+// ── Multi-game PGN (full exports — hundreds of games) ────────────────────────
+export interface ParsedGame {
+  index: number;
+  headers: Record<string, string>;
+  plies: PlyRecord[];
+  label: string; // 'White vs Black · 1-0 · 2026.06.06'
+}
+
+/** Split a multi-game PGN into individual game chunks (a new game begins at an
+ *  [Event …] tag that follows movetext). */
+export function splitPgnGames(pgn: string): string[] {
+  const games: string[] = [];
+  let current: string[] = [];
+  let sawMoves = false;
+  for (const line of pgn.split(/\r?\n/)) {
+    if (/^\[Event\b/.test(line) && sawMoves) {
+      games.push(current.join('\n'));
+      current = [line];
+      sawMoves = false;
+    } else {
+      current.push(line);
+      if (line.trim() && !line.startsWith('[')) sawMoves = true;
+    }
+  }
+  if (current.length) games.push(current.join('\n'));
+  return games.filter((g) => g.trim());
+}
+
+function headersFromPgn(chunk: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const m of chunk.matchAll(/^\[(\w+)\s+"([^"]*)"\]/gm)) headers[m[1]] = m[2];
+  return headers;
+}
+
+function gameLabel(headers: Record<string, string>, index: number): string {
+  const w = headers.White ?? '?';
+  const b = headers.Black ?? '?';
+  const res = headers.Result ?? '*';
+  const date = headers.Date && headers.Date !== '????.??.??' ? ` · ${headers.Date}` : '';
+  return `#${index + 1}  ${w} vs ${b} · ${res}${date}`;
+}
+
+/** Parse every game in a (possibly multi-game) PGN export. Malformed games skipped. */
+export function gamesFromPgn(pgn: string): ParsedGame[] {
+  const chunks = splitPgnGames(pgn);
+  const out: ParsedGame[] = [];
+  chunks.forEach((chunk) => {
+    try {
+      const chess = new Chess();
+      chess.loadPgn(chunk);
+      const plies = pliesFromHistory(chess.history({ verbose: true }));
+      if (plies.length === 0) return;
+      const headers = headersFromPgn(chunk);
+      out.push({ index: out.length, headers, plies, label: gameLabel(headers, out.length) });
+    } catch {
+      // skip malformed game, keep parsing the rest
+    }
+  });
+  return out;
 }
