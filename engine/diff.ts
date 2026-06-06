@@ -156,10 +156,12 @@ export function diffRefutation(fenAfter: string, evalAfter: Eval): ChangedRelati
     ];
   }
 
-  // Material refutation: replay the PV and find the first capture by the refuter
-  // (the refuter moves on even plies 0,2,4…) with a positive SEE.
+  // Material refutation: the opponent's REPLY — the first capture by the refuter
+  // (even plies 0,2) with positive SEE. Scan only the immediate reply window; a
+  // capture deep in the PV is not "the reply" and its isolated SEE over-claims
+  // (the eval already accounts for the recapture/compensation downstream).
   const chess = new Chess(fenAfter);
-  for (let i = 0; i < pv.length && i < 8; i++) {
+  for (let i = 0; i < pv.length && i < 3; i++) {
     const fenAtPly = chess.fen();
     const moved = chess.move(pv[i]);
     if (!moved) break;

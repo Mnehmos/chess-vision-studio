@@ -62,6 +62,41 @@ describe('delivering checkmate is the BEST move, never a blunder', () => {
   });
 });
 
+describe('Invariant 4 — no insight may claim more material than the eval budget', () => {
+  it('rejects a refutation that claims a rook when cpLoss is only ~1 (the ply-49 bug)', () => {
+    // A deep-PV / isolated-SEE over-claim: materialSwing 5 with a tiny eval swing.
+    const inflated = {
+      id: 'inflated',
+      kind: 'changed_relation' as const,
+      type: 'now_see_losing' as const,
+      side: 'black' as const,
+      squares: ['b6'],
+      arrows: [] as [string, string][],
+      source: 'refutation' as const,
+      materialSwing: 5, // "wins a rook" — but the eval says otherwise
+      kingSafetyDelta: 0,
+      inPV: true,
+      saliency: 0,
+      templateId: 'refutation_wins_material',
+      evidence: ['bogus +5'],
+    };
+    const r = analyzeMove(
+      {
+        fenBefore: FEN_BEFORE,
+        fenAfter: FEN_AFTER_Nd4,
+        san: 'Nd4',
+        evalBefore: ev(20, ['Re1']),
+        evalAfter: ev(80, ['Re8']), // cpLoss ≈ 1.0 → budget 2.5, well under 5
+      },
+      [inflated],
+    );
+    expect(r.cpLoss).toBeCloseTo(1.0, 5);
+    expect(r.rankedInsights.find((i) => i.id === 'inflated')).toBeUndefined();
+    // a legitimately-sized insight (the e5 pawn, swing 1) survives
+    expect(r.rankedInsights.some((i) => i.squares.includes('e5'))).toBe(true);
+  });
+});
+
 describe('M4.2 — silence: a solid equal move says nothing', () => {
   it('cpLoss below the gate → explicit silence, no insights', () => {
     const result = analyzeMove({

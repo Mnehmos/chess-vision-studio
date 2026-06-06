@@ -177,12 +177,22 @@ export function analyzeMove(
     (c) => !c.squares.some((s) => refutedSquares.has(s) || motifSquares.has(s)),
   );
 
-  const candidates: InsightCandidate[] = [
+  const rawCandidates: InsightCandidate[] = [
     ...refutation,
     ...motifs,
     ...played,
     ...extraCandidates,
   ];
+
+  // Invariant 4 — the eval swing is the BUDGET/oracle. No insight may claim more
+  // material than the eval supports. This rejects isolated-SEE over-claims (a
+  // "wins a rook" refutation when cpLoss is only ~1: the eval already accounts for
+  // the recapture/compensation downstream). Forced mates carry it via king-safety,
+  // not materialSwing, so they pass.
+  const materialBudget = cpLoss + 1.5;
+  const candidates = rawCandidates.filter(
+    (c) => Math.abs(c.materialSwing) <= materialBudget,
+  );
 
   // §5 Step D — attribute & rank.
   for (const c of candidates) c.saliency = scoreCandidate(c, cpLoss);
