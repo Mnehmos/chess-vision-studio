@@ -67,6 +67,9 @@ describe('batchNarrate — concurrent per-ply calls', () => {
         if (calls === 2) throw new Error('rate limit');
         return `narrated: ${messages[1].content.split('\n')[0]}`;
       },
+      async ping() {
+        return 'OK';
+      },
     };
     const items = [1, 2, 3].map((ply) => ({ ply, analysis: { ...ANALYSIS, move: `${ply}. Nd4` } }));
     const out = await batchNarrate(mock, items, 2);

@@ -11,10 +11,18 @@ export interface CommentaryJob {
   error: string;
 }
 
+export interface Handshake {
+  state: 'idle' | 'testing' | 'ok' | 'error';
+  detail: string;
+}
+
 export function CommentaryPanel({
   hasKey,
+  keySource,
   model,
   onSaveKey,
+  handshake,
+  onHandshake,
   currentText,
   onExplainCurrent,
   canExplain,
@@ -24,8 +32,11 @@ export function CommentaryPanel({
   totalAnalyzed,
 }: {
   hasKey: boolean;
+  keySource: 'env' | 'local' | 'none';
   model: string;
   onSaveKey: (key: string) => void;
+  handshake: Handshake;
+  onHandshake: () => void;
   currentText?: string;
   onExplainCurrent: () => void;
   canExplain: boolean;
@@ -48,6 +59,11 @@ export function CommentaryPanel({
             Paste an OpenAI API key to enable commentary (stored locally in this browser),
             or set <code>VITE_OPENAI_API_KEY</code> in <code>.env</code>.
           </div>
+          <div style={{ fontSize: 11, color: '#c08515', background: '#fff7e6', border: '1px solid #f0d8a8', borderRadius: 4, padding: '4px 6px', marginBottom: 6 }}>
+            Already set a key in <code>.env</code> but see this? The browser only reads the
+            <code> VITE_</code> prefix — rename <code>OPENAI_API_KEY</code> →{' '}
+            <code>VITE_OPENAI_API_KEY</code> and restart the dev server.
+          </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
               type="password"
@@ -63,6 +79,25 @@ export function CommentaryPanel({
         </div>
       ) : (
         <>
+          {/* Handshake: prove the key + model are live before batching. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12 }}>
+            <HandshakeBadge handshake={handshake} />
+            <span style={{ color: '#999' }}>
+              key from {keySource === 'env' ? '.env (VITE_)' : 'this browser'}
+            </span>
+            <button
+              onClick={onHandshake}
+              disabled={handshake.state === 'testing'}
+              style={{ ...btn, marginLeft: 'auto', padding: '2px 8px', fontSize: 12 }}
+            >
+              {handshake.state === 'testing' ? 'Testing…' : 'Test connection'}
+            </button>
+          </div>
+          {handshake.state === 'error' && (
+            <div style={{ color: '#c01515', fontSize: 11, marginTop: 4, wordBreak: 'break-word' }}>
+              {handshake.detail}
+            </div>
+          )}
           {/* The headline action the user asked for. */}
           <button
             onClick={onGenerateAll}
@@ -100,6 +135,22 @@ export function CommentaryPanel({
         </>
       )}
     </div>
+  );
+}
+
+function HandshakeBadge({ handshake }: { handshake: Handshake }) {
+  const map = {
+    idle: { dot: '#bbb', text: 'not tested' },
+    testing: { dot: '#e8923b', text: 'testing…' },
+    ok: { dot: '#3fbf5f', text: 'connected' },
+    error: { dot: '#e23b3b', text: 'failed' },
+  } as const;
+  const s = map[handshake.state];
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: s.dot, display: 'inline-block' }} />
+      {s.text}
+    </span>
   );
 }
 

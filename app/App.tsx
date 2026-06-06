@@ -17,13 +17,15 @@ import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
-import { CommentaryPanel, type CommentaryJob } from './CommentaryPanel';
+import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
 import { createOpenAIClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
+const initialKeySource = (): 'env' | 'local' | 'none' =>
+  env.VITE_OPENAI_API_KEY ? 'env' : localStorage.getItem('cvs_openai_key') ? 'local' : 'none';
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -57,6 +59,9 @@ export function App() {
 
   // LLM coach commentary — clamped narrator over the cached analyses (Invariant 8).
   const [apiKey, setApiKey] = useState<string>(initialKey);
+  const [keySource, setKeySource] = useState<'env' | 'local' | 'none'>(initialKeySource);
+  const [handshake, setHandshake] = useState<Handshake>({ state: 'idle', detail: '' });
+  const handshakeForKeyRef = useRef('');
   const [commentary, setCommentary] = useState<Map<number, string>>(new Map());
   const [commentaryJob, setCommentaryJob] = useState<CommentaryJob>({ running: false, done: 0, total: 0, error: '' });
   const [explaining, setExplaining] = useState(false);
@@ -89,7 +94,27 @@ export function App() {
   const saveKey = (key: string) => {
     localStorage.setItem('cvs_openai_key', key);
     setApiKey(key);
+    setKeySource('local');
   };
+  const runHandshake = async () => {
+    if (!apiKey) return;
+    setHandshake({ state: 'testing', detail: '' });
+    try {
+      const reply = await createOpenAIClient({ apiKey, model: OPENAI_MODEL }).ping();
+      setHandshake({ state: 'ok', detail: reply.slice(0, 60) });
+    } catch (e) {
+      setHandshake({ state: 'error', detail: String((e as Error)?.message ?? e) });
+    }
+  };
+  // Auto-handshake once whenever a (new) key becomes available, so the status is live
+  // without a surprise token cost on every reload.
+  useEffect(() => {
+    if (apiKey && handshakeForKeyRef.current !== apiKey) {
+      handshakeForKeyRef.current = apiKey;
+      void runHandshake();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey]);
   const cacheCommentary = (gameKey: string, next: Map<number, string>) => {
     commentaryCacheRef.current.set(gameKey, new Map(next));
   };
@@ -462,8 +487,11 @@ export function App() {
           {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
           <CommentaryPanel
             hasKey={!!apiKey}
+            keySource={keySource}
             model={OPENAI_MODEL}
             onSaveKey={saveKey}
+            handshake={handshake}
+            onHandshake={runHandshake}
             currentText={plyIndex >= 0 ? commentary.get(plyIndex) : undefined}
             onExplainCurrent={explainCurrent}
             canExplain={!!analysis}

@@ -14,6 +14,8 @@ export interface OpenAIClientOptions {
 
 export interface ChatClient {
   chat(messages: ChatMessage[]): Promise<string>;
+  /** Minimal round-trip to verify the key + model are live. Throws on failure. */
+  ping(): Promise<string>;
   model: string;
 }
 
@@ -40,6 +42,11 @@ export function createOpenAIClient(opts: OpenAIClientOptions): ChatClient {
         choices?: { message?: { content?: string } }[];
       };
       return data.choices?.[0]?.message?.content?.trim() ?? '';
+    },
+    async ping(): Promise<string> {
+      // Cheapest possible verification: one tiny completion. Surfaces 401 (bad key),
+      // 404 (unknown model), and network/CORS errors with a readable message.
+      return this.chat([{ role: 'user', content: 'Reply with exactly: OK' }]);
     },
   };
 }
