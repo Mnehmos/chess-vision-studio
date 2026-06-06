@@ -1,8 +1,9 @@
 // Game review — aggregates the cached per-ply analyses into accuracy, mistakes
 // (separated by ownership), and a what-happened timeline. The scope toggle lets
 // the review build move-by-move as you step, or show the whole game at once.
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { computeAnalytics, type AnalyzedEntry, type SideStats, type WorstMove } from '../engine/analytics';
+import { computePatternProfile, type FeatureEntry, type PatternProfile } from '../engine/features';
 import type { Classification, MoveAnalysis } from '../engine/types';
 
 const CLASS_COLOR: Record<Classification, string> = {
@@ -22,10 +23,12 @@ type Scope = 'game' | 'step';
 
 export function AnalyticsPanel({
   entries,
+  features,
   view,
   onJump,
 }: {
   entries: AnalyzedEntry[];
+  features?: FeatureEntry[];
   view: number; // current ply (half-moves shown)
   onJump: (ply: number) => void;
 }) {
@@ -37,6 +40,11 @@ export function AnalyticsPanel({
     [entries, scope, view],
   );
   const analytics = useMemo(() => computeAnalytics(scoped), [scoped]);
+  const scopedFeatures = useMemo(
+    () => (scope === 'step' ? (features ?? []).filter((e) => e.ply <= view) : features ?? []),
+    [features, scope, view],
+  );
+  const patterns = useMemo(() => computePatternProfile(scopedFeatures), [scopedFeatures]);
   const timeline = useMemo(() => buildTimeline(scoped), [scoped]);
 
   return (
@@ -70,6 +78,10 @@ export function AnalyticsPanel({
           {/* Mistakes separated by ownership — each side owns its own list. */}
           <MistakeColumn title="White's mistakes" color={TEAM.w} moves={analytics.worstByColor.w} onJump={onJump} />
           <MistakeColumn title="Black's mistakes" color={TEAM.b} moves={analytics.worstByColor.b} onJump={onJump} />
+
+          <PatternCards patterns={patterns} />
+          <MotifSummary patterns={patterns} />
+          <PhaseSummary patterns={patterns} />
 
           {/* What happened — chronological, tied to the move history. */}
           <div style={{ minWidth: 280, flex: 1 }}>
@@ -110,7 +122,7 @@ export function AnalyticsPanel({
   );
 }
 
-function ScopeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ScopeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -193,6 +205,103 @@ function MistakeColumn({
 }
 
 // ── timeline ────────────────────────────────────────────────────────────────
+function PatternCards({ patterns }: { patterns: PatternProfile }) {
+  return (
+    <div style={{ minWidth: 300, maxWidth: 360, flex: '1 1 320px' }}>
+      <h4 style={{ margin: '0 0 4px' }}>Patterns</h4>
+      {patterns.topPatterns.length === 0 ? (
+        <div style={{ color: '#888', fontSize: 13 }}>No recurring pattern signals yet.</div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(138px, 1fr))', gap: 6 }}>
+          {patterns.topPatterns.map((p) => (
+            <div
+              key={p.type}
+              style={{
+                border: '1px solid #e4e4e4',
+                borderRadius: 4,
+                padding: '6px 8px',
+                minHeight: 54,
+                background: '#fafafa',
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#666' }}>{p.count}x</div>
+              <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {p.title}
+              </div>
+              <div style={{ fontSize: 11, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {p.detail}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MotifSummary({ patterns }: { patterns: PatternProfile }) {
+  const rows = motifRows(patterns).slice(0, 6);
+  return (
+    <div style={{ minWidth: 220, flex: '1 1 240px' }}>
+      <h4 style={{ margin: '0 0 4px' }}>Motifs</h4>
+      {rows.length === 0 ? (
+        <div style={{ color: '#888', fontSize: 13 }}>No validated motifs in the scoped review.</div>
+      ) : (
+        <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
+          {rows.map((r) => (
+            <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 32px', gap: 6, alignItems: 'center' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+              <div style={{ display: 'flex', height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${r.createdPct}%`, background: '#3fbf5f' }} />
+                <div style={{ width: `${r.sufferedPct}%`, background: '#e2603b' }} />
+              </div>
+              <span style={{ color: '#777', textAlign: 'right' }}>{r.total}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhaseSummary({ patterns }: { patterns: PatternProfile }) {
+  return (
+    <div style={{ minWidth: 210, flex: '1 1 220px' }}>
+      <h4 style={{ margin: '0 0 4px' }}>Phase loss</h4>
+      {(['opening', 'middlegame', 'endgame'] as const).map((phase) => {
+        const row = patterns.phase[phase];
+        const width = Math.min(100, row.avgCpLoss * 35);
+        return (
+          <div key={phase} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 44px', gap: 6, alignItems: 'center', fontSize: 12, marginBottom: 4 }}>
+            <span>{phase}</span>
+            <div style={{ height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${width}%`, height: '100%', background: row.avgCpLoss >= 1 ? '#e2603b' : '#5a9bd4' }} />
+            </div>
+            <span style={{ color: '#777', textAlign: 'right' }}>{row.avgCpLoss.toFixed(1)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function motifRows(patterns: PatternProfile) {
+  const names = new Set([...Object.keys(patterns.motifCreated), ...Object.keys(patterns.motifSuffered)]);
+  return [...names]
+    .map((name) => {
+      const created = patterns.motifCreated[name as keyof typeof patterns.motifCreated] ?? 0;
+      const suffered = patterns.motifSuffered[name as keyof typeof patterns.motifSuffered] ?? 0;
+      const total = created + suffered || 1;
+      return {
+        name: name.replace(/_/g, ' '),
+        total,
+        createdPct: (created / total) * 100,
+        sufferedPct: (suffered / total) * 100,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
 interface TimelineEvent {
   ply: number;
   color: 'w' | 'b';

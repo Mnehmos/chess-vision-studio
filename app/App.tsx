@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
 import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
 import type { AnalyzedEntry } from '../engine/analytics';
+import { extractPlyFeatures, type FeatureEntry, type PlyFeatures } from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
@@ -15,6 +16,7 @@ import { selectionArrows } from './annotate';
 import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
+import { DatasetPanel } from './DatasetPanel';
 import { LedPreview } from './LedPreview';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -23,8 +25,11 @@ export function App() {
   const [pgnText, setPgnText] = useState(samplePgn);
   const [games, setGames] = useState<ParsedGame[]>(() => safeGames(samplePgn));
   const [gameIndex, setGameIndex] = useState(0);
-  const plies = useMemo(() => games[gameIndex]?.plies ?? [], [games, gameIndex]);
+  const currentGame = games[gameIndex];
+  const plies = useMemo(() => currentGame?.plies ?? [], [currentGame]);
+  const currentGameKey = useMemo(() => gameCacheKey(currentGame), [currentGame]);
   const [view, setView] = useState(0); // 0 = start; k = after move k
+  const [tab, setTab] = useState<'board' | 'dataset'>('board');
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   const [showThreats, setShowThreats] = useState(true);
@@ -34,7 +39,14 @@ export function App() {
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
+  const [datasetJob, setDatasetJob] = useState({ running: false, done: 0, total: 0 });
   const engineRef = useRef<UciEngine | null>(null);
+  const analysisCacheRef = useRef<Map<string, Map<number, MoveAnalysis>>>(new Map());
+  const featureCacheRef = useRef<Map<string, Map<number, CachedFeatureEntry>>>(new Map());
+  const [featureVersion, setFeatureVersion] = useState(0);
+  const datasetRunRef = useRef(0);
+  const currentGameKeyRef = useRef(currentGameKey);
+  currentGameKeyRef.current = currentGameKey;
 
   // Boot Stockfish (best-effort). Pure modes work regardless.
   useEffect(() => {
@@ -66,9 +78,12 @@ export function App() {
   // so this fills progressively without overlapping searches.
   useEffect(() => {
     if (engineState !== 'ready') return;
+    if (datasetJob.running) return;
     const engine = engineRef.current;
     if (!engine) return;
-    claimedRef.current = new Set(); // reset for this game
+    const cached = analysisCacheRef.current.get(currentGameKey) ?? new Map<number, MoveAnalysis>();
+    claimedRef.current = new Set(cached.keys());
+    setAnalyses(new Map(cached));
     let alive = true;
 
     (async () => {
@@ -85,7 +100,11 @@ export function App() {
         try {
           const a = await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san);
           if (!alive) return;
-          setAnalyses((prev) => new Map(prev).set(target, a));
+          setAnalyses((prev) => {
+            const next = new Map(prev).set(target, a);
+            analysisCacheRef.current.set(currentGameKey, new Map(next));
+            return next;
+          });
         } catch {
           claimedRef.current.delete(target); // let it retry later
         }
@@ -95,7 +114,7 @@ export function App() {
     return () => {
       alive = false;
     };
-  }, [engineState, plies]);
+  }, [engineState, plies, currentGameKey, datasetJob.running]);
 
   // On move advance, snap the inspection to the piece that JUST MOVED ("follow
   // move"), so BOTH the arrows and the active mode (e.g. Legal Move) broadcast the
@@ -158,24 +177,57 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [plies.length]);
 
-  const resetForGame = () => {
+  const resetViewState = (nextAnalyses: Map<number, MoveAnalysis>) => {
     setView(0);
     setSelected(undefined);
     setFocused(null);
-    setAnalyses(new Map());
-    claimedRef.current = new Set();
+    setAnalyses(new Map(nextAnalyses));
+    claimedRef.current = new Set(nextAnalyses.keys());
   };
   const loadPgn = () => {
     const g = gamesFromPgn(pgnText);
     if (g.length) {
+      datasetRunRef.current += 1;
+      setDatasetJob({ running: false, done: 0, total: 0 });
+      analysisCacheRef.current = new Map();
+      featureCacheRef.current = new Map();
       setGames(g);
       setGameIndex(0);
-      resetForGame();
+      resetViewState(new Map());
     }
   };
   const selectGame = (i: number) => {
     setGameIndex(i);
-    resetForGame();
+    resetViewState(analysisCacheRef.current.get(gameCacheKey(games[i])) ?? new Map());
+  };
+  const analyzeAllGames = async () => {
+    const engine = engineRef.current;
+    if (!engine || engineState !== 'ready' || datasetJob.running) return;
+    const runId = ++datasetRunRef.current;
+    const tasks = games.flatMap((game) => {
+      const key = gameCacheKey(game);
+      const cached = analysisCacheRef.current.get(key) ?? new Map<number, MoveAnalysis>();
+      return game.plies
+        .map((ply, plyIndex) => ({ game, key, ply, plyIndex }))
+        .filter((task) => !cached.has(task.plyIndex));
+    });
+    setDatasetJob({ running: true, done: 0, total: tasks.length });
+    if (tasks.length === 0) {
+      setDatasetJob({ running: false, done: 0, total: 0 });
+      return;
+    }
+    for (const task of tasks) {
+      if (datasetRunRef.current !== runId) return;
+      const a = await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san);
+      const cached = analysisCacheRef.current.get(task.key) ?? new Map<number, MoveAnalysis>();
+      cached.set(task.plyIndex, a);
+      analysisCacheRef.current.set(task.key, cached);
+      if (task.key === currentGameKeyRef.current) {
+        setAnalyses((prev) => new Map(prev).set(task.plyIndex, a));
+      }
+      setDatasetJob((prev) => ({ ...prev, done: Math.min(prev.done + 1, prev.total) }));
+    }
+    if (datasetRunRef.current === runId) setDatasetJob((prev) => ({ ...prev, running: false }));
   };
 
   // Per-ply analyzed entries (the panel scopes + aggregates these itself).
@@ -187,6 +239,56 @@ export function App() {
     });
     return out;
   }, [plies, analyses]);
+
+  useEffect(() => {
+    const cached = featureCacheRef.current.get(currentGameKey);
+    const pending = [...analyses.keys()]
+      .sort((a, b) => {
+        if (a === plyIndex) return -1;
+        if (b === plyIndex) return 1;
+        return a - b;
+      })
+      .filter((i) => {
+        const a = analyses.get(i);
+        return Boolean(plies[i] && a && cached?.get(i)?.analysis !== a);
+      });
+
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    const pump = () => {
+      const start = performance.now();
+      let didWork = false;
+      while (!cancelled && pending.length && performance.now() - start < 8) {
+        const i = pending.shift()!;
+        const p = plies[i];
+        const a = analyses.get(i);
+        if (p && a) {
+          getFeatureEntry(featureCacheRef.current, currentGameKey, p, i, a);
+          didWork = true;
+        }
+      }
+      if (didWork && !cancelled) setFeatureVersion((v) => v + 1);
+      if (pending.length && !cancelled) window.setTimeout(pump, 16);
+    };
+
+    const timer = window.setTimeout(pump, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [plies, analyses, currentGameKey, plyIndex]);
+
+  const featureEntries = useMemo(() => {
+    const cached = featureCacheRef.current.get(currentGameKey);
+    if (!cached) return [];
+    return [...cached.values()].map((item) => item.entry).sort((a, b) => a.ply - b.ply);
+  }, [currentGameKey, featureVersion]);
+  const currentFeatures = useMemo(() => {
+    if (view <= 0 || !analysis) return undefined;
+    const cached = featureCacheRef.current.get(currentGameKey)?.get(plyIndex);
+    return cached?.analysis === analysis ? cached.entry.features : undefined;
+  }, [view, analysis, plyIndex, currentGameKey, featureVersion]);
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: 20, color: '#1a1a1a' }}>
@@ -205,6 +307,30 @@ export function App() {
         )}
       </div>
 
+      {games.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
+            Board
+          </TabButton>
+          <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
+            Dataset · {games.length} games
+          </TabButton>
+        </div>
+      )}
+
+      {tab === 'dataset' ? (
+        <DatasetPanel
+          games={games}
+          engineReady={engineState === 'ready'}
+          analysisProgress={datasetJob}
+          onAnalyzeAll={analyzeAllGames}
+          onOpenGame={(i) => {
+            selectGame(i);
+            setTab('board');
+          }}
+        />
+      ) : (
+        <>
       {games.length > 1 && (
         <div style={{ marginBottom: 12, fontSize: 13 }}>
           <strong style={{ marginRight: 6 }}>Game {gameIndex + 1} / {games.length}:</strong>
@@ -234,6 +360,7 @@ export function App() {
             arrows={arrows}
           />
           <Nav view={view} total={plies.length} setView={setView} />
+          <MiniBadges features={currentFeatures} />
           <MoveStrip plies={plies} view={view} setView={setView} />
           <AnnotationLegend
             showThreats={showThreats}
@@ -271,7 +398,9 @@ export function App() {
       </div>
 
       {entries.length > 0 && (
-        <AnalyticsPanel entries={entries} view={view} onJump={(ply) => setView(ply)} />
+        <AnalyticsPanel entries={entries} features={featureEntries} view={view} onJump={(ply) => setView(ply)} />
+      )}
+        </>
       )}
 
       <details style={{ marginTop: 20 }}>
@@ -328,6 +457,71 @@ function safeGames(pgn: string): ParsedGame[] {
   } catch {
     return [];
   }
+}
+
+function gameCacheKey(game: ParsedGame | undefined): string {
+  if (!game) return 'no-game';
+  const first = game.plies[0]?.fenBefore ?? '';
+  const last = game.plies[game.plies.length - 1]?.fenAfter ?? '';
+  return [
+    game.headers.White ?? '?',
+    game.headers.Black ?? '?',
+    game.headers.Result ?? '*',
+    game.headers.Date ?? '?',
+    game.plies.length,
+    first,
+    last,
+  ].join('|');
+}
+
+interface CachedFeatureEntry {
+  analysis: MoveAnalysis;
+  entry: FeatureEntry;
+}
+
+function getFeatureEntry(
+  cacheRoot: Map<string, Map<number, CachedFeatureEntry>>,
+  gameKey: string,
+  ply: PlyRecord,
+  plyIndex: number,
+  analysis: MoveAnalysis,
+): FeatureEntry {
+  let gameCache = cacheRoot.get(gameKey);
+  if (!gameCache) {
+    gameCache = new Map();
+    cacheRoot.set(gameKey, gameCache);
+  }
+  const cached = gameCache.get(plyIndex);
+  if (cached?.analysis === analysis) return cached.entry;
+
+  const entry: FeatureEntry = {
+    ply: ply.ply,
+    color: ply.color,
+    analysis,
+    features: extractPlyFeatures(ply.fenBefore, ply.fenAfter, ply.san, analysis),
+  };
+  gameCache.set(plyIndex, { analysis, entry });
+  return entry;
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        border: '1px solid ' + (active ? '#3b6fd4' : '#ccc'),
+        background: active ? '#3b6fd4' : '#fff',
+        color: active ? '#fff' : '#444',
+        padding: '6px 14px',
+        borderRadius: 6,
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {children}
+    </button>
+  );
 }
 
 function EngineBadge({ state }: { state: 'loading' | 'ready' | 'off' }) {
@@ -395,6 +589,41 @@ function Nav({ view, total, setView }: { view: number; total: number; setView: (
       <button onClick={() => setView(total)} disabled={view === total}>
         ⏭
       </button>
+    </div>
+  );
+}
+
+function MiniBadges({ features }: { features?: PlyFeatures }) {
+  const badges = features?.badges ?? ['Mobility --', 'Safe moves --', 'King escapes --', 'Loose pieces --', 'Best SEE --', 'Motif --'];
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))',
+        gap: 6,
+        marginTop: 8,
+        width: 456,
+        minHeight: 54,
+      }}
+    >
+      {badges.map((b) => (
+        <div
+          key={b}
+          title={b}
+          style={{
+            border: '1px solid #ddd',
+            borderRadius: 4,
+            padding: '4px 6px',
+            fontSize: 12,
+            background: '#fafafa',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {b}
+        </div>
+      ))}
     </div>
   );
 }

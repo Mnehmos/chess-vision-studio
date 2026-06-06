@@ -1,12 +1,12 @@
 // Clamped LLM narration (Invariant 8). The LLM receives ONLY the engine-VALIDATED
-// MoveAnalysis facts and is instructed to narrate them — never to assert a tactic,
+// MoveAnalysis facts and is instructed to narrate them - never to assert a tactic,
 // evaluation, or move that isn't already in the facts. The oracle is ground truth;
 // the LLM is a narrator on both ends.
 import type { InsightCandidate, MoveAnalysis } from '../engine/types';
 import type { ChatClient, ChatMessage } from './openai';
 
-const SYSTEM = `You are a chess coach for a 300–1400 rated player. You will be given
-STRUCTURED, ENGINE-VALIDATED facts about ONE move. Write 1–3 short, plain-English
+const SYSTEM = `You are a chess coach for a 300-1400 rated player. You will be given
+STRUCTURED, ENGINE-VALIDATED facts about ONE move. Write 1-3 short, plain-English
 sentences that help the player SEE what matters.
 
 HARD RULES:
@@ -43,7 +43,7 @@ function insightLine(ins: InsightCandidate): string {
   if (ins.source === 'refutation') detail.push("the opponent's punishing reply");
   if (ins.materialSwing) detail.push(`material ${ins.materialSwing > 0 ? '+' : ''}${ins.materialSwing}`);
   if (ins.evidence[0]) detail.push(ins.evidence[0]);
-  return `${base}${detail.length ? ' — ' + detail.join('; ') : ''} [${where}]`;
+  return `${base}${detail.length ? ' - ' + detail.join('; ') : ''} [${where}]`;
 }
 
 export function buildNarrationMessages(a: MoveAnalysis): ChatMessage[] {

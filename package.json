@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "benchmark": "vitest run engine/__tests__/lichess-benchmark.test.ts",
     "llm:eval": "vitest run llm/__tests__/llm-eval.test.ts",
+    "llm:commentary": "vite-node --script llm/run.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },

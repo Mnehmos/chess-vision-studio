@@ -15,12 +15,28 @@ engine (Stockfish + detectors)  →  MoveAnalysis (validated facts)
 ## Setup
 
 ```bash
-cp .env.example .env        # then edit .env
+cp .env.example .env.local  # then edit .env.local
 # OPENAI_API_KEY=sk-...
 # OPENAI_MODEL=gpt-5.5       # the requested model; override if your id differs
 ```
 
-`.env` is git-ignored. `process.env` overrides the file.
+`.env` and `.env.local` are git-ignored. `process.env` overrides file values. Keep the key Node-side; do not expose it as a `VITE_` variable.
+
+## Run commentary
+
+```bash
+# One OpenAI call for a whole-game review
+npm run llm:commentary -- --mode game --pgn fixtures/sample-game.pgn --game 0
+
+# One clamped call per analyzed ply, bounded by LLM_CONCURRENCY
+npm run llm:commentary -- --mode batch --pgn fixtures/sample-game.pgn --game 0
+
+# One on-demand turn call
+npm run llm:commentary -- --mode turn --pgn fixtures/sample-game.pgn --game 0 --ply 24
+
+# Inspect the exact prompt/facts without calling OpenAI
+npm run llm:commentary -- --mode game --dry-run
+```
 
 ## Run the batch eval (one clamped call per ply)
 
@@ -44,7 +60,9 @@ tests still run, no key needed).
 | `env.ts` | `.env` loader + `LlmConfig` |
 | `openai.ts` | minimal fetch-based Chat Completions client (model/baseUrl configurable) |
 | `narrate.ts` | `factsBlock` / `buildNarrationMessages` — the **clamp** (facts only, no FEN) |
-| `batch.ts` | `batchNarrate` — bounded-concurrency per-ply narration |
+| `batch.ts` | `batchNarrate` - bounded-concurrency per-ply narration |
+| `game.ts` | whole-game prompt builder plus deterministic local drafts |
+| `run.ts` | Node-only runner for game, batch, and turn commentary |
 
 ## Note on GPT-5.x
 

@@ -4,7 +4,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ENV_PATH = join(HERE, '..', '.env');
+const ENV_PATHS = [join(HERE, '..', '.env'), join(HERE, '..', '.env.local')];
 
 export interface LlmConfig {
   apiKey: string;
@@ -32,7 +32,10 @@ function parseDotenv(text: string): Record<string, string> {
 }
 
 export function loadEnv(): LlmConfig {
-  const fileVars = existsSync(ENV_PATH) ? parseDotenv(readFileSync(ENV_PATH, 'utf8')) : {};
+  const fileVars = ENV_PATHS.reduce<Record<string, string>>((acc, path) => {
+    if (!existsSync(path)) return acc;
+    return { ...acc, ...parseDotenv(readFileSync(path, 'utf8')) };
+  }, {});
   const get = (k: string, d = '') => process.env[k] ?? fileVars[k] ?? d;
   return {
     apiKey: get('OPENAI_API_KEY'),
