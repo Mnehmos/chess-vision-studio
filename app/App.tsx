@@ -61,6 +61,13 @@ export function App() {
     };
   }, [view, engineState, plyIndex, plies, analyses]);
 
+  // On move advance, snap the inspection to the piece that JUST MOVED, so the
+  // arrows annotate the move that just happened. A manual click overrides this
+  // until the next advance (then it snaps back to the new move).
+  useEffect(() => {
+    setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
+  }, [view, plies]);
+
   const ledMap = useMemo(
     () => computeLedMap(modeId, { fen, selectedSquare: selected, analysis }),
     [modeId, fen, selected, analysis],

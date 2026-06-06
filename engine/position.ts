@@ -19,6 +19,8 @@ export interface PlyRecord {
   moveNumber: number; // full-move number
   san: string;
   color: 'w' | 'b';
+  from: string; // origin square of the move
+  to: string; // destination square (the piece that just moved lands here)
   fenBefore: string;
   fenAfter: string;
 }
@@ -39,6 +41,8 @@ export function pliesFromPgn(pgn: string): PlyRecord[] {
       moveNumber: Math.floor(i / 2) + 1,
       san: move.san,
       color: move.color,
+      from: move.from,
+      to: move.to,
       fenBefore,
       fenAfter: replay.fen(),
     });

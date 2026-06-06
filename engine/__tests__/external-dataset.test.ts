@@ -105,37 +105,46 @@ describe.skipIf(!hasFile)('external dataset (ChatGPT) triangulation', () => {
   const raw = hasFile ? JSON.parse(readFileSync(FILE, 'utf8')) : { cases: [] };
   const cases: ExtCase[] = raw.cases ?? [];
 
+  // Tier-1 motifs we currently claim as MOVE-producing detectors (the others —
+  // skewer-as-move-solver, mate-in-2/3, and all Tier-2 — are openly on the roadmap).
+  const CLAIMED = new Set(['fork', 'back_rank', 'discovered_check']);
+
   it('parses and reports the triangulation matrix', () => {
     let legal = 0;
-    let oracleOk = 0; // model-positive cases the oracle confirms
-    let detAgree = 0; // of those, how many our detector also fires on
-    const mislabels: string[] = []; // model says positive, oracle says it doesn't win
-    const bugs: string[] = []; // oracle confirms a win but our detector misses it
+    let oracleOk = 0;
+    let claimedOk = 0;
+    let claimedAgree = 0;
+    const mislabels: string[] = []; // model says positive+wins, oracle finds no win
+    const gaps: string[] = []; // oracle confirms a win but our detector misses
 
     for (const c of cases) {
       if (!legalFen(c.fen)) continue;
       legal++;
-      if (c.isPositive && c.motif !== 'none') {
-        const oracle = oracleConfirms(c);
-        if (oracle) {
-          oracleOk++;
-          if (detectorFires(c)) detAgree++;
-          else bugs.push(`${c.id} (${c.motif}): oracle wins but detector misses`);
-        } else {
-          mislabels.push(`${c.id} (${c.motif}): model-positive but oracle finds no win`);
+      if (!c.isPositive || c.motif === 'none') continue;
+      if (oracleConfirms(c)) {
+        oracleOk++;
+        const fires = detectorFires(c);
+        if (CLAIMED.has(c.motif)) {
+          claimedOk++;
+          if (fires) claimedAgree++;
+          else gaps.push(`${c.id} (${c.motif}) — REGRESSION: claimed motif, detector missed`);
+        } else if (!fires) {
+          gaps.push(`${c.id} (${c.motif}) — roadmap gap`);
         }
+      } else {
+        mislabels.push(`${c.id} (${c.motif})`);
       }
     }
 
     console.log(`\nExternal dataset: ${cases.length} cases (${legal} legal FENs)`);
-    console.log(`  oracle-confirmed positives: ${oracleOk}`);
-    console.log(`  detector agreed on:         ${detAgree}/${oracleOk}`);
-    console.log(`  model mislabels (oracle disagrees): ${mislabels.length}`);
-    if (mislabels.length) console.log('   ' + mislabels.slice(0, 15).join('\n   '));
-    if (bugs.length) console.log('  DETECTOR GAPS:\n   ' + bugs.slice(0, 25).join('\n   '));
+    console.log(`  oracle-confirmed positive wins: ${oracleOk}`);
+    console.log(`  CLAIMED Tier-1 motifs detected: ${claimedAgree}/${claimedOk}`);
+    console.log(`  model over-claims our oracle REFUTED (e.g. pin "wins" that are even trades): ${mislabels.length}`);
+    if (mislabels.length) console.log('   ' + mislabels.join('\n   '));
+    if (gaps.length) console.log('  GAPS (roadmap vs regression):\n   ' + gaps.join('\n   '));
 
-    // Floor: on positives BOTH our oracle confirms, our detector should mostly agree.
-    if (oracleOk >= 5) expect(detAgree / oracleOk).toBeGreaterThan(0.5);
+    // Floor ONLY on the motifs we claim to detect as move-solvers today.
+    if (claimedOk >= 5) expect(claimedAgree / claimedOk).toBeGreaterThan(0.85);
   });
 });
 
