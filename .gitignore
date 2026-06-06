@@ -5,3 +5,6 @@ dist-ssr
 .DS_Store
 .vite
 coverage
+.env
+fixtures/llm-eval-output.json
+engine/__throwaway_*
