@@ -62,7 +62,26 @@ const other = (c: 'w' | 'b') => (c === 'w' ? 'b' : 'w');
 function legalMode(ctx: LedContext): LedMap {
   const map = blankMap('legal');
   if (!ctx.selectedSquare) return map;
-  const chess = new Chess(ctx.fen);
+  const board = parseFen(ctx.fen);
+  const piece = board.grid[ctx.selectedSquare.charCodeAt(0) - 97][ctx.selectedSquare.charCodeAt(1) - 49];
+  if (!piece) return map;
+
+  // The piece may belong to the side that just moved (not the side to move) —
+  // chess.moves() only lists the side-to-move's moves, so flip the turn to show
+  // where THIS piece can go. Falls back to the raw FEN if the flip is illegal.
+  let movesFen = ctx.fen;
+  if (piece.color !== board.turn) {
+    const parts = ctx.fen.trim().split(/\s+/);
+    parts[1] = parts[1] === 'w' ? 'b' : 'w';
+    parts[3] = '-'; // clear en-passant after a hypothetical turn flip
+    movesFen = parts.join(' ');
+  }
+  let chess: Chess;
+  try {
+    chess = new Chess(movesFen);
+  } catch {
+    chess = new Chess(ctx.fen);
+  }
   const moves = chess.moves({ square: ctx.selectedSquare as never, verbose: true }) as Array<{
     to: string;
     san: string;

@@ -51,6 +51,14 @@ describe('M7 — Legal Move mode owns green/red/yellow/purple', () => {
     expect(map.squares['g4']).toBe('red'); // Qxg4 captures the knight
     expect(map.squares['e2']).toBe('green'); // Qe2 is a quiet move
   });
+
+  it('surfaces moves for the piece that JUST MOVED (not the side to move)', () => {
+    // Black to move, but we inspect the White pawn on e2 (the side NOT to move).
+    // legalMode must flip the turn so e2's destinations still show.
+    const map = computeLedMap('legal', { fen: '4k3/8/8/8/8/8/4P3/4K3 b - - 0 1', selectedSquare: 'e2' });
+    expect(map.squares['e3']).toBe('green');
+    expect(map.squares['e4']).toBe('green');
+  });
 });
 
 describe('M7 — What Changed mode matches the ply MoveAnalysis', () => {

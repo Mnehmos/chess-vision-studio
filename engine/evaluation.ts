@@ -65,6 +65,19 @@ export class UciEngine {
     if (i >= 0) this.lineHandlers.splice(i, 1);
   }
 
+  // UCI cannot run overlapping searches: a second `go` before the first
+  // `bestmove` corrupts the stream (this is the rapid-skip crash). Serialize all
+  // engine access through a promise chain so requests run strictly one at a time.
+  private chain: Promise<unknown> = Promise.resolve();
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.chain.then(task, task);
+    this.chain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
   /** Evaluate at FIXED depth (deterministic across machines — §5 Step A). */
   async evaluate(req: EvalRequest): Promise<Eval> {
     const lines = await this.evaluateMultiPV({ ...req, multipv: req.multipv ?? 1 });
@@ -72,7 +85,11 @@ export class UciEngine {
   }
 
   /** Returns one Eval per multipv line, ordered best-first. */
-  async evaluateMultiPV(req: EvalRequest): Promise<Eval[]> {
+  evaluateMultiPV(req: EvalRequest): Promise<Eval[]> {
+    return this.enqueue(() => this.runMultiPV(req));
+  }
+
+  private async runMultiPV(req: EvalRequest): Promise<Eval[]> {
     await this.ready;
     const multipv = req.multipv ?? 1;
     // Best info line seen per multipv index, keyed by depth completion.
@@ -112,7 +129,11 @@ export class UciEngine {
     });
   }
 
-  async bestMove(fen: string, depth: number): Promise<string> {
+  bestMove(fen: string, depth: number): Promise<string> {
+    return this.enqueue(() => this.runBestMove(fen, depth));
+  }
+
+  private async runBestMove(fen: string, depth: number): Promise<string> {
     await this.ready;
     return new Promise<string>((resolve) => {
       const onLine = (line: string) => {
