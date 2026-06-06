@@ -25,8 +25,8 @@ export const MODES: ModeDef[] = [
     id: 'threat',
     label: 'Threat Map',
     legend: [
-      { color: 'red', meaning: 'attacked by opponent' },
-      { color: 'blue', meaning: 'you control' },
+      { color: 'blue', meaning: 'White controls' },
+      { color: 'orange', meaning: 'Black controls' },
       { color: 'purple', meaning: 'contested' },
       { color: 'dark_red', meaning: 'king danger' },
     ],
@@ -35,9 +35,10 @@ export const MODES: ModeDef[] = [
     id: 'defense',
     label: 'Defense Map',
     legend: [
-      { color: 'blue', meaning: 'defended' },
-      { color: 'yellow', meaning: 'undefended' },
-      { color: 'orange', meaning: 'critical (sole) defender' },
+      { color: 'blue', meaning: 'White defended' },
+      { color: 'yellow', meaning: 'White loose' },
+      { color: 'green', meaning: 'Black defended' },
+      { color: 'orange', meaning: 'Black loose' },
     ],
   },
   {

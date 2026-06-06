@@ -98,51 +98,40 @@ function legalMode(ctx: LedContext): LedMap {
   return map;
 }
 
-// ── Threat Map — red=opp attacks, blue=you control, purple=contested, dark_red=king danger
+// ── Threat Map — BOTH sides at once. White's control = blue, Black's = orange,
+//    contested (both) = purple; squares around either king held by the enemy =
+//    dark_red (king danger).
 function threatMode(ctx: LedContext): LedMap {
   const map = blankMap('threat');
   const rel = buildRelationMap(ctx.fen);
-  const you = parseFen(ctx.fen).turn;
-  const youSet = new Set(you === 'w' ? rel.controlledByWhite : rel.controlledByBlack);
-  const oppSet = new Set(you === 'w' ? rel.controlledByBlack : rel.controlledByWhite);
+  const w = new Set(rel.controlledByWhite);
+  const b = new Set(rel.controlledByBlack);
   for (const sq of allSquares()) {
-    const byYou = youSet.has(sq);
-    const byOpp = oppSet.has(sq);
-    if (byYou && byOpp) map.squares[sq] = 'purple';
-    else if (byOpp) map.squares[sq] = 'red';
-    else if (byYou) map.squares[sq] = 'blue';
+    const byW = w.has(sq);
+    const byB = b.has(sq);
+    if (byW && byB) map.squares[sq] = 'purple';
+    else if (byW) map.squares[sq] = 'blue'; // White controls
+    else if (byB) map.squares[sq] = 'orange'; // Black controls
   }
-  // King danger: squares around YOUR king controlled by the opponent.
+  // King danger: squares next to EITHER king controlled by the opponent.
   const board = parseFen(ctx.fen);
-  const king = allPieces(board).find((p) => p.color === you && p.type === 'k');
-  if (king) {
-    for (const sq of adjacent(king.square)) {
-      if (oppSet.has(sq)) map.squares[sq] = 'dark_red';
-    }
+  for (const king of allPieces(board).filter((p) => p.type === 'k')) {
+    const enemy = king.color === 'w' ? b : w;
+    for (const sq of adjacent(king.square)) if (enemy.has(sq)) map.squares[sq] = 'dark_red';
   }
   return map;
 }
 
-// ── Defense Map — blue=defended, yellow=undefended, orange=sole/critical guard ─
+// ── Defense Map — BOTH sides at once, each with its OWN scheme:
+//    White: blue = defended, yellow = loose.   Black: green = defended, orange = loose.
 function defenseMode(ctx: LedContext): LedMap {
   const map = blankMap('defense');
   const rel = buildRelationMap(ctx.fen);
-  const you = parseFen(ctx.fen).turn;
-  // Which pieces are the SOLE defender of some friendly piece?
-  const criticalGuards = new Set<string>();
   for (const sq of Object.keys(rel.bySquare)) {
     const r = rel.bySquare[sq];
-    if (r.piece[0] === you && r.defendedBy.length === 1) {
-      criticalGuards.add(r.defendedBy[0]); // the guarding PieceId
-    }
-  }
-  for (const sq of Object.keys(rel.bySquare)) {
-    const r = rel.bySquare[sq];
-    if (r.piece[0] !== you) continue;
-    const myId = r.piece + sq; // wN + e5 → wNe5
-    if (criticalGuards.has(myId)) map.squares[sq] = 'orange';
-    else if (r.defendedBy.length > 0) map.squares[sq] = 'blue';
-    else map.squares[sq] = 'yellow';
+    const defended = r.defendedBy.length > 0;
+    if (r.piece[0] === 'w') map.squares[sq] = defended ? 'blue' : 'yellow';
+    else map.squares[sq] = defended ? 'green' : 'orange';
   }
   return map;
 }

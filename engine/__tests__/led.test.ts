@@ -91,16 +91,19 @@ describe('M7 — What Changed mode matches the ply MoveAnalysis', () => {
   });
 });
 
-describe('M7 — Threat & Defense modes produce scoped colors', () => {
-  it('threat map marks contested and controlled squares', () => {
+describe('M7 — Threat & Defense modes show BOTH sides with per-side schemes', () => {
+  it('threat map: White control blue, Black control orange, contested purple', () => {
     const map = computeLedMap('threat', { fen: G4_FEN });
     const colors = new Set(Object.values(map.squares));
-    expect(colors.has('red') || colors.has('blue') || colors.has('purple')).toBe(true);
+    expect(colors.has('blue')).toBe(true); // White controls something
+    expect(colors.has('orange')).toBe(true); // Black controls something
+    expect(colors.has('purple')).toBe(true); // some square is contested
   });
-  it('defense map flags an undefended own piece yellow somewhere', () => {
+  it('defense map: White=blue/yellow, Black=green/orange', () => {
     const map = computeLedMap('defense', { fen: G4_FEN });
-    const colors = Object.values(map.squares);
-    expect(colors.some((c) => c === 'blue' || c === 'yellow' || c === 'orange')).toBe(true);
+    expect(map.squares['d4']).toBe('blue'); // White knight, defended (e3 pawn)
+    expect(map.squares['g4']).toBe('orange'); // Black knight, loose (no defender)
+    expect(map.squares['f6']).toBe('green'); // Black queen, defended (g7 pawn)
   });
 });
 
