@@ -156,6 +156,11 @@ function classifyPinSkewer(
     type = 'skewer'; // more valuable in front
   else type = 'pin_relative'; // less/equal valuable in front, bigger behind
 
+  // Meaningfulness filter: a skewer/relative pin is only a tactic if the BACK
+  // piece is actually worth winning (≥ a minor). A piece "skewered" over a pawn
+  // is geometric noise, not a motif. Absolute pins (back = king) always count.
+  if (type !== 'pin_absolute' && vback < 3) return [];
+
   const sliderId = pieceIdOf(slider);
   return [
     baseMotif({
