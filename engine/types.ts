@@ -86,6 +86,7 @@ export type ChangeType =
   | 'line_closed'
   | 'check_created'
   | 'mate_threat'
+  | 'pv_refutation'
   | 'escape_squares_changed';
 
 export interface ChangedRelation extends InsightBase {

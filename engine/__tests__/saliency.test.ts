@@ -112,6 +112,60 @@ describe('M4.2 — silence: a solid equal move says nothing', () => {
   });
 });
 
+describe('pv_refutation fallback — a quiet/positional blunder no detector names', () => {
+  // White plays a quiet a3; nothing hangs by SEE (all diffs are materialSwing 0),
+  // but the injected eval says Black is winning via a QUIET line (no capture/mate/
+  // motif in the first plies). The honest fallback must headline the oracle line,
+  // not saliency-0 "now defended" trivia.
+  const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const AFTER_a3 = 'rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1';
+  const result = analyzeMove({
+    fenBefore: START,
+    fenAfter: AFTER_a3,
+    san: 'a3',
+    evalBefore: ev(20, ['e4']),
+    evalAfter: ev(300, ['e5', 'd4']), // Black (to move) is +3 via a quiet push
+  });
+
+  it('classifies as a blunder by eval', () => {
+    expect(result.cpLoss).toBeCloseTo(3.2, 5);
+    expect(result.classification).toBe('blunder');
+  });
+
+  it('the headline is the honest oracle line, not saliency-0 trivia', () => {
+    const top = result.rankedInsights[0];
+    expect(top.type).toBe('pv_refutation');
+    expect(top.saliency).toBeGreaterThanOrEqual(0.05);
+    expect(top.inPV).toBe(true);
+    expect(top.materialSwing).toBe(0); // honest: claims no proven material
+    expect(result.topExplanation.toLowerCase()).toContain('quiet refutation');
+    expect(result.topExplanation).toContain('e5'); // names the refuting first move
+    expect(result.topExplanation.toLowerCase()).not.toContain('now defended');
+  });
+
+  it('tags the gap as future detector work and keeps the literal facts below', () => {
+    const top = result.rankedInsights[0];
+    expect(top.evidence.join(' ')).toContain('candidate_for_new_detector');
+    expect(top.evidence.join(' ')).toContain('pv_refutation_required');
+    // the fallback is PREPENDED, not a replacement — any diffs stay in the list below it
+    expect(result.rankedInsights[0].type).toBe('pv_refutation');
+    expect(result.rankedInsights.slice(1).every((i) => i.type !== 'pv_refutation')).toBe(true);
+  });
+
+  it('with no PV available, refuses to headline trivia and says so honestly', () => {
+    const r = analyzeMove({
+      fenBefore: START,
+      fenAfter: AFTER_a3,
+      san: 'a3',
+      evalBefore: ev(20, ['e4']),
+      evalAfter: ev(300, []), // no oracle line to fall back on
+    });
+    expect(r.classification).toBe('blunder');
+    expect(r.topExplanation.toLowerCase()).toContain('no named tactic');
+    expect(r.topExplanation.toLowerCase()).not.toContain('now defended');
+  });
+});
+
 describe('M4.3 — refutation: the punishment is the opponent’s best reply', () => {
   // Same hung-pawn position, but now the injected PV PUNISHES it: ...dxe5.
   const result = analyzeMove({

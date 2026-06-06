@@ -254,8 +254,15 @@ function validateForkByEnumeration(
   targets: { square: string; type: string }[],
   forkerColor: 'w' | 'b',
 ): ForkVerdict {
-  const opp = new Chess(forkFen);
-  const replies = opp.moves({ verbose: true });
+  let replies;
+  try {
+    const opp = new Chess(forkFen);
+    replies = opp.moves({ verbose: true });
+  } catch {
+    // Illegal/malformed intermediate position (e.g. opponent left in check): not a
+    // real fork we can prove — reject rather than crash the caller.
+    return { win: 0, line: [], reason: 'illegal position' };
+  }
   if (replies.length === 0) return { win: 0, line: [], reason: 'no replies (mate/stalemate)' };
 
   let guaranteed = Infinity;

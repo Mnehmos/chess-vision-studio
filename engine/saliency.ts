@@ -8,7 +8,7 @@
 import { Chess } from 'chess.js';
 import { parseFen } from './board';
 import { computeCpLoss, classify } from './classify';
-import { diffPlayedMove, diffRefutation } from './diff';
+import { diffPlayedMove, diffRefutation, pvRefutation } from './diff';
 import {
   detectAvailableMotifs,
   findRemovalOfGuard,
@@ -211,11 +211,37 @@ export function analyzeMove(
     return priorityOf(b) - priorityOf(a); // type-priority prior as tiebreaker
   });
 
-  return {
-    ...base,
-    rankedInsights: candidates,
-    topExplanation: candidates.length
-      ? renderInsight(candidates[0])
-      : `${move} — ${classification}.`,
-  };
+  // Refutation hierarchy (Invariant 5):
+  //   1. forced mate proof  2. clean tactical refutation  3. PV refutation fallback
+  //   4. highest-saliency relationship diff   5. nothing important changed.
+  // A move that is a real mistake by eval but whose top validated insight is
+  // saliency-0 means no named detector explains the loss — its punishment is quiet
+  // (interference, overload, king-safety proof failure). Headline the ORACLE's line
+  // honestly instead of letting saliency-0 trivia ("A6 is now defended") headline a
+  // blunder. The literal facts STAY in the list; only the headline changes.
+  const realMistake =
+    classification === 'inaccuracy' || classification === 'mistake' || classification === 'blunder';
+  const topSaliency = candidates[0]?.saliency ?? 0;
+  let ranked: InsightCandidate[] = candidates;
+  if (realMistake && topSaliency < SALIENT_MIN) {
+    const pvref = pvRefutation(fenAfter, evalAfter, cpLoss);
+    if (pvref) {
+      pvref.saliency = 0.9; // oracle-derived; injected AFTER the material-budget filter
+      ranked = [pvref, ...candidates];
+    }
+  }
+
+  const headlinesSomething = (ranked[0]?.saliency ?? 0) >= SALIENT_MIN;
+  const topExplanation = headlinesSomething
+    ? renderInsight(ranked[0])
+    : realMistake
+      ? `${move} — ${classification} (−${cpLoss.toFixed(1)}); no named tactic found, oracle line unavailable.`
+      : ranked.length
+        ? renderInsight(ranked[0])
+        : `${move} — ${classification}.`;
+
+  return { ...base, rankedInsights: ranked, topExplanation };
 }
+
+// Below this, an insight is treated as not explaining the move (saliency-0 trivia).
+const SALIENT_MIN = 0.05;
