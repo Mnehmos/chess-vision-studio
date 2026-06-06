@@ -13,6 +13,7 @@ import {
   findRemovalOfGuard,
   findDiscoveredCheck,
 } from './motif';
+import { renderInsight } from './explain';
 import type { Eval, InsightCandidate, Motif, MoveAnalysis } from './types';
 
 export interface AnalyzeInput {
@@ -170,40 +171,8 @@ export function analyzeMove(
   return {
     ...base,
     rankedInsights: candidates,
-    topExplanation: candidates.length ? describeInsight(candidates[0]) : `${move} — ${classification}.`,
+    topExplanation: candidates.length
+      ? renderInsight(candidates[0])
+      : `${move} — ${classification}.`,
   };
-}
-
-/**
- * Provisional renderer for M4 so topExplanation "names the right thing". M6
- * replaces this with the deterministic template table keyed by templateId.
- */
-export function describeInsight(c: InsightCandidate): string {
-  const sq = c.squares[0] ?? '';
-  if (c.kind === 'motif') {
-    return `${c.type.replace(/_/g, ' ')} (${c.byPiece}) — line ${c.line.join(' ')}`;
-  }
-  switch (c.type) {
-    case 'mate_threat':
-      return `The opponent has a forced mate — ${c.evidence[0] ?? ''}`.trim();
-    case 'now_see_losing':
-      if (c.source === 'refutation') {
-        return `This loses material to the refutation: ${c.evidence[0] ?? ''}`.trim();
-      }
-      return `${labelSide(c.side)} piece on ${sq} is now losing material (SEE +${c.materialSwing}).`;
-    case 'now_undefended':
-      return `The ${sq} square is now undefended.`;
-    case 'now_defended':
-      return `${sq} is now defended.`;
-    case 'piece_captured':
-      return `A piece was captured on ${sq}.`;
-    case 'check_created':
-      return `Check on ${sq}.`;
-    default:
-      return `Relationship changed on ${sq}.`;
-  }
-}
-
-function labelSide(s: 'white' | 'black'): string {
-  return s === 'white' ? 'White' : 'Black';
 }
