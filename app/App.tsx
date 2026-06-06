@@ -593,6 +593,21 @@ function Nav({ view, total, setView }: { view: number; total: number; setView: (
   );
 }
 
+// Plain-language glossary so the badges are never cryptic — keyed by leading phrase.
+const BADGE_GLOSSARY: { match: string; explain: string }[] = [
+  { match: 'Mobility', explain: 'Mobility — change in the moving side’s total legal moves (higher = freer pieces).' },
+  { match: 'Safe moves', explain: 'Safe moves — change in legal moves that don’t drop material (Static Exchange Evaluation ≥ 0).' },
+  { match: 'King escapes', explain: 'King escapes — legal squares the side-to-move’s king can flee to. 0 means no escape: mating danger.' },
+  { match: 'Loose pieces', explain: 'Loose pieces — the moving side’s pieces with no defender. Undefended pieces are tactic targets.' },
+  { match: 'Best SEE', explain: 'Best capture — most material (in pawns) the side to move can safely win right now via a Static-Exchange-Evaluation-safe capture.' },
+  { match: 'Motif', explain: 'Tactic — the strongest PROVEN tactic available (fork, pin, skewer, mate net…); “none” if no validated tactic.' },
+];
+
+function badgeTitle(badge: string): string {
+  const g = BADGE_GLOSSARY.find((x) => badge.startsWith(x.match));
+  return g ? `${badge}\n\n${g.explain}` : badge;
+}
+
 function MiniBadges({ features }: { features?: PlyFeatures }) {
   const badges = features?.badges ?? ['Mobility --', 'Safe moves --', 'King escapes --', 'Loose pieces --', 'Best SEE --', 'Motif --'];
   return (
@@ -609,8 +624,9 @@ function MiniBadges({ features }: { features?: PlyFeatures }) {
       {badges.map((b) => (
         <div
           key={b}
-          title={b}
+          title={badgeTitle(b)}
           style={{
+            cursor: 'help',
             border: '1px solid #ddd',
             borderRadius: 4,
             padding: '4px 6px',
