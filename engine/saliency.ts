@@ -8,7 +8,12 @@
 import { parseFen } from './board';
 import { computeCpLoss, classify } from './classify';
 import { diffPlayedMove, diffRefutation } from './diff';
-import type { Eval, InsightCandidate, MoveAnalysis } from './types';
+import {
+  detectAvailableMotifs,
+  findRemovalOfGuard,
+  findDiscoveredCheck,
+} from './motif';
+import type { Eval, InsightCandidate, Motif, MoveAnalysis } from './types';
 
 export interface AnalyzeInput {
   fenBefore: string;
@@ -63,6 +68,13 @@ function clamp(x: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, x));
 }
 
+/** Forks + mates only — the tactics that directly explain a loss or a miss. */
+function actionableMotifs(fen: string): Motif[] {
+  return detectAvailableMotifs(fen).motifs.filter(
+    (m) => m.type === 'fork' || m.type === 'mating_net' || m.type === 'back_rank',
+  );
+}
+
 function priorityOf(c: InsightCandidate): number {
   return TYPE_PRIORITY[c.type] ?? 0;
 }
@@ -109,15 +121,44 @@ export function analyzeMove(
     };
   }
 
-  // §5 Step C — candidate generation (validated facts only).
+  // §5 Step C — candidate generation (VALIDATED facts only, Invariant 7).
   const refutation = diffRefutation(fenAfter, evalAfter);
+
+  // Validated motifs (§4a) — the motif layer extends the ranker via motifScore;
+  // these are PROVEN (geometry / SEE / checkmate), never raw proposals. Only
+  // ACTIONABLE tactics (forks, mates) are injected as loss/miss insights; static
+  // pins & skewers belong to the Tactics MODE (M7), not the cpLoss attribution.
+  const pvFirst = evalAfter.pv?.[0];
+  const refutationMotifs: Motif[] = actionableMotifs(fenAfter).map((m) => ({
+    ...m,
+    source: 'refutation',
+    inPV: pvFirst !== undefined && m.line[0] === pvFirst,
+  }));
+  const playedMotifs: Motif[] = [
+    ...findRemovalOfGuard(fenBefore, fenAfter).motifs,
+    ...findDiscoveredCheck(fenBefore, fenAfter).motifs,
+  ].map((m) => ({ ...m, source: 'played_move', inPV: false }));
+  // Missed tactics the mover passed up (anything but the move actually played).
+  const missedMotifs: Motif[] = actionableMotifs(fenBefore)
+    .filter((m) => m.line[0] !== san)
+    .map((m) => ({ ...m, source: 'available', inPV: false }));
+
+  const motifs = [...refutationMotifs, ...playedMotifs, ...missedMotifs];
+  const motifSquares = new Set(motifs.flatMap((m) => m.squares));
   const refutedSquares = new Set(refutation.flatMap((r) => r.squares));
+
   const played = diffPlayedMove(fenBefore, fenAfter).filter(
-    // The refutation subsumes a direct hang on the same square — don't double-count.
-    (c) => !c.squares.some((s) => refutedSquares.has(s)),
+    // A refutation or a proven motif subsumes a bare diff on the same square —
+    // don't double-count the same fact in two forms.
+    (c) => !c.squares.some((s) => refutedSquares.has(s) || motifSquares.has(s)),
   );
 
-  const candidates: InsightCandidate[] = [...refutation, ...played, ...extraCandidates];
+  const candidates: InsightCandidate[] = [
+    ...refutation,
+    ...motifs,
+    ...played,
+    ...extraCandidates,
+  ];
 
   // §5 Step D — attribute & rank.
   for (const c of candidates) c.saliency = scoreCandidate(c, cpLoss);
