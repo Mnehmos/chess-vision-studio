@@ -283,10 +283,14 @@ function validateForkByEnumeration(
       const victim = pieceAt(replyBoard, sq);
       if (!victim || victim.color === forkerColor) continue;
       for (const a of attackersOf(replyBoard, sq, forkerColor)) {
+        // attackersOf is geometric — the capture may be ILLEGAL in the real
+        // position (e.g. a pinned attacker). Only credit it if chess.js agrees.
+        const san = legalCaptureSan(replyFen, a.square, sq);
+        if (!san) continue;
         const gain = seeCapture(replyFen, a.square, sq);
         if (gain > bestGain) {
           bestGain = gain;
-          bestLine = [r.san, sanCapture(replyFen, a.square, sq)];
+          bestLine = [r.san, san];
         }
       }
     }
@@ -308,10 +312,22 @@ function validateForkByEnumeration(
   return { win: guaranteed === Infinity ? 0 : guaranteed, line: worstLine, reason: 'validated' };
 }
 
-function sanCapture(fen: string, from: string, to: string): string {
+/**
+ * SAN for a capture from→to IF it is legal in `fen`, else null. chess.js throws
+ * on an illegal move (it does not return null), so this must guard — an
+ * uncaught throw here previously crashed the whole app on certain positions.
+ */
+function legalCaptureSan(fen: string, from: string, to: string): string | null {
   const c = new Chess(fen);
-  const m = c.move({ from, to, promotion: 'q' });
-  return m ? m.san : `${from}x${to}`;
+  for (const opts of [{ from, to }, { from, to, promotion: 'q' }] as const) {
+    try {
+      const m = c.move(opts);
+      if (m) return m.san;
+    } catch {
+      /* try the promotion variant, then give up */
+    }
+  }
+  return null;
 }
 
 function enemyPiecesAttackedBy(
