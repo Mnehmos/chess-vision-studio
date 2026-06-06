@@ -51,18 +51,47 @@ export function App() {
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
   const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
 
-  // Lazily analyze the current ply when the engine is ready.
+  // Track the live view so the preloader can prioritize the position being looked at.
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const claimedRef = useRef<Set<number>>(new Set());
+
+  // PRELOAD: when the engine is ready, analyze EVERY ply once in the background and
+  // cache it, so stepping through the game is instant (no per-click eval). The
+  // currently-viewed ply jumps the queue. The single shared engine is serialized,
+  // so this fills progressively without overlapping searches.
   useEffect(() => {
+    if (engineState !== 'ready') return;
     const engine = engineRef.current;
-    if (!engine || view === 0 || analyses.has(plyIndex)) return;
+    if (!engine) return;
+    claimedRef.current = new Set(); // reset for this game
     let alive = true;
-    analyzeMoveLive(engine, plies[plyIndex].fenBefore, plies[plyIndex].san).then((a) => {
-      if (alive) setAnalyses((prev) => new Map(prev).set(plyIndex, a));
-    });
+
+    (async () => {
+      const total = plies.length;
+      const firstUnclaimed = () => {
+        for (let i = 0; i < total; i++) if (!claimedRef.current.has(i)) return i;
+        return -1;
+      };
+      while (alive) {
+        const vIdx = viewRef.current - 1;
+        const target = vIdx >= 0 && !claimedRef.current.has(vIdx) ? vIdx : firstUnclaimed();
+        if (target < 0) break; // whole game analyzed
+        claimedRef.current.add(target);
+        try {
+          const a = await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san);
+          if (!alive) return;
+          setAnalyses((prev) => new Map(prev).set(target, a));
+        } catch {
+          claimedRef.current.delete(target); // let it retry later
+        }
+      }
+    })();
+
     return () => {
       alive = false;
     };
-  }, [view, engineState, plyIndex, plies, analyses]);
+  }, [engineState, plies]);
 
   // On move advance, snap the inspection to the piece that JUST MOVED ("follow
   // move"), so BOTH the arrows and the active mode (e.g. Legal Move) broadcast the
@@ -141,7 +170,15 @@ export function App() {
       <h1 style={{ margin: '0 0 4px' }}>Chess Vision Studio</h1>
       <div style={{ color: '#666', marginBottom: 12 }}>
         2D chess perception — relations · SEE · diff · saliency · validated motifs.{' '}
-        <EngineBadge state={engineState} />
+        <EngineBadge state={engineState} />{' '}
+        {engineState === 'ready' && analyses.size < plies.length && (
+          <span style={{ fontSize: 12, color: '#888' }}>
+            · analyzing {analyses.size}/{plies.length}…
+          </span>
+        )}
+        {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
+          <span style={{ fontSize: 12, color: '#3fbf5f' }}>· analysis complete ✓</span>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
