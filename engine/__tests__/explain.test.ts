@@ -8,7 +8,6 @@ import type { ChangedRelation, ChangeType, Motif, MotifType } from '../types';
 const baseChange = (over: Partial<ChangedRelation> & { type: ChangeType }): ChangedRelation => ({
   id: 'c',
   kind: 'changed_relation',
-  type: over.type,
   side: 'white',
   squares: ['e5'],
   arrows: [],
@@ -25,7 +24,6 @@ const baseChange = (over: Partial<ChangedRelation> & { type: ChangeType }): Chan
 const baseMotif = (over: Partial<Motif> & { type: MotifType }): Motif => ({
   id: 'm',
   kind: 'motif',
-  type: over.type,
   tier: 1,
   byPiece: 'wNc7',
   line: ['Nc7+', 'Kf8', 'Nxa8'],

@@ -133,7 +133,7 @@ function renderMotif(m: Motif): string {
     case 'x_ray':
       return `${prefix}x-ray — pressure passes through to ${m.squares[m.squares.length - 1] ?? ''}.`;
     default:
-      return `${prefix}${m.type.replace(/_/g, ' ')} — ${line}.`;
+      return `${prefix}${String(m.type).replace(/_/g, ' ')} — ${line}.`;
   }
 }
 
