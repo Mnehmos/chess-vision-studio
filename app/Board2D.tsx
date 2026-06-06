@@ -57,6 +57,9 @@ export function Board2D({
           return (
             <div
               key={sq}
+              data-square={sq}
+              data-led={led}
+              data-piece={piece ? piece.color + piece.type.toUpperCase() : ''}
               onClick={() => onSelect(sq)}
               style={{
                 position: 'relative',
