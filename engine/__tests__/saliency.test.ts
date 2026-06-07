@@ -128,6 +128,33 @@ describe('hard board events are never "nothing changed", even at zero eval swing
   });
 });
 
+describe('captures and the silence gate (SEE-guarded)', () => {
+  it('a material-winning capture is never "nothing changed" (SEE != 0)', () => {
+    const r = analyzeMove({
+      fenBefore: '4k3/8/8/4p3/8/5N2/8/4K3 w - - 0 1', // Nxe5 wins the free e5 pawn
+      fenAfter: '4k3/8/8/4N3/8/8/8/4K3 b - - 0 1',
+      san: 'Nxe5',
+      evalBefore: ev(100, ['Nxe5']),
+      evalAfter: ev(-100, ['Ke7']), // playing the best move → cpLoss ≈ 0
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).not.toMatch(/nothing important changed/i);
+    expect(r.topExplanation.toLowerCase()).toContain('capture');
+  });
+
+  it('an even-trade capture (SEE 0) stays quiet — a routine recapture is not flagged', () => {
+    const r = analyzeMove({
+      fenBefore: '4k3/8/3p4/4p3/3P4/8/8/4K3 w - - 0 1', // dxe5, recaptured by d6xe5 → even
+      fenAfter: '4k3/8/3p4/4P3/8/8/8/4K3 b - - 0 1',
+      san: 'dxe5',
+      evalBefore: ev(0, ['dxe5']),
+      evalAfter: ev(0, ['dxe5']),
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).toBe('Solid move — nothing important changed.');
+  });
+});
+
 describe('an unavailable eval is "unclassified", never a fake best/0.00', () => {
   it('does not collapse a failed search to cpLoss 0 → best → "Solid move"', () => {
     const r = analyzeMove({

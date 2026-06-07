@@ -89,6 +89,16 @@ describe('PlayMode — legal chess', () => {
     expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');
   });
 
+  it('exposes a dev debug overlay (artifact identity + eval status) behind a toggle', () => {
+    const { container, getByText } = render(<PlayMode />);
+    expect(container.querySelector('[data-testid="debug-overlay"]')).toBeNull();
+    fireEvent.click(getByText('debug'));
+    const panel = container.querySelector('[data-testid="debug-overlay"]');
+    expect(panel).toBeTruthy();
+    expect(panel!.textContent).toContain('positionAfter===fen');
+    expect(panel!.textContent).toContain('analysis.positionId');
+  });
+
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
     const { container } = render(<PlayMode />);
     const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);

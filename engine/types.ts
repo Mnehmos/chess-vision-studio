@@ -43,6 +43,7 @@ export interface Eval {
   // Distinguishes a genuine eval from a game-over position and from a failed/timed-out
   // search. Undefined = 'ok'. 'unavailable' must NEVER be treated as a real 0.00.
   status?: 'ok' | 'terminal' | 'unavailable';
+  reason?: 'timeout' | 'no_pv' | 'engine_error'; // why unavailable (diagnostics)
 }
 
 // ────────────────────────────────────────────────────────────────────────────

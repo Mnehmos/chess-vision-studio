@@ -70,6 +70,7 @@ export function PlayMode({
   const [analyzing, setAnalyzing] = useState(false);
   const [coachText, setCoachText] = useState('');
   const [explaining, setExplaining] = useState(false);
+  const [debug, setDebug] = useState(false); // dev overlay: artifact identity + eval status
   const analyzeIdRef = useRef(0); // cancels stale analyses when you move/undo fast
 
   const status = useMemo(() => {
@@ -383,6 +384,9 @@ export function PlayMode({
         />
         <p style={{ fontSize: 12, color: '#98a2b3', margin: '8px 2px 0' }}>
           Drag a piece or click from → to. Only legal moves are allowed.
+          <label style={{ marginLeft: 10, cursor: 'pointer' }} title="dev overlay: artifact identity + eval status">
+            <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} /> debug
+          </label>
         </p>
       </div>
 
@@ -481,6 +485,42 @@ export function PlayMode({
             </ol>
           )}
         </div>
+
+        {debug && (
+          <div
+            data-testid="debug-overlay"
+            style={{
+              ...card,
+              padding: 10,
+              fontSize: 11,
+              fontFamily: 'ui-monospace, monospace',
+              color: '#475467',
+              wordBreak: 'break-all',
+              lineHeight: 1.5,
+            }}
+          >
+            <strong style={{ color: '#101828' }}>debug</strong>
+            <div>ply: {history.length} · sideToMove: {turn}</div>
+            <div>selected: {selected ?? '—'} · focused: {focused ? focused.squares.join(',') : '—'}</div>
+            <div>fen: {fen}</div>
+            <div>analysis.positionId: {lastAnalysis?.positionId ?? '—'}</div>
+            <div>
+              positionAfter===fen: {lastAnalysis ? String(lastAnalysis.positionAfter === fen) : '—'} · live:{' '}
+              {liveAnalysis ? 'yes' : 'no'}
+            </div>
+            <div>
+              class: {lastAnalysis?.classification ?? '—'} · cpLoss:{' '}
+              {lastAnalysis ? lastAnalysis.cpLoss.toFixed(2) : '—'}
+            </div>
+            <div>
+              evalBefore: {lastAnalysis?.evalBefore.status ?? (lastAnalysis ? 'ok' : '—')}
+              {lastAnalysis?.evalBefore.reason ? ` (${lastAnalysis.evalBefore.reason})` : ''} · evalAfter:{' '}
+              {lastAnalysis?.evalAfter.status ?? (lastAnalysis ? 'ok' : '—')}
+              {lastAnalysis?.evalAfter.reason ? ` (${lastAnalysis.evalAfter.reason})` : ''}
+            </div>
+            <div>coach verdict: {lens ? lens.verdict : '—'}</div>
+          </div>
+        )}
       </div>
     </div>
   );

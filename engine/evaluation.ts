@@ -129,7 +129,7 @@ export class UciEngine {
           }
           // No parseable info line came back — the search produced nothing usable.
           // Flag it 'unavailable' so it is NEVER mistaken for a genuine 0.00 eval.
-          if (out.length === 0) out.push({ depth: req.depth, pv: [], status: 'unavailable' });
+          if (out.length === 0) out.push({ depth: req.depth, pv: [], status: 'unavailable', reason: 'no_pv' });
           finish(out);
         }
       };
@@ -140,7 +140,7 @@ export class UciEngine {
         } catch {
           /* transport gone — ignore */
         }
-        finish([{ depth: req.depth, pv: [], status: 'unavailable' }]);
+        finish([{ depth: req.depth, pv: [], status: 'unavailable', reason: 'timeout' }]);
       }, req.timeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS);
       this.lineHandlers.push(onLine);
       this.transport.send('ucinewgame');

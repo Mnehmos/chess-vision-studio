@@ -9,6 +9,7 @@ import { Chess } from 'chess.js';
 import { parseFen } from './board';
 import { computeCpLoss, classify } from './classify';
 import { diffPlayedMove, diffRefutation, pvRefutation } from './diff';
+import { seeCapture } from './see';
 import {
   detectAvailableMotifs,
   findRemovalOfGuard,
@@ -100,11 +101,25 @@ function inCheckSafe(fen: string): boolean {
 
 /** Hard board events that must never be summarized as "nothing changed", even at a
  *  zero eval swing: a promotion, a check, or a mate. Returns the event names found. */
-function hardEvents(san: string, fenAfter: string): string[] {
+function hardEvents(fenBefore: string, fenAfter: string, san: string): string[] {
   const ev: string[] = [];
   if (san.includes('=')) ev.push('promotion');
   if (san.includes('#')) ev.push('checkmate');
   else if (san.includes('+') || inCheckSafe(fenAfter)) ev.push('check');
+  // A capture is a hard event UNLESS it's an even trade (SEE swing 0): a routine
+  // recapture stays quiet, but a material-changing capture is never "nothing changed".
+  // (We deliberately do NOT add board heuristics like king-zone pressure here — the
+  // eval is the oracle; only objective board events override its silence.)
+  if (san.includes('x')) {
+    try {
+      const m = new Chess(fenBefore).move(san);
+      if (m && (m.flags.includes('c') || m.flags.includes('e')) && seeCapture(fenBefore, m.from, m.to) !== 0) {
+        ev.push('capture');
+      }
+    } catch {
+      /* malformed FEN/SAN — skip */
+    }
+  }
   return ev;
 }
 
@@ -209,7 +224,7 @@ export function analyzeMove(
   // move is a hard board event (promotion / check / mate): those are never "nothing",
   // even when the evaluation is flat (e.g. promoting-with-check while already winning).
   if (cpLoss < GATE) {
-    const events = hardEvents(san, fenAfter);
+    const events = hardEvents(fenBefore, fenAfter, san);
     if (events.length === 0) {
       return {
         ...base,
