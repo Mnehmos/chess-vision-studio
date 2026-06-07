@@ -53,7 +53,8 @@ export function FactsPanel({
                 fontSize: 12,
               }}
             >
-              {analysis.classification} · −{analysis.cpLoss.toFixed(2)}
+              {analysis.classification}
+              {analysis.classification !== 'unclassified' && ` · −${analysis.cpLoss.toFixed(2)}`}
             </span>
           )}
         </div>

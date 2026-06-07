@@ -33,7 +33,10 @@ export interface EvalRequest {
   fen: string;
   depth: number;
   multipv?: number; // number of PV lines to request (forcing-move scan, §4a)
+  timeoutMs?: number; // wall-clock cap; on expiry the search resolves 'unavailable' (no hang)
 }
+
+const DEFAULT_EVAL_TIMEOUT_MS = 20000;
 
 export class UciEngine {
   private ready: Promise<void>;
@@ -96,6 +99,14 @@ export class UciEngine {
     const byMultipv = new Map<number, { cp?: number; mate?: number; depth: number; pv: string[] }>();
 
     return new Promise<Eval[]>((resolve) => {
+      let settled = false;
+      const finish = (out: Eval[]) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.removeHandler(onLine);
+        resolve(out);
+      };
       const onLine = (line: string) => {
         if (line.startsWith('info') && line.includes(' pv ')) {
           const parsed = parseInfoLine(line);
@@ -111,16 +122,26 @@ export class UciEngine {
             }
           }
         } else if (line.startsWith('bestmove')) {
-          this.removeHandler(onLine);
           const out: Eval[] = [];
           for (let i = 1; i <= multipv; i++) {
             const r = byMultipv.get(i);
             if (r) out.push({ cp: r.cp, mate: r.mate, depth: r.depth, pv: r.pv });
           }
-          if (out.length === 0) out.push({ depth: req.depth, pv: [] });
-          resolve(out);
+          // No parseable info line came back — the search produced nothing usable.
+          // Flag it 'unavailable' so it is NEVER mistaken for a genuine 0.00 eval.
+          if (out.length === 0) out.push({ depth: req.depth, pv: [], status: 'unavailable' });
+          finish(out);
         }
       };
+      // A stalled search must not hang forever; resolve an explicit 'unavailable'.
+      const timer = setTimeout(() => {
+        try {
+          this.transport.send('stop');
+        } catch {
+          /* transport gone — ignore */
+        }
+        finish([{ depth: req.depth, pv: [], status: 'unavailable' }]);
+      }, req.timeoutMs ?? DEFAULT_EVAL_TIMEOUT_MS);
       this.lineHandlers.push(onLine);
       this.transport.send('ucinewgame');
       this.transport.send(`setoption name MultiPV value ${multipv}`);

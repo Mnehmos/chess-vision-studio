@@ -154,6 +154,24 @@ export function analyzeMove(
   // (Stockfish returns no eval for a mated position, which would otherwise make
   // cpLoss look like the whole mate was thrown away.)
   const deliveredMate = isCheckmate(fenAfter);
+
+  // The engine genuinely failed to evaluate (timeout / no usable line). A missing eval
+  // must NEVER collapse to cpLoss 0 → 'best' → "Solid move" (fake confidence). Report
+  // it honestly as 'unclassified' so the UI can distinguish "unknown" from "equal".
+  if (!deliveredMate && (evalBefore.status === 'unavailable' || evalAfter.status === 'unavailable')) {
+    return {
+      positionBefore: fenBefore,
+      positionAfter: fenAfter,
+      move,
+      classification: 'unclassified',
+      evalBefore,
+      evalAfter,
+      cpLoss: 0,
+      rankedInsights: [],
+      topExplanation: `${move} — analysis unavailable (the engine did not return an evaluation).`,
+    };
+  }
+
   const cpLoss = deliveredMate ? 0 : computeCpLoss(evalBefore, evalAfter);
   const classification = deliveredMate ? 'best' : classify(cpLoss);
 

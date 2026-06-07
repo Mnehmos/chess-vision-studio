@@ -128,6 +128,22 @@ describe('hard board events are never "nothing changed", even at zero eval swing
   });
 });
 
+describe('an unavailable eval is "unclassified", never a fake best/0.00', () => {
+  it('does not collapse a failed search to cpLoss 0 → best → "Solid move"', () => {
+    const r = analyzeMove({
+      fenBefore: FEN_BEFORE,
+      fenAfter: FEN_AFTER_Nd4,
+      san: 'Nd4',
+      evalBefore: { depth: 14, pv: [], status: 'unavailable' },
+      evalAfter: ev(-20, ['Re8']),
+    });
+    expect(r.classification).toBe('unclassified');
+    expect(r.topExplanation.toLowerCase()).toContain('unavailable');
+    expect(r.topExplanation).not.toMatch(/solid move/i);
+    expect(r.rankedInsights).toEqual([]);
+  });
+});
+
 describe('capture claims must be legal on the displayed board (anti-hallucination)', () => {
   it('drops a refutation_wins_material insight whose target square is empty', () => {
     const bogus = {

@@ -9,6 +9,7 @@ const CLASSES: Classification[] = [
   'inaccuracy',
   'mistake',
   'blunder',
+  'unclassified',
 ];
 
 export interface SideStats {

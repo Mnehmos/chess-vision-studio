@@ -13,7 +13,9 @@ const CLASS_COLOR: Record<Classification, string> = {
   inaccuracy: '#e8923b',
   mistake: '#e2603b',
   blunder: '#e23b3b',
+  unclassified: '#9aa',
 };
+// 'unclassified' is intentionally omitted from the quality bar — it is "unknown", not a grade.
 const CLASS_ORDER: Classification[] = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'];
 
 // Team colors mirror the board visual grammar: White = blue, Black = red.

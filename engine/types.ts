@@ -40,6 +40,9 @@ export interface Eval {
   mate?: number; // mate in N (sign = side-to-move POV)
   depth: number;
   pv: string[]; // principal variation, SAN
+  // Distinguishes a genuine eval from a game-over position and from a failed/timed-out
+  // search. Undefined = 'ok'. 'unavailable' must NEVER be treated as a real 0.00.
+  status?: 'ok' | 'terminal' | 'unavailable';
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -135,7 +138,8 @@ export type Classification =
   | 'good'
   | 'inaccuracy'
   | 'mistake'
-  | 'blunder';
+  | 'blunder'
+  | 'unclassified'; // the eval was unavailable — NOT a real 0.00 / 'best'
 
 // Mate-proof obligation facts (oracle says mate exists; the evaluator explains it).
 export interface MateProof {

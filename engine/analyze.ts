@@ -27,7 +27,7 @@ export async function analyzeMoveLive(
   const [evalBefore, evalAfter] = await Promise.all([
     engine.evaluate({ fen: fenBefore, depth }),
     terminal
-      ? Promise.resolve({ depth, pv: [] } as Awaited<ReturnType<typeof engine.evaluate>>)
+      ? Promise.resolve({ depth, pv: [], status: 'terminal' } as Awaited<ReturnType<typeof engine.evaluate>>)
       : engine.evaluate({ fen: fenAfter, depth }),
   ]);
 
