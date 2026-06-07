@@ -41,3 +41,23 @@ describe('cascade off — only direct relations', () => {
     expect(has(arrows, 'd1', 'd4', ARROW.defend)).toBe(false); // no cascade
   });
 });
+
+describe('empty-square inspection — movers + controllers as lines', () => {
+  const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const arrows = selectionArrows(START, 'a3', true);
+
+  it('draws green "can move here" arrows from the legal movers (a2 pawn, b1 knight)', () => {
+    expect(has(arrows, 'a2', 'a3', ARROW.defend)).toBe(true);
+    expect(has(arrows, 'b1', 'a3', ARROW.defend)).toBe(true);
+  });
+
+  it('draws a dashed green controller arrow from the b2 pawn (defends a3, cannot occupy it)', () => {
+    const b2 = arrows.find((a) => a.from === 'b2' && a.to === 'a3');
+    expect(b2?.color).toBe(ARROW.defend);
+    expect(b2?.dashed).toBe(true);
+  });
+
+  it('draws no enemy (red) arrows — Black controls nothing on a3 at the start', () => {
+    expect(arrows.some((a) => a.color === ARROW.attack)).toBe(false);
+  });
+});

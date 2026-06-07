@@ -44,5 +44,19 @@ describe('squareReport — the relationship card', () => {
     const r = squareReport('4k3/8/8/8/8/8/8/4K3 w - - 0 1', 'd4');
     expect(r.occupied).toBe(false);
     expect(r.status).toBe('empty');
+    expect(r.canMoveHere).toEqual([]);
+    expect(r.controlledByWhite).toEqual([]);
+    expect(r.controlledByBlack).toEqual([]);
+  });
+
+  it('an empty square surfaces who can move there and who controls it', () => {
+    const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+    const r = squareReport(START, 'a3');
+    expect(r.occupied).toBe(false);
+    // White to move: the a2 pawn and b1 knight can both legally land on a3.
+    expect(r.canMoveHere?.map((m) => m.label).sort()).toEqual(['Knight b1', 'Pawn a2']);
+    // a3 is controlled (defended) by the b2 pawn and the b1 knight; Black controls nothing there.
+    expect(r.controlledByWhite?.map((m) => m.label).sort()).toEqual(['Knight b1', 'Pawn b2']);
+    expect(r.controlledByBlack).toEqual([]);
   });
 });

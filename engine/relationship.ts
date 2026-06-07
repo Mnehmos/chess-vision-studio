@@ -1,9 +1,10 @@
 // Per-square relationship report — the data behind the "relationship card".
 // Turns raw PieceIds into human names (Bishop f4, not wBf4) and derives a single
 // status label. Pure + testable; the FactsPanel just renders it.
+import { Chess } from 'chess.js';
 import { buildRelationMap } from './relations';
 import { seeOnSquare } from './see';
-import { parseFen, pieceAt } from './board';
+import { parseFen, pieceAt, attackersOf, type Attacker } from './board';
 import type { Square } from './types';
 
 const PIECE_NAMES: Record<string, string> = {
@@ -30,6 +31,11 @@ export function describePieceId(id: string): NamedPiece {
   return { label: `${name} ${square}`, name, square, color };
 }
 
+/** {square:'f3',type:'n',color:'w'} → Knight f3 (reuse the PieceId formatter). */
+function namedFromAttacker(a: Attacker): NamedPiece {
+  return describePieceId(a.color + a.type.toUpperCase() + a.square);
+}
+
 export type SquareStatus =
   | 'empty'
   | 'hanging' // SEE-losing for its owner
@@ -50,12 +56,33 @@ export interface SquareReport {
   safe: boolean;
   status: SquareStatus;
   statusLabel: string;
+  // Empty-square inspection: who controls the square, and who can legally land on it.
+  controlledByWhite?: NamedPiece[];
+  controlledByBlack?: NamedPiece[];
+  canMoveHere?: NamedPiece[]; // side-to-move pieces with a legal move to this square
 }
 
 export function squareReport(fen: string, square: Square): SquareReport {
   const board = parseFen(fen);
   const p = pieceAt(board, square);
   if (!p) {
+    // Empty square: surface who controls it and which side-to-move pieces can land on it.
+    const controlledByWhite = attackersOf(board, square, 'w').map(namedFromAttacker);
+    const controlledByBlack = attackersOf(board, square, 'b').map(namedFromAttacker);
+    const canMoveHere: NamedPiece[] = [];
+    try {
+      const moves = new Chess(fen).moves({ verbose: true }) as unknown as Array<{
+        from: string;
+        to: string;
+        piece: string;
+        color: string;
+      }>;
+      for (const m of moves) {
+        if (m.to === square) canMoveHere.push(describePieceId(m.color + m.piece.toUpperCase() + m.from));
+      }
+    } catch {
+      /* malformed FEN — leave movers empty */
+    }
     return {
       square,
       occupied: false,
@@ -65,6 +92,9 @@ export function squareReport(fen: string, square: Square): SquareReport {
       safe: true,
       status: 'empty',
       statusLabel: 'empty square',
+      controlledByWhite,
+      controlledByBlack,
+      canMoveHere,
     };
   }
   const rel = buildRelationMap(fen).bySquare[square];

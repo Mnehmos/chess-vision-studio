@@ -77,6 +77,18 @@ describe('PlayMode — legal chess', () => {
     expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');
   });
 
+  it('inspects an EMPTY square — surfaces who can move there / controls it, with arrows', () => {
+    const { container } = render(<PlayMode />);
+    fireEvent.click(container.querySelector('[data-square="a3"]')!); // empty at the start
+    expect(container.textContent).toContain('empty square');
+    expect(container.textContent).toContain('Can move here');
+    expect(container.textContent).toContain('Pawn a2'); // a2 can advance to a3
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0); // mover/controller lines
+    // Inspection never moves anything.
+    expect(container.querySelector('[data-square="a3"]')!.getAttribute('data-piece')).toBe('');
+    expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');
+  });
+
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
     const { container } = render(<PlayMode />);
     const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);

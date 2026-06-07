@@ -115,8 +115,48 @@ export function FactsPanel({
             </div>
           )}
         </div>
-      ) : selected ? (
-        <div style={{ color: '#888', marginBottom: 12 }}>Empty square — {selected}</div>
+      ) : report ? (
+        <div
+          style={{
+            border: '2px solid #cbd5e1', // grey outline = inspected empty square
+            borderRadius: 8,
+            padding: '10px 12px',
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>{report.square} — empty square</div>
+          <Row
+            label="Can move here"
+            items={(report.canMoveHere ?? []).map((m) => m.label)}
+            color="#2f855a"
+          />
+          <Row
+            label="White controls"
+            items={(report.controlledByWhite ?? []).map((m) => m.label)}
+            color="#555"
+          />
+          <Row
+            label="Black controls"
+            items={(report.controlledByBlack ?? []).map((m) => m.label)}
+            color="#555"
+          />
+          {dependentTactics.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <span style={{ color: '#666' }}>Part of:</span>{' '}
+              {dependentTactics.map((ins, i) => (
+                <span key={ins.id}>
+                  <span
+                    onClick={() => onFocus?.(ins)}
+                    style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {ins.type.replace(/_/g, ' ')}
+                  </span>
+                  {i < dependentTactics.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <div style={{ color: '#888', marginBottom: 12 }}>Click a square to inspect.</div>
       )}

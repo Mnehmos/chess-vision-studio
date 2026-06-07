@@ -4,6 +4,7 @@
 // you see how well it's defended (the "call and response" of an exchange).
 import { Chess } from 'chess.js';
 import { buildRelationMap } from '../engine/relations';
+import { parseFen, pieceAt, attackersOf } from '../engine/board';
 import type { InsightCandidate, Square } from '../engine/types';
 import { ARROW, type Arrow } from './BoardArrows';
 
@@ -20,7 +21,7 @@ const sqOfId = (id: string) => id.slice(2) as Square;
 export function selectionArrows(fen: string, selected: Square, cascade = true): Arrow[] {
   const rel = buildRelationMap(fen);
   const selRel = rel.bySquare[selected];
-  if (!selRel) return [];
+  if (!selRel) return emptySquareArrows(fen, selected); // empty square → movers + controllers
   const selColor = selRel.piece[0];
   const selId = selRel.piece + selected;
 
@@ -72,6 +73,41 @@ export function selectionArrows(fen: string, selected: Square, cascade = true): 
       for (const did of rel.bySquare[aSq]?.defendedBy ?? []) add(sqOfId(did), aSq, ARROW.defend, true);
     }
   }
+
+  return out;
+}
+
+/**
+ * Arrows for an EMPTY square — answers "what can happen here?":
+ *   • GREEN solid  — side-to-move pieces that can LEGALLY move here
+ *   • GREEN dashed — friendly pieces that CONTROL (defend) the square but can't occupy it
+ *   • RED          — enemy pieces that attack/contest the square
+ * One arrow per source piece (a mover that also controls shows as the solid mover).
+ */
+export function emptySquareArrows(fen: string, square: Square): Arrow[] {
+  const board = parseFen(fen);
+  if (pieceAt(board, square)) return []; // occupied — selectionArrows handles it
+  const us = board.turn;
+  const them = us === 'w' ? 'b' : 'w';
+  const out: Arrow[] = [];
+  const seen = new Set<string>();
+  const add = (from: Square, color: string, dashed = false) => {
+    if (seen.has(from)) return; // one arrow per source piece (mover wins over control)
+    seen.add(from);
+    out.push({ from, to: square, color, dashed });
+  };
+
+  // Side-to-move pieces that can legally land here → solid green ("can move here").
+  try {
+    const moves = new Chess(fen).moves({ verbose: true }) as unknown as Array<{ from: string; to: string }>;
+    for (const m of moves) if (m.to === square) add(m.from as Square, ARROW.defend);
+  } catch {
+    /* malformed FEN — skip movers */
+  }
+  // Friendly controllers that can't move here → dashed green ("defends the square").
+  for (const a of attackersOf(board, square, us)) add(a.square as Square, ARROW.defend, true);
+  // Enemy controllers → red ("they attack/contest this square").
+  for (const a of attackersOf(board, square, them)) add(a.square as Square, ARROW.attack);
 
   return out;
 }
