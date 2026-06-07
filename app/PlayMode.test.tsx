@@ -42,6 +42,18 @@ describe('PlayMode — legal chess', () => {
     expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');
   });
 
+  it('shows the annotation toggle legend and draws arrows when a piece is selected', () => {
+    const { container, getByText } = render(<PlayMode />);
+    // the same controls as the analysis board
+    expect(getByText('follow move')).toBeTruthy();
+    expect(getByText('threat line')).toBeTruthy();
+    expect(getByText('all threats')).toBeTruthy();
+    expect(getByText('cascade')).toBeTruthy();
+    // selecting the e2 pawn surfaces its defender arrows (Qd1/Ke1/Bf1 → e2)
+    fireEvent.click(container.querySelector('[data-square="e2"]')!);
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0);
+  });
+
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
     const { container } = render(<PlayMode />);
     const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);

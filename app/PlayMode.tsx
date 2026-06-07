@@ -11,11 +11,13 @@ import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
 import { computeLedMap, type ModeId } from '../engine/led';
 import { MODES, LED_CSS } from './modes';
+import { selectionArrows, lineArrows } from './annotate';
+import { AnnotationLegend } from './AnnotationLegend';
 import { analyzeMoveLive } from '../engine/analyze';
 import { extractPlyFeatures, type PlyFeatures } from '../engine/features';
 import { computeControlLens, type Verdict } from '../engine/control-lens';
 import type { UciEngine } from '../engine/evaluation';
-import type { MoveAnalysis, Square } from '../engine/types';
+import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -56,6 +58,12 @@ export function PlayMode({
   const [flipped, setFlipped] = useState(false);
   const [promo, setPromo] = useState<{ from: Square; to: Square } | null>(null);
   const [mode, setMode] = useState<ModeId>('legal');
+  // Annotation toggles — the same controls as the analysis board.
+  const [showThreats, setShowThreats] = useState(true);
+  const [showAllThreats, setShowAllThreats] = useState(false);
+  const [cascade, setCascade] = useState(true);
+  const [followMove, setFollowMove] = useState(true);
+  const [focused, setFocused] = useState<InsightCandidate | null>(null);
 
   // Live coaching state for the move just played.
   const [lastAnalysis, setLastAnalysis] = useState<MoveAnalysis | null>(null);
@@ -105,7 +113,26 @@ export function PlayMode({
   );
 
   const last = history[history.length - 1];
-  const arrows: Arrow[] = last ? [{ from: last.from, to: last.to, color: ARROW.move, move: true }] : [];
+
+  // The full annotation suite, live: focus mode spotlights one tactic; otherwise
+  // the played-move arrow (follow move) + the selected piece's attack/defend/
+  // cascade arrows + numbered threat lines from the move's analysis.
+  const arrows = useMemo<Arrow[]>(() => {
+    if (focused) return lineArrows(fen, focused, false);
+    const out: Arrow[] = [];
+    if (followMove && last) out.push({ from: last.from, to: last.to, color: ARROW.move, move: true });
+    if (selected) out.push(...selectionArrows(fen, selected, cascade));
+    if (lastAnalysis && lastAnalysis.rankedInsights.length) {
+      const top = lastAnalysis.rankedInsights[0];
+      const threats = showAllThreats
+        ? lastAnalysis.rankedInsights.filter((i) => i.source === 'refutation' || i.source === 'available')
+        : showThreats && top.source === 'refutation'
+          ? [top]
+          : [];
+      for (const ins of threats) out.push(...lineArrows(fen, ins, ins !== top));
+    }
+    return out;
+  }, [fen, selected, lastAnalysis, showThreats, showAllThreats, cascade, focused, followMove, last]);
 
   function applyMove(from: Square, to: Square, promotion?: string) {
     const before = fen;
@@ -120,7 +147,8 @@ export function PlayMode({
     const san = m.san;
     setHistory((h) => [...h, { san, fen: c.fen(), from, to }]);
     setFen(c.fen());
-    setSelected(null);
+    setSelected(followMove ? to : null); // "follow move" — broadcast the move just made
+    setFocused(null);
     setPromo(null);
     setCoachText('');
 
@@ -177,6 +205,7 @@ export function PlayMode({
     setLastAnalysis(null);
     setAnalyzing(false);
     setCoachText('');
+    setFocused(null);
   }
 
   function undo() {
@@ -323,6 +352,18 @@ export function PlayMode({
             </span>
           ))}
         </div>
+        <AnnotationLegend
+          showThreats={showThreats}
+          setShowThreats={setShowThreats}
+          showAllThreats={showAllThreats}
+          setShowAllThreats={setShowAllThreats}
+          cascade={cascade}
+          setCascade={setCascade}
+          followMove={followMove}
+          setFollowMove={setFollowMove}
+          hasSelection={!!selected}
+          onClear={() => setSelected(null)}
+        />
         <p style={{ fontSize: 12, color: '#98a2b3', margin: '8px 2px 0' }}>
           Drag a piece or click from → to. Only legal moves are allowed.
         </p>
@@ -336,6 +377,8 @@ export function PlayMode({
             selected={selected ?? undefined}
             analysis={lastAnalysis ?? undefined}
             move={lastAnalysis?.move}
+            focused={focused}
+            onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
           />
         </div>
 

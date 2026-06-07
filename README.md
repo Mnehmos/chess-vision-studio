@@ -73,6 +73,9 @@ A real game (hot-seat) with the *whole perception suite* applied live:
   castling, en passant, promotion, and check / checkmate / stalemate / draw.
 - **Every overlay, on the live position** — Threat / Defense / Hanging (SEE) /
   Pawn Structure / Tactics, plus What-Changed once a move is analyzed.
+- **Full annotation layer** — attack / defend / tactical-line arrows with the
+  selection cascade and the *follow move · threat line · all threats · cascade*
+  toggles, the same as the analysis board.
 - **Facts inspect card** — click any square for its attackers / defenders / SEE /
   status, mid-game.
 - **Live coaching** — the engine analyzes each move you play (classification +

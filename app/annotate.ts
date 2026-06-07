@@ -2,8 +2,9 @@
 // selected piece's direct relations, but the next hop in the chain — so when a
 // piece is under attack you also see who defends it, and when you attack a piece
 // you see how well it's defended (the "call and response" of an exchange).
+import { Chess } from 'chess.js';
 import { buildRelationMap } from '../engine/relations';
-import type { Square } from '../engine/types';
+import type { InsightCandidate, Square } from '../engine/types';
 import { ARROW, type Arrow } from './BoardArrows';
 
 const sqOfId = (id: string) => id.slice(2) as Square;
@@ -72,5 +73,26 @@ export function selectionArrows(fen: string, selected: Square, cascade = true): 
     }
   }
 
+  return out;
+}
+
+/** Replay an insight's forcing line into numbered tactical arrows (1·2·3…). */
+export function lineArrows(fen: string, ins: InsightCandidate, dashed: boolean): Arrow[] {
+  const out: Arrow[] = [];
+  const line = ins.kind === 'motif' ? ins.line : [];
+  if (line.length) {
+    const c = new Chess(fen);
+    line.slice(0, 6).forEach((san, i) => {
+      let m: ReturnType<Chess['move']> | null = null;
+      try {
+        m = c.move(san);
+      } catch {
+        m = null;
+      }
+      if (m) out.push({ from: m.from, to: m.to, color: ARROW.tactical, label: String(i + 1), dashed });
+    });
+  } else {
+    for (const [from, to] of ins.arrows) out.push({ from, to, color: ARROW.attack, dashed });
+  }
   return out;
 }

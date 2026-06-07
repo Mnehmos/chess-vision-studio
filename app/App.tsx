@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
 import { computeLedMap, allSquares } from '../engine/led';
@@ -14,7 +13,8 @@ import { loadAnalysisCache, saveGameAnalysis } from './analysis-store';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
-import { selectionArrows } from './annotate';
+import { selectionArrows, lineArrows } from './annotate';
+import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
@@ -670,27 +670,7 @@ export function App() {
   );
 }
 
-/** Replay an insight's forcing line into numbered tactical arrows. */
-function lineArrows(fen: string, ins: InsightCandidate, dashed: boolean): Arrow[] {
-  const out: Arrow[] = [];
-  const line = ins.kind === 'motif' ? ins.line : [];
-  if (line.length) {
-    const c = new Chess(fen);
-    line.slice(0, 6).forEach((san, i) => {
-      let m: ReturnType<Chess['move']> | null = null;
-      try {
-        m = c.move(san);
-      } catch {
-        m = null;
-      }
-      if (m)
-        out.push({ from: m.from, to: m.to, color: ARROW.tactical, label: String(i + 1), dashed });
-    });
-  } else {
-    for (const [from, to] of ins.arrows) out.push({ from, to, color: ARROW.attack, dashed });
-  }
-  return out;
-}
+// lineArrows now lives in ./annotate (shared with Play mode).
 
 /** Spotlight one insight on the LED grid: executor purple, targets orange. */
 function focusLedMap(ins: InsightCandidate): LedMap {
@@ -1038,80 +1018,7 @@ function MiniBadges({ features }: { features?: PlyFeatures }) {
   );
 }
 
-function AnnotationLegend({
-  showThreats,
-  setShowThreats,
-  showAllThreats,
-  setShowAllThreats,
-  cascade,
-  setCascade,
-  followMove,
-  setFollowMove,
-  hasSelection,
-  onClear,
-}: {
-  showThreats: boolean;
-  setShowThreats: (v: boolean) => void;
-  showAllThreats: boolean;
-  setShowAllThreats: (v: boolean) => void;
-  cascade: boolean;
-  setCascade: (v: boolean) => void;
-  followMove: boolean;
-  setFollowMove: (v: boolean) => void;
-  hasSelection: boolean;
-  onClear: () => void;
-}) {
-  const swatch = (color: string, label: string) => (
-    <span style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
-      <span
-        style={{
-          display: 'inline-block',
-          width: 14,
-          height: 4,
-          background: color,
-          borderRadius: 2,
-          marginRight: 4,
-          verticalAlign: 'middle',
-        }}
-      />
-      {label}
-    </span>
-  );
-  return (
-    <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-      <strong style={{ marginRight: 6 }}>Arrows:</strong>
-      {swatch(ARROW.attack, 'attacks / threats')}
-      {swatch(ARROW.defend, 'defends / protects')}
-      {swatch(ARROW.tactical, 'tactical line (1·2·3)')}
-      {swatch(ARROW.move, 'played move')}
-      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="track the move that just happened">
-        <input type="checkbox" checked={followMove} onChange={(e) => setFollowMove(e.target.checked)} />{' '}
-        follow move
-      </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showThreats} onChange={(e) => setShowThreats(e.target.checked)} />{' '}
-        threat line
-      </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={showAllThreats}
-          onChange={(e) => setShowAllThreats(e.target.checked)}
-        />{' '}
-        all threats
-      </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="surface the next hop in the chain">
-        <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} />{' '}
-        cascade
-      </label>
-      {hasSelection && (
-        <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>
-          clear selection
-        </button>
-      )}
-    </div>
-  );
-}
+// AnnotationLegend now lives in ./AnnotationLegend (shared with Play mode).
 
 function Legend({ modeId }: { modeId: string }) {
   const mode = MODES.find((m) => m.id === modeId)!;
