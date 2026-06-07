@@ -188,6 +188,14 @@ export function computeControlLens(features: PlyFeatures, analysis: MoveAnalysis
     verdict = 'satisfied';
   }
 
+  // Coach status may never contradict the engine's verdict: a move classified
+  // mistake/blunder can never read as "satisfied" (the lone exception is an
+  // oracle-proven mate the mover delivers, handled above via moverMatesFirst).
+  if (blunderish && !moverMatesFirst && verdict === 'satisfied') {
+    action = 'violate_constraint';
+    verdict = 'violated';
+  }
+
   const teachingLine = buildTeachingLine(action, { mover, removedMine, createdMine, persistMine, createdTheirs, obligations, analysis });
 
   return { hazardsBefore, hazardsAfter, removed, created, worsened, obligations, action, verdict, teachingLine };

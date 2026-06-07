@@ -44,10 +44,9 @@ function renderChange(c: ChangedRelation): string {
   switch (c.templateId) {
     case 'refutation_wins_material': {
       const reply = firstLineMove(c.evidence[0]);
-      return `${who}'s reply ${reply ?? ''} wins ${materialNoun(c.materialSwing)} on ${sq}.`.replace(
-        /\s+/g,
-        ' ',
-      );
+      // Name the ACTUAL captured piece, not an approximation from the SEE swing.
+      const noun = c.victim ? `a ${pieceName(c.victim)}` : materialNoun(c.materialSwing);
+      return `${who}'s reply ${reply ?? ''} wins ${noun} on ${sq}.`.replace(/\s+/g, ' ');
     }
     case 'now_see_losing':
       return c.source === 'refutation'
@@ -95,9 +94,13 @@ function renderMotif(m: Motif): string {
   const prefix = motifPrefix(m);
   switch (m.type) {
     case 'fork':
-      return `${prefix}fork — ${line} forks ${targetList(m)}, winning ${materialNoun(
+      // Render from the validated fork MOVE + its proven targets — never splice the
+      // SEE-enumeration tail (a worst-case continuation that can be unsound, e.g. a
+      // follow-up that simply hangs). The win is already proven; the targets are in
+      // m.squares. (Acceptance #10: motif detection ≠ PV explanation.)
+      return `${prefix}fork — ${m.line[0] ?? ''} forks ${targetList(m)}, winning ${materialNoun(
         m.materialSwing,
-      )}.`;
+      )}.`.replace(/\s+/g, ' ');
     case 'pin_absolute':
       return `${prefix}absolute pin — the ${pieceName(m.byPiece)} pins a piece to the king on ${
         m.squares[2] ?? ''

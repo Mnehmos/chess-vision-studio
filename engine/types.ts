@@ -97,6 +97,7 @@ export type ChangeType =
 export interface ChangedRelation extends InsightBase {
   kind: 'changed_relation';
   type: ChangeType;
+  victim?: string; // captured piece type ('p'..'q') for a capture claim — the real noun
 }
 
 // A named tactic — a label on an engine-verified line (Invariant 7)

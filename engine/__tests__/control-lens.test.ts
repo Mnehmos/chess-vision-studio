@@ -96,6 +96,34 @@ describe('computeControlLens — action classification', () => {
   });
 });
 
+describe('computeControlLens — verdict can never contradict a mistake/blunder', () => {
+  it('a blunder that REMOVES a tracked hazard is still not "satisfied"', () => {
+    const lens = computeControlLens(
+      mkFeatures('w'),
+      mkAnalysis({ positionBefore: BOTH_ROOKS, positionAfter: KINGS, classification: 'blunder', cpLoss: 5 }),
+    );
+    expect(lens.verdict).not.toBe('satisfied');
+    expect(lens.verdict).toBe('violated');
+  });
+
+  it('a blunder with NO hazard change (positional) is still not "satisfied"', () => {
+    const lens = computeControlLens(
+      mkFeatures('w'),
+      mkAnalysis({ positionBefore: KINGS, positionAfter: KINGS, classification: 'blunder', cpLoss: 5 }),
+    );
+    expect(lens.verdict).not.toBe('satisfied');
+    expect(lens.verdict).toBe('violated');
+  });
+
+  it('an oracle-proven mate the mover delivers stays "satisfied" even with noisy cpLoss', () => {
+    const lens = computeControlLens(
+      mkFeatures('w'),
+      mkAnalysis({ positionBefore: KINGS, positionAfter: BOTH_ROOKS, mateProof: mkMate('white', 1), cpLoss: 0 }),
+    );
+    expect(lens.verdict).toBe('satisfied');
+  });
+});
+
 describe('computeControlLens — obligations (must-answer vs safely-ignored)', () => {
   it('marks a loose piece SAFELY IGNORED when the mover has a forced mate', () => {
     const lens = computeControlLens(

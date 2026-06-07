@@ -123,7 +123,7 @@ describe('M6 — deterministic: same input → same string', () => {
     const b = renderInsight(fork);
     expect(a).toBe(b);
     expect(a).toMatchInlineSnapshot(
-      `"White missed a fork — Nc7+ Kf8 Nxa8 forks a8 and e8, winning a rook."`,
+      `"White missed a fork — Nc7+ forks a8 and e8, winning a rook."`,
     );
   });
 });

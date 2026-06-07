@@ -184,6 +184,7 @@ export function diffRefutation(fenAfter: string, evalAfter: Eval): ChangedRelati
           materialSwing: win,
           inPV: true,
           templateId: 'refutation_wins_material',
+          victim: moved.captured, // the real captured piece — names the prose correctly
           evidence: [
             `opponent's best reply ${pv[0]} wins ${win} (SEE) on ${moved.to}; line: ${pv
               .slice(0, 4)
