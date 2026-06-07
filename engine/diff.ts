@@ -220,6 +220,38 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
   const evalPawns = evalToPawns(evalAfter); // winner's POV: ≥0 when the refuter is better
   const who = sideName(winner) === 'white' ? 'White' : 'Black';
   const lineText = formatPvLine(fenAfter, pv, 6);
+  const shape = pvForcingShape(fenAfter, pv);
+
+  // A line the refuter drives with CHECKS is never "quiet". If it also repeats / the
+  // eval is level, it is a perpetual-check / forced-draw resource (the 56.Rxe6 case);
+  // otherwise it is a forcing-check sequence that wins something.
+  if (shape.firstIsCheck || shape.refuterAllChecks) {
+    const drawish = shape.repeats || Math.abs(evalPawns) < 0.75;
+    const type: ChangeType = drawish ? 'perpetual_check' : 'forcing_check_resource';
+    const headline = drawish
+      ? `${who} has a perpetual check — ${pv[0]} forces a draw by repetition: ${lineText}. ` +
+        `The winning advantage disappears.`
+      : `${who} has a forcing check sequence (not quiet — these are checks) — ${pv[0]}: ${lineText} ` +
+        `(${who} ${standingPhrase(evalPawns)}, ${evalPawns >= 0 ? '+' : ''}${evalPawns.toFixed(1)}).`;
+    return {
+      ...blankRelation(),
+      id: nextId('pvref'),
+      type,
+      side: sideName(winner),
+      squares: [first.to],
+      arrows: [[first.from, first.to]],
+      source: 'refutation',
+      materialSwing: 0,
+      kingSafetyDelta: drawish ? 0 : 0.5,
+      inPV: true,
+      templateId: type,
+      evidence: [
+        headline,
+        `tags: ${drawish ? 'perpetual_check forced_draw' : 'forcing_check_resource'} evalLoss=${evalLoss.toFixed(2)}`,
+      ],
+    };
+  }
+
   const headline =
     `${who} has a quiet refutation — ${pv[0]} starts the line that punishes the move ` +
     `(${who} ${standingPhrase(evalPawns)}, ${evalPawns >= 0 ? '+' : ''}${evalPawns.toFixed(1)}). ` +
@@ -243,6 +275,43 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
       `tags: unexplained_by_detectors pv_refutation_required candidate_for_new_detector evalLoss=${evalLoss.toFixed(2)}`,
     ],
   };
+}
+
+/**
+ * Inspect the shape of a PV: is the first move a check, are ALL the refuter's moves
+ * (even plies) checks, and does the line repeat / draw? Used to recognise a perpetual
+ * or forcing-check resource so it is never mislabelled "quiet". Replays the PV with
+ * chess.js (illegal/over-run plies stop the scan).
+ */
+function pvForcingShape(
+  fenAfter: string,
+  pv: string[],
+): { firstIsCheck: boolean; refuterAllChecks: boolean; repeats: boolean } {
+  let firstIsCheck = false;
+  let refuterAllChecks = true;
+  let refuterPlies = 0;
+  let repeats = false;
+  try {
+    const chess = new Chess(fenAfter);
+    const n = Math.min(pv.length, 8);
+    for (let i = 0; i < n; i++) {
+      const m = chess.move(pv[i]);
+      if (!m) break;
+      const isCheck = m.san.includes('+') || m.san.includes('#');
+      if (i === 0) firstIsCheck = isCheck;
+      if (i % 2 === 0) {
+        refuterPlies += 1;
+        if (!isCheck) refuterAllChecks = false;
+      }
+      if (chess.isThreefoldRepetition() || chess.isDraw()) {
+        repeats = true;
+        break;
+      }
+    }
+  } catch {
+    return { firstIsCheck: false, refuterAllChecks: false, repeats: false };
+  }
+  return { firstIsCheck, refuterAllChecks: refuterPlies > 0 && refuterAllChecks, repeats };
 }
 
 /** Phrase the magnitude of an advantage (winner's POV, in pawns). */

@@ -68,7 +68,9 @@ function renderChange(c: ChangedRelation): string {
     case 'mate_threat':
       return `There is a forced mate — ${matePhrase(c.evidence[0])}.`;
     case 'pv_refutation':
-      // The honest oracle-line fallback already reads as a full sentence.
+    case 'perpetual_check':
+    case 'forcing_check_resource':
+      // The diff layer already built a full, correctly-framed sentence.
       return c.evidence[0] ?? `${who} has a refutation starting on ${sq}.`;
     case 'line_opened':
       return `A line was opened through ${sq}.`;

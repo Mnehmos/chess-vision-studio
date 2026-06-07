@@ -90,6 +90,8 @@ export type ChangeType =
   | 'check_created'
   | 'mate_threat'
   | 'pv_refutation'
+  | 'perpetual_check' // refuter's checks repeat the position → a draw
+  | 'forcing_check_resource' // a line driven by checks — never "quiet"
   | 'escape_squares_changed';
 
 export interface ChangedRelation extends InsightBase {
