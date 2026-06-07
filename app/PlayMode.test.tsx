@@ -54,6 +54,18 @@ describe('PlayMode — legal chess', () => {
     expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0);
   });
 
+  it('annotates whose turn it is — White plate active at start, Black after 1.e4', () => {
+    const { container } = render(<PlayMode />);
+    const plate = (c: string) => container.querySelector(`[data-testid="turn-${c}"]`)!.textContent!;
+    expect(plate('w')).toContain('to move');
+    expect(plate('b')).not.toContain('to move');
+    const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);
+    click('e2');
+    click('e4');
+    expect(plate('b')).toContain('to move');
+    expect(plate('w')).not.toContain('to move');
+  });
+
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
     const { container } = render(<PlayMode />);
     const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);

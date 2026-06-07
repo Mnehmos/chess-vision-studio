@@ -240,7 +240,9 @@ export function PlayMode({
     }
   }
 
-  const moverColor = new Chess(fen).turn(); // for the promotion picker glyphs
+  const turn = new Chess(fen).turn(); // side to move — drives the turn plates + promo glyphs
+  const topSide: 'w' | 'b' = flipped ? 'w' : 'b';
+  const bottomSide: 'w' | 'b' = flipped ? 'b' : 'w';
   const rows: { n: number; white?: string; black?: string }[] = [];
   for (let i = 0; i < history.length; i += 2) {
     rows.push({ n: i / 2 + 1, white: history[i]?.san, black: history[i + 1]?.san });
@@ -284,6 +286,8 @@ export function PlayMode({
           })}
         </div>
 
+        <TurnPlate color={topSide} active={!status.over && turn === topSide} />
+
         <div style={{ position: 'relative', width: 'max-content' }}>
           <Board2D
             fen={fen}
@@ -325,13 +329,15 @@ export function PlayMode({
                       cursor: 'pointer',
                     }}
                   >
-                    {PROMO_GLYPH[moverColor][p]}
+                    {PROMO_GLYPH[turn][p]}
                   </button>
                 ))}
               </div>
             </div>
           )}
         </div>
+
+        <TurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />
 
         <div
           style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', margin: '8px 2px 0', fontSize: 12, color: '#475467' }}
@@ -465,6 +471,38 @@ export function PlayMode({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
+  return (
+    <div
+      data-testid={`turn-${color}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '4px 9px',
+        margin: '6px 0',
+        width: 'max-content',
+        borderRadius: 8,
+        border: active ? '1px solid #1570ef' : '1px solid #eaecf0',
+        background: active ? '#eff6ff' : '#fff',
+      }}
+    >
+      <span
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          background: color === 'w' ? '#fff' : '#111',
+          border: '1px solid #98a2b3',
+          display: 'inline-block',
+        }}
+      />
+      <strong style={{ fontSize: 13, color: '#101828' }}>{color === 'w' ? 'White' : 'Black'}</strong>
+      {active && <span style={{ fontSize: 11, color: '#1570ef', fontWeight: 600 }}>● to move</span>}
     </div>
   );
 }
