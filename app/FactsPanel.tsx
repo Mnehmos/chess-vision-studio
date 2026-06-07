@@ -107,7 +107,7 @@ export function FactsPanel({
                     onClick={() => onFocus?.(ins)}
                     style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
                   >
-                    {ins.type.replace(/_/g, ' ')}
+                    {insightLabel(ins)}
                   </span>
                   {i < dependentTactics.length - 1 ? ', ' : ''}
                 </span>
@@ -149,7 +149,7 @@ export function FactsPanel({
                     onClick={() => onFocus?.(ins)}
                     style={{ color: '#b45309', cursor: 'pointer', textDecoration: 'underline' }}
                   >
-                    {ins.type.replace(/_/g, ' ')}
+                    {insightLabel(ins)}
                   </span>
                   {i < dependentTactics.length - 1 ? ', ' : ''}
                 </span>
@@ -187,7 +187,7 @@ export function FactsPanel({
                       fontWeight: isFocused ? 700 : 400,
                     }}
                   >
-                    <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {ins.type} @{' '}
+                    <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {insightLabel(ins)} @{' '}
                     {ins.squares.join(',')}
                   </span>
                 </li>
@@ -216,6 +216,16 @@ function Row({ label, items, color }: { label: string; items: string[]; color: s
       )}
     </div>
   );
+}
+
+// Frame an insight by its source so an opponent's-reply or missed-chance fact never
+// reads as a property of the selected piece (e.g. "Black's reply: now see losing").
+function insightLabel(ins: InsightCandidate): string {
+  const t = ins.type.replace(/_/g, ' ');
+  const who = ins.side === 'white' ? 'White' : 'Black';
+  if (ins.source === 'refutation') return `${who}'s reply: ${t}`;
+  if (ins.source === 'available') return `missed: ${t}`;
+  return t;
 }
 
 function classColor(c: string): string {

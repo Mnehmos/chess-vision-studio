@@ -112,6 +112,53 @@ describe('M4.2 — silence: a solid equal move says nothing', () => {
   });
 });
 
+describe('hard board events are never "nothing changed", even at zero eval swing', () => {
+  it('a promotion-with-check (a1=Q+) names the event instead of staying silent', () => {
+    const r = analyzeMove({
+      fenBefore: 'K7/8/8/8/8/8/p7/7k b - - 0 1',
+      fenAfter: 'K7/8/8/8/8/8/8/q6k w - - 0 2',
+      san: 'a1=Q+',
+      evalBefore: ev(900, ['a1=Q+']),
+      evalAfter: ev(-900, ['Kb7']), // Black already winning → eval flat → cpLoss ≈ 0
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).not.toMatch(/nothing important changed/i);
+    expect(r.topExplanation.toLowerCase()).toContain('promotion');
+    expect(r.topExplanation.toLowerCase()).toContain('check');
+  });
+});
+
+describe('capture claims must be legal on the displayed board (anti-hallucination)', () => {
+  it('drops a refutation_wins_material insight whose target square is empty', () => {
+    const bogus = {
+      id: 'bogus',
+      kind: 'changed_relation' as const,
+      type: 'now_see_losing' as const,
+      side: 'white' as const,
+      squares: ['b5'], // empty on FEN_AFTER_Nd4
+      arrows: [['c6', 'b5']] as [string, string][], // no legal capture c6→b5 exists
+      source: 'refutation' as const,
+      materialSwing: 1, // within the eval budget — only the legality check can drop it
+      kingSafetyDelta: 0,
+      inPV: true,
+      saliency: 0,
+      templateId: 'refutation_wins_material',
+      evidence: ['reply Nxb5 wins 1 (SEE) on b5'],
+    };
+    const r = analyzeMove(
+      {
+        fenBefore: FEN_BEFORE,
+        fenAfter: FEN_AFTER_Nd4,
+        san: 'Nd4',
+        evalBefore: ev(20, ['Re1']),
+        evalAfter: ev(80, ['Re8']),
+      },
+      [bogus],
+    );
+    expect(r.rankedInsights.find((i) => i.id === 'bogus')).toBeUndefined();
+  });
+});
+
 describe('pv_refutation fallback — a quiet/positional blunder no detector names', () => {
   // White plays a quiet a3; nothing hangs by SEE (all diffs are materialSwing 0),
   // but the injected eval says Black is winning via a QUIET line (no capture/mate/

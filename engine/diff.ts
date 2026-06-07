@@ -157,39 +157,40 @@ export function diffRefutation(fenAfter: string, evalAfter: Eval): ChangedRelati
     ];
   }
 
-  // Material refutation: the opponent's REPLY — the first capture by the refuter
-  // (even plies 0,2) with positive SEE. Scan only the immediate reply window; a
-  // capture deep in the PV is not "the reply" and its isolated SEE over-claims
-  // (the eval already accounts for the recapture/compensation downstream).
-  const chess = new Chess(fenAfter);
-  for (let i = 0; i < pv.length && i < 3; i++) {
-    const fenAtPly = chess.fen();
-    const moved = chess.move(pv[i]);
-    if (!moved) break;
-    const isRefuterMove = i % 2 === 0;
-    if (isRefuterMove && (moved.flags.includes('c') || moved.flags.includes('e'))) {
-      const win = seeCapture(fenAtPly, moved.from, moved.to);
-      if (win > 0) {
-        return [
-          {
-            ...blankRelation(),
-            id: nextId('ref'),
-            type: 'now_see_losing',
-            side: sideName(opponent),
-            squares: [moved.to],
-            arrows: [[moved.from, moved.to]],
-            source: 'refutation',
-            materialSwing: win,
-            inPV: true,
-            templateId: 'refutation_wins_material',
-            evidence: [
-              `opponent's best reply ${pv[i]} wins ${win} (SEE) on ${moved.to}; line: ${pv
-                .slice(0, 4)
-                .join(' ')}`,
-            ],
-          },
-        ];
-      }
+  // Material refutation: the opponent's IMMEDIATE reply (pv[0]) only — a capture by
+  // the refuter, with positive SEE, on the ACTUAL displayed position. A winning
+  // capture deeper in the PV is NOT "the reply": its destination is a future-board
+  // square that may be empty on the position shown (the root cause of "Bxb5 wins a
+  // pawn" claimed on an empty b5). Those are left to pvRefutation, which frames the
+  // whole line honestly instead of asserting a capture on the current board.
+  let moved;
+  try {
+    moved = new Chess(fenAfter).move(pv[0]);
+  } catch {
+    moved = null;
+  }
+  if (moved && (moved.flags.includes('c') || moved.flags.includes('e'))) {
+    const win = seeCapture(fenAfter, moved.from, moved.to);
+    if (win > 0) {
+      return [
+        {
+          ...blankRelation(),
+          id: nextId('ref'),
+          type: 'now_see_losing',
+          side: sideName(opponent),
+          squares: [moved.to],
+          arrows: [[moved.from, moved.to]],
+          source: 'refutation',
+          materialSwing: win,
+          inPV: true,
+          templateId: 'refutation_wins_material',
+          evidence: [
+            `opponent's best reply ${pv[0]} wins ${win} (SEE) on ${moved.to}; line: ${pv
+              .slice(0, 4)
+              .join(' ')}`,
+          ],
+        },
+      ];
     }
   }
   return [];

@@ -90,6 +90,44 @@ function isCheckmate(fen: string): boolean {
   }
 }
 
+function inCheckSafe(fen: string): boolean {
+  try {
+    return new Chess(fen).inCheck();
+  } catch {
+    return false;
+  }
+}
+
+/** Hard board events that must never be summarized as "nothing changed", even at a
+ *  zero eval swing: a promotion, a check, or a mate. Returns the event names found. */
+function hardEvents(san: string, fenAfter: string): string[] {
+  const ev: string[] = [];
+  if (san.includes('=')) ev.push('promotion');
+  if (san.includes('#')) ev.push('checkmate');
+  else if (san.includes('+') || inCheckSafe(fenAfter)) ev.push('check');
+  return ev;
+}
+
+/** A capture claim ("reply X wins material on Y") is only kept if X is a LEGAL
+ *  capture landing on Y in the ACTUAL after-position — never a future-PV square
+ *  (Invariant 7: validated facts only; never assert a capture on an empty square). */
+function legalCaptureClaim(fenAfter: string, c: InsightCandidate): boolean {
+  if (c.kind !== 'changed_relation' || c.templateId !== 'refutation_wins_material') return true;
+  const to = c.squares[0];
+  const from = c.arrows[0]?.[0];
+  if (!to || !from) return false;
+  try {
+    const moves = new Chess(fenAfter).moves({ verbose: true }) as Array<{
+      from: string;
+      to: string;
+      flags: string;
+    }>;
+    return moves.some((m) => m.from === from && m.to === to && (m.flags.includes('c') || m.flags.includes('e')));
+  } catch {
+    return false;
+  }
+}
+
 function formatMove(fenBefore: string, san: string): string {
   const pos = parseFen(fenBefore);
   const moveNumber = parseInt(fenBefore.trim().split(/\s+/)[5] ?? '1', 10);
@@ -146,12 +184,22 @@ export function analyzeMove(
     };
   }
 
-  // §5 Step B — the gate. Small swing → nothing salient → say nothing.
+  // §5 Step B — the gate. Small swing → nothing salient → say nothing... UNLESS the
+  // move is a hard board event (promotion / check / mate): those are never "nothing",
+  // even when the evaluation is flat (e.g. promoting-with-check while already winning).
   if (cpLoss < GATE) {
+    const events = hardEvents(san, fenAfter);
+    if (events.length === 0) {
+      return {
+        ...base,
+        rankedInsights: [],
+        topExplanation: 'Solid move — nothing important changed.',
+      };
+    }
     return {
       ...base,
       rankedInsights: [],
-      topExplanation: 'Solid move — nothing important changed.',
+      topExplanation: `${move} — ${events.join(' + ')}; the evaluation is unchanged.`,
     };
   }
 
@@ -200,9 +248,10 @@ export function analyzeMove(
   // the recapture/compensation downstream). Forced mates carry it via king-safety,
   // not materialSwing, so they pass.
   const materialBudget = cpLoss + 1.5;
-  const candidates = rawCandidates.filter(
-    (c) => Math.abs(c.materialSwing) <= materialBudget,
-  );
+  const candidates = rawCandidates
+    .filter((c) => Math.abs(c.materialSwing) <= materialBudget)
+    // Drop any capture claim that isn't a legal capture on the displayed board.
+    .filter((c) => legalCaptureClaim(fenAfter, c));
 
   // §5 Step D — attribute & rank.
   for (const c of candidates) c.saliency = scoreCandidate(c, cpLoss);

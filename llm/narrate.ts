@@ -31,7 +31,8 @@ HARD RULES:
 - Never claim a fork/pin/skewer/mate/etc. unless it appears in the facts.
 - Refer to pieces and squares exactly as given. Keep it concrete and encouraging.
 - If the move was solid/best with nothing important changed, say so in Summary and keep
-  the other sections to one line each ("- none").`;
+  the other sections to one line each ("- none"). BUT never call a move uneventful if it
+  promotes, gives check, or delivers mate — name that event (it is in the Engine summary).`;
 
 /** Render the validated facts as a compact, unambiguous block for the LLM. */
 export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
@@ -43,7 +44,11 @@ export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
     lines.push('Validated facts (most important first):');
     for (const ins of a.rankedInsights.slice(0, 5)) lines.push(`  - ${insightLine(ins)}`);
   } else {
-    lines.push('No salient change (nothing important happened).');
+    lines.push(
+      /[+#=]/.test(a.move)
+        ? 'No ranked insights, but this move is a hard event (promotion/check/mate) — see the Engine summary; do NOT call it uneventful.'
+        : 'No salient change (nothing important happened).',
+    );
   }
   if (a.evalBefore.pv && a.evalBefore.pv.length) {
     lines.push(`Engine's best line from this position: ${formatLine(a.positionBefore, a.evalBefore.pv, 6)}`);
