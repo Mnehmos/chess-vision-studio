@@ -28,13 +28,15 @@ export const ARROW = {
 const CELL = 56;
 const SIZE = CELL * 8;
 
-function center(sq: Square): { x: number; y: number } {
+function center(sq: Square, orientation: 'white' | 'black'): { x: number; y: number } {
   const f = sq.charCodeAt(0) - 97;
   const r = sq.charCodeAt(1) - 49;
-  return { x: f * CELL + CELL / 2, y: (7 - r) * CELL + CELL / 2 };
+  const col = orientation === 'white' ? f : 7 - f;
+  const row = orientation === 'white' ? 7 - r : r;
+  return { x: col * CELL + CELL / 2, y: row * CELL + CELL / 2 };
 }
 
-export function BoardArrows({ arrows }: { arrows: Arrow[] }) {
+export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]; orientation?: 'white' | 'black' }) {
   const colors = Array.from(new Set(arrows.map((a) => a.color)));
   return (
     <svg
@@ -71,8 +73,8 @@ export function BoardArrows({ arrows }: { arrows: Arrow[] }) {
         ))}
       </defs>
       {arrows.map((a, i) => {
-        const A = center(a.from);
-        const B = center(a.to);
+        const A = center(a.from, orientation);
+        const B = center(a.to, orientation);
         const dx = B.x - A.x;
         const dy = B.y - A.y;
         const len = Math.hypot(dx, dy) || 1;

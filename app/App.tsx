@@ -19,6 +19,7 @@ import { FactsPanel } from './FactsPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
+import { PlayMode } from './PlayMode';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
@@ -76,7 +77,7 @@ export function App() {
   const plies = useMemo(() => currentGame?.plies ?? [], [currentGame]);
   const currentGameKey = useMemo(() => gameCacheKey(currentGame), [currentGame]);
   const [view, setView] = useState(0); // 0 = start; k = after move k
-  const [tab, setTab] = useState<'board' | 'dataset'>('board');
+  const [tab, setTab] = useState<'board' | 'dataset' | 'play'>('board');
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   const [showThreats, setShowThreats] = useState(true);
@@ -586,6 +587,12 @@ export function App() {
             setTab('board');
           }}
         />
+      ) : tab === 'play' ? (
+        <PlayMode
+          engine={engineState === 'ready' ? engineRef.current : null}
+          engineReady={engineState === 'ready'}
+          narrateMove={hasKey ? (a, f) => narrate(commentaryClient()!, a, f) : undefined}
+        />
       ) : (
         <>
       <div className="cvs-workspace">
@@ -764,8 +771,8 @@ function SourceBar({
   games: ParsedGame[];
   gameIndex: number;
   onSelectGame: (i: number) => void;
-  tab: 'board' | 'dataset';
-  setTab: (t: 'board' | 'dataset') => void;
+  tab: 'board' | 'dataset' | 'play';
+  setTab: (t: 'board' | 'dataset' | 'play') => void;
   datasetJob: DatasetJob;
   pgnText: string;
   setPgnText: (s: string) => void;
@@ -798,16 +805,19 @@ function SourceBar({
               ))}
             </select>
           )}
-          {multi && (
-            <div style={{ display: 'inline-flex', gap: 6 }}>
-              <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
-                Board
-              </TabButton>
+          <div style={{ display: 'inline-flex', gap: 6 }}>
+            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
+              Board
+            </TabButton>
+            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>
+              Play
+            </TabButton>
+            {multi && (
               <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
                 {datasetJob.running ? `Dataset · analyzing ${jobPct}%` : `Dataset · ${games.length}`}
               </TabButton>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       {open && (
