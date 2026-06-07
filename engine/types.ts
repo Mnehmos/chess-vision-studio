@@ -158,6 +158,7 @@ export interface MateProof {
 // [7] The central seam — everything downstream consumes THIS
 // ────────────────────────────────────────────────────────────────────────────
 export interface MoveAnalysis {
+  positionId?: string; // stable identity (positionAfter + SAN); consumers gate on it
   positionBefore: string; // FEN
   positionAfter: string; // FEN
   move: string; // SAN, e.g. '15. Qxg4'

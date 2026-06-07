@@ -29,10 +29,14 @@ export function FactsPanel({
   onFocus?: (ins: InsightCandidate) => void;
 }) {
   const report = selected ? squareReport(fen, selected) : undefined;
+  // Reject a stale artifact: only render an analysis that was computed for the board
+  // currently shown (positionAfter === fen). Prevents a prior move's insights from
+  // bleeding onto a different position (state-contamination guard).
+  const liveAnalysis = analysis && analysis.positionAfter === fen ? analysis : undefined;
   // "What tactic depends on this square?" — insights whose squares include it.
   const dependentTactics =
-    selected && analysis
-      ? analysis.rankedInsights.filter((i) => i.squares.includes(selected))
+    selected && liveAnalysis
+      ? liveAnalysis.rankedInsights.filter((i) => i.squares.includes(selected))
       : [];
 
   return (
@@ -42,26 +46,26 @@ export function FactsPanel({
       {move && (
         <div style={{ marginBottom: 8 }}>
           <strong>{move}</strong>
-          {analysis && (
+          {liveAnalysis && (
             <span
               style={{
                 marginLeft: 8,
                 padding: '1px 6px',
                 borderRadius: 4,
-                background: classColor(analysis.classification),
+                background: classColor(liveAnalysis.classification),
                 color: '#fff',
                 fontSize: 12,
               }}
             >
-              {analysis.classification}
-              {analysis.classification !== 'unclassified' && ` · −${analysis.cpLoss.toFixed(2)}`}
+              {liveAnalysis.classification}
+              {liveAnalysis.classification !== 'unclassified' && ` · −${liveAnalysis.cpLoss.toFixed(2)}`}
             </span>
           )}
         </div>
       )}
-      {analysis && (
+      {liveAnalysis && (
         <div style={{ marginBottom: 12, padding: 8, background: '#f3f1ea', borderRadius: 6 }}>
-          {analysis.topExplanation}
+          {liveAnalysis.topExplanation}
         </div>
       )}
 
@@ -162,7 +166,7 @@ export function FactsPanel({
         <div style={{ color: '#888', marginBottom: 12 }}>Click a square to inspect.</div>
       )}
 
-      {analysis && analysis.rankedInsights.length > 0 && (
+      {liveAnalysis && liveAnalysis.rankedInsights.length > 0 && (
         <div>
           <h4 style={{ margin: '0 0 4px' }}>
             Ranked insights{' '}
@@ -173,7 +177,7 @@ export function FactsPanel({
             )}
           </h4>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
-            {analysis.rankedInsights.slice(0, 6).map((ins) => {
+            {liveAnalysis.rankedInsights.slice(0, 6).map((ins) => {
               const isFocused = focused === ins;
               return (
                 <li key={ins.id} style={{ marginBottom: 2 }}>

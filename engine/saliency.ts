@@ -148,6 +148,7 @@ export function analyzeMove(
 ): MoveAnalysis {
   const { fenBefore, fenAfter, san, evalBefore, evalAfter } = input;
   const move = formatMove(fenBefore, san);
+  const positionId = `${fenAfter}|${san}`; // artifact identity — consumers gate on it
 
   // Terminal position: if the played move DELIVERS checkmate it is the best
   // possible move — never a blunder, and you did not "miss" any other mate.
@@ -160,6 +161,7 @@ export function analyzeMove(
   // it honestly as 'unclassified' so the UI can distinguish "unknown" from "equal".
   if (!deliveredMate && (evalBefore.status === 'unavailable' || evalAfter.status === 'unavailable')) {
     return {
+      positionId,
       positionBefore: fenBefore,
       positionAfter: fenAfter,
       move,
@@ -184,6 +186,7 @@ export function analyzeMove(
   }
 
   const base: Omit<MoveAnalysis, 'rankedInsights' | 'topExplanation'> = {
+    positionId,
     positionBefore: fenBefore,
     positionAfter: fenAfter,
     move,

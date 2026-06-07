@@ -91,25 +91,31 @@ export function PlayMode({
     [fen, selected],
   );
 
+  // Gate the played-move analysis to the CURRENT board: a consumer must never render
+  // an artifact computed for a different position. positionAfter is the artifact's
+  // identity; it equals fen after a move and after an inspect-click, so this is a
+  // defense-in-depth guard that fails safe if an async race ever desyncs them.
+  const liveAnalysis = lastAnalysis && lastAnalysis.positionAfter === fen ? lastAnalysis : null;
+
   // The board overlay: the SAME mode-scoped lenses as the analysis view, applied
   // live to the current position. 'legal' doubles as the move-target hint; the
   // 'What Changed' lens uses the live MoveAnalysis of the move you just played.
   const ledMap = useMemo(
-    () => computeLedMap(mode, { fen, selectedSquare: selected ?? undefined, analysis: lastAnalysis ?? undefined }),
-    [mode, fen, selected, lastAnalysis],
+    () => computeLedMap(mode, { fen, selectedSquare: selected ?? undefined, analysis: liveAnalysis ?? undefined }),
+    [mode, fen, selected, liveAnalysis],
   );
 
   // Validated coaching for the played move: hazard diff → control action.
   const featuresOfLast = useMemo(
     () =>
-      lastAnalysis
-        ? extractPlyFeatures(lastAnalysis.positionBefore, lastAnalysis.positionAfter, lastAnalysis.move, lastAnalysis)
+      liveAnalysis
+        ? extractPlyFeatures(liveAnalysis.positionBefore, liveAnalysis.positionAfter, liveAnalysis.move, liveAnalysis)
         : null,
-    [lastAnalysis],
+    [liveAnalysis],
   );
   const lens = useMemo(
-    () => (lastAnalysis && featuresOfLast ? computeControlLens(featuresOfLast, lastAnalysis) : null),
-    [lastAnalysis, featuresOfLast],
+    () => (liveAnalysis && featuresOfLast ? computeControlLens(featuresOfLast, liveAnalysis) : null),
+    [liveAnalysis, featuresOfLast],
   );
 
   const last = history[history.length - 1];
@@ -122,17 +128,17 @@ export function PlayMode({
     const out: Arrow[] = [];
     if (followMove && last) out.push({ from: last.from, to: last.to, color: ARROW.move, move: true });
     if (selected) out.push(...selectionArrows(fen, selected, cascade));
-    if (lastAnalysis && lastAnalysis.rankedInsights.length) {
-      const top = lastAnalysis.rankedInsights[0];
+    if (liveAnalysis && liveAnalysis.rankedInsights.length) {
+      const top = liveAnalysis.rankedInsights[0];
       const threats = showAllThreats
-        ? lastAnalysis.rankedInsights.filter((i) => i.source === 'refutation' || i.source === 'available')
+        ? liveAnalysis.rankedInsights.filter((i) => i.source === 'refutation' || i.source === 'available')
         : showThreats && top.source === 'refutation'
           ? [top]
           : [];
       for (const ins of threats) out.push(...lineArrows(fen, ins, ins !== top));
     }
     return out;
-  }, [fen, selected, lastAnalysis, showThreats, showAllThreats, cascade, focused, followMove, last]);
+  }, [fen, selected, liveAnalysis, showThreats, showAllThreats, cascade, focused, followMove, last]);
 
   function applyMove(from: Square, to: Square, promotion?: string) {
     const before = fen;
@@ -194,10 +200,14 @@ export function PlayMode({
     // Click the selection again to clear it.
     if (selected === sq) {
       setSelected(null);
+      setFocused(null);
       return;
     }
     // Otherwise inspect ANY square on demand — your piece, the opponent's, or
     // empty. The Facts card + selection arrows + legal overlay populate for it.
+    // Starting a new inspection drops any focused-insight spotlight (it was painting
+    // a prior selection's tactic, not this square).
+    setFocused(null);
     setSelected(sq);
   }
 
@@ -229,11 +239,11 @@ export function PlayMode({
   }
 
   async function explain() {
-    if (!narrateMove || !lastAnalysis || !featuresOfLast) return;
+    if (!narrateMove || !liveAnalysis || !featuresOfLast) return;
     setExplaining(true);
     setCoachText('');
     try {
-      setCoachText(await narrateMove(lastAnalysis, featuresOfLast));
+      setCoachText(await narrateMove(liveAnalysis, featuresOfLast));
     } catch (e) {
       setCoachText(`Coach unavailable — ${String((e as Error)?.message ?? e)}`);
     } finally {
@@ -382,8 +392,8 @@ export function PlayMode({
           <FactsPanel
             fen={fen}
             selected={selected ?? undefined}
-            analysis={lastAnalysis ?? undefined}
-            move={lastAnalysis?.move}
+            analysis={liveAnalysis ?? undefined}
+            move={liveAnalysis?.move}
             focused={focused}
             onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
           />
@@ -426,7 +436,7 @@ export function PlayMode({
               <button
                 style={{ ...btn, marginTop: 10 }}
                 onClick={explain}
-                disabled={!lastAnalysis || explaining}
+                disabled={!liveAnalysis || explaining}
               >
                 {explaining ? 'Explaining…' : 'Explain this move'}
               </button>
