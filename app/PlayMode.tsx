@@ -185,19 +185,20 @@ export function PlayMode({
   }
 
   function onSquareClick(sq: Square) {
-    if (promo || status.over) return;
-    if (selected) {
-      if (sq === selected) {
-        setSelected(null);
-        return;
-      }
-      if (targets.includes(sq)) {
-        tryMove(selected, sq);
-        return;
-      }
+    if (promo) return; // resolve the promotion choice first
+    // If a side-to-move piece is up and you click a legal destination → move.
+    if (!status.over && selected && targets.includes(sq)) {
+      tryMove(selected, sq);
+      return;
     }
-    // (re)select only a square that has a legal move for the side to move
-    setSelected(legalMovesFrom(fen, sq).length ? sq : null);
+    // Click the selection again to clear it.
+    if (selected === sq) {
+      setSelected(null);
+      return;
+    }
+    // Otherwise inspect ANY square on demand — your piece, the opponent's, or
+    // empty. The Facts card + selection arrows + legal overlay populate for it.
+    setSelected(sq);
   }
 
   function resetCoach() {

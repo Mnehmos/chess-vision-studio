@@ -66,6 +66,17 @@ describe('PlayMode — legal chess', () => {
     expect(plate('w')).not.toContain('to move');
   });
 
+  it('inspects ANY square on demand — including the opponent’s pieces', () => {
+    const { container } = render(<PlayMode />);
+    // White to move, yet we can still inspect a Black piece (e7 pawn).
+    fireEvent.click(container.querySelector('[data-square="e7"]')!);
+    expect(container.textContent).toContain('black pawn'); // Facts card populated
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0); // its arrows drawn
+    // Inspection never moves anything — e7 still holds the Black pawn, White still on move.
+    expect(container.querySelector('[data-square="e7"]')!.getAttribute('data-piece')).toBe('bP');
+    expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');
+  });
+
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
     const { container } = render(<PlayMode />);
     const click = (sq: string) => fireEvent.click(container.querySelector(`[data-square="${sq}"]`)!);
