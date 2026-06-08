@@ -146,6 +146,21 @@ export type Classification =
   | 'blunder'
   | 'unclassified'; // the eval was unavailable — NOT a real 0.00 / 'best'
 
+// Record of a selective DEEP re-search of a forcing/sacrificial move that the
+// base (shallow) depth scored as adverse. A long forcing sacrifice (Kasparov's
+// 24.Rxd4) can be misjudged at depth 14: re-search it deeper and report honestly
+// what the deeper oracle says. 'sound' = deeper search lifted it OUT of the
+// adverse band; 'stands' = deeper search confirmed it is still adverse. We NEVER
+// assert brilliance the engine hasn't validated — the deeper eval stays the oracle.
+export interface DeepCheck {
+  depth: number; // requested deep-search depth
+  baseDepth: number; // the original (shallow) depth that flagged it
+  trigger: 'sacrifice' | 'forcing'; // why it qualified for a deeper look
+  verdict: 'sound' | 'stands';
+  shallowCpLoss: number; // what the shallow search scored (for transparency in exports)
+  shallowClassification: Classification;
+}
+
 // Mate-proof obligation facts (oracle says mate exists; the evaluator explains it).
 export interface MateProof {
   mateInMoves: number;
@@ -174,6 +189,7 @@ export interface MoveAnalysis {
   rankedInsights: InsightCandidate[]; // VALIDATED only, sorted desc by saliency
   topExplanation: string; // = rankedInsights[0] rendered, or "solid move"
   mateProof?: MateProof; // present when a forced mate is in play (oracle-confirmed)
+  deepCheck?: DeepCheck; // present when a forcing/sacrificial move was re-searched deeper
   ledMap?: LedMap; // active-mode color map (later)
 }
 

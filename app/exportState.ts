@@ -63,6 +63,7 @@ function analysisBlock(a: MoveAnalysis) {
     evalBefore: a.evalBefore,
     evalAfter: a.evalAfter,
     mateProof: a.mateProof ?? null,
+    deepCheck: a.deepCheck ?? null,
     rankedInsights: a.rankedInsights.map(slimInsight),
   };
 }
