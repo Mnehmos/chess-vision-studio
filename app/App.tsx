@@ -22,6 +22,7 @@ import { DatasetPanel } from './DatasetPanel';
 import { PlayMode } from './PlayMode';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
+import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
@@ -536,6 +537,30 @@ export function App() {
     return cached?.analysis === analysis ? cached.entry.features : undefined;
   }, [view, analysis, plyIndex, currentGameKey, featureVersion]);
 
+  // Export the on-screen view + the full per-ply analysis (move, classification,
+  // ranked insights, features, board control, coach) for EVERY ply as JSON.
+  const exportAnalysis = () => {
+    downloadJson(
+      boardExportFilename(currentGame),
+      buildBoardExport({
+        game: currentGame,
+        plies,
+        view,
+        fen,
+        modeId,
+        selected,
+        focused,
+        moveLabel,
+        ledMap,
+        arrows,
+        analyses,
+        commentary,
+        annotations: { showThreats, showAllThreats, cascade, followMove },
+        exportedAt: new Date().toISOString(),
+      }),
+    );
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: PAGE_BG, color: '#1a1a1a', fontFamily: 'system-ui, sans-serif' }}>
       <style>{`
@@ -607,6 +632,24 @@ export function App() {
             arrows={arrows}
           />
           <Nav view={view} total={plies.length} setView={setView} />
+          <button
+            onClick={exportAnalysis}
+            title="Download the full analysis (every ply: move, classification, insights, features, board control, coach) + the current view as JSON"
+            style={{
+              width: '100%',
+              marginTop: 8,
+              border: '1px solid #d0d5dd',
+              background: '#fff',
+              color: '#344054',
+              borderRadius: 8,
+              padding: '6px 10px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            ⬇ Export JSON (all plies)
+          </button>
           <MiniBadges features={currentFeatures} />
           <ControlBar features={currentFeatures} />
           <MoveStrip plies={plies} view={view} setView={setView} />
