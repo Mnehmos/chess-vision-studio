@@ -18,7 +18,7 @@ const analysisE4: MoveAnalysis = {
   positionId: `${AFTER_E4}|e4`,
   positionBefore: START,
   positionAfter: AFTER_E4,
-  move: 'e4',
+  move: '1. e4', // FORMATTED label (like the real app) — must NOT be fed to extractPlyFeatures
   classification: 'mistake',
   evalBefore: { depth: 14, pv: [] },
   evalAfter: { depth: 14, pv: [] },
@@ -74,16 +74,29 @@ describe('buildBoardExport', () => {
 
   it('includes EVERY ply with its analysis / features / coach', () => {
     expect(out.plies).toHaveLength(2);
-    // Analyzed ply
+    // Analyzed ply: features REALLY computed (via the bare SAN, not the "1. e4" label).
     expect(out.plies[0].analysis?.classification).toBe('mistake');
     expect(out.plies[0].coachCommentary).toBe('a coach note');
-    expect(out.plies[0].features).not.toBeNull(); // features computed from the FENs
-    expect(out.plies[0].features?.boardControl).toBeTruthy();
-    // Un-analyzed ply is still present, with nulls
+    expect(out.plies[0].features.computed).toBe(true);
+    const bc = (out.plies[0].features as { boardControl: { neutralPct: number } }).boardControl;
+    expect(bc).toBeTruthy();
+    expect(bc.neutralPct).toBeLessThan(100); // REAL control after 1.e4, not the 100%-neutral placeholder
+    // Un-analyzed ply: explicit "unknown", never zeros-as-truth.
     expect(out.plies[1].analysis).toBeNull();
-    expect(out.plies[1].features).toBeNull();
+    expect(out.plies[1].features.computed).toBe(false);
+    expect((out.plies[1].features as { reason?: string }).reason).toBe('not_analyzed');
     expect(out.plies[1].coachCommentary).toBeNull();
     expect(out.plies[1].san).toBe('e5');
+  });
+
+  it('flags a quarantined extraction as computed:false, never zeros-as-truth', () => {
+    const bad = buildBoardExport({
+      ...baseInput,
+      plies: [ply({})],
+      analyses: new Map([[0, { ...analysisE4, positionBefore: 'not-a-valid-fen' }]]),
+    });
+    expect(bad.plies[0].features.computed).toBe(false);
+    expect((bad.plies[0].features as { reason?: string }).reason).toBe('feature_extraction_failed');
   });
 
   it('serializes to JSON without throwing', () => {

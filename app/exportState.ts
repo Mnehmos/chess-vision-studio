@@ -67,8 +67,15 @@ function analysisBlock(a: MoveAnalysis) {
   };
 }
 
-function featuresBlock(features: PlyFeatures) {
+// "Unknown is safer than zero": never serialize placeholder zeros as if measured.
+//   • un-analyzed ply         → { computed: false, reason: 'not_analyzed' }
+//   • extraction quarantined  → { computed: false, reason: 'feature_extraction_failed' }
+//   • real features           → { computed: true, ...the measured values }
+function featuresBlock(features: PlyFeatures | null) {
+  if (!features) return { computed: false as const, reason: 'not_analyzed' };
+  if (features.quarantined) return { computed: false as const, reason: 'feature_extraction_failed' };
   return {
+    computed: true as const,
     phase: features.phase,
     badges: features.badges,
     boardControl: controlShare(features.threatAfter),
@@ -137,15 +144,10 @@ export function buildBoardExport(input: BoardExportInput) {
     // The full analysis for EVERY ply (the same data the board surfaces as you step).
     plies: plies.map((p, i) => {
       const a = analyses.get(i);
-      let features = null;
-      if (a) {
-        try {
-          // Fail-soft: a single malformed ply must not abort the whole export.
-          features = featuresBlock(extractPlyFeatures(a.positionBefore, a.positionAfter, a.move, a));
-        } catch {
-          features = null;
-        }
-      }
+      // Use the BARE SAN (p.san), never the formatted label (a.move = "16. Rxe4"),
+      // which chess.js can't parse → would quarantine the whole ply to zeros.
+      // extractPlyFeatures is itself fail-soft (it flags .quarantined, never throws).
+      const features = a ? featuresBlock(extractPlyFeatures(a.positionBefore, a.positionAfter, p.san, a)) : featuresBlock(null);
       return {
         ply: i + 1,
         moveNumber: p.moveNumber,

@@ -106,6 +106,7 @@ export interface PlyFeatures {
   motifs: MotifFeatureSummary;
   patterns: PatternEvent[];
   badges: string[];
+  quarantined?: boolean; // true = extraction failed and these are ZEROED placeholders, not measured
 }
 
 // Board-control analytics — what share of the 64 squares each side's pieces attack
@@ -247,6 +248,7 @@ export function emptyPlyFeatures(fenBefore: string, san: string, analysis: MoveA
     see: emptySee(), pawnBefore: emptyPawn(), pawnAfter: emptyPawn(),
     motifs: { availableBefore: {}, createdAfter: {}, missedByMover: {}, refutation: {} },
     patterns: [], badges: [],
+    quarantined: true, // these zeros are placeholders, NOT measured values
   };
 }
 
