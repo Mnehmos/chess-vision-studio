@@ -66,7 +66,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'node',
-      include: ['engine/**/*.test.ts', 'app/**/*.test.ts', 'app/**/*.test.tsx', 'llm/**/*.test.ts'],
+      include: ['engine/**/*.test.ts', 'app/**/*.test.ts', 'app/**/*.test.tsx', 'llm/**/*.test.ts', 'arena/**/*.test.ts'],
       testTimeout: 30000,
     },
   };

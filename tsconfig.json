@@ -18,5 +18,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["engine", "app", "src", "llm"]
+  "include": ["engine", "app", "src", "llm", "arena"]
 }

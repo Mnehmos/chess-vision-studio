@@ -12,10 +12,12 @@
     "benchmark": "vitest run engine/__tests__/lichess-benchmark.test.ts",
     "llm:eval": "vitest run llm/__tests__/llm-eval.test.ts",
     "llm:commentary": "vite-node --script llm/run.ts",
+    "arena:ooda": "vite-node --script arena/ooda.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },
   "dependencies": {
+    "@cvs/engine": "file:../chess-vision-studio-engine",
     "chess.js": "^1.0.0-beta.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

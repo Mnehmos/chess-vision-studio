@@ -9,3 +9,5 @@ coverage
 *.log
 fixtures/llm-eval-output.json
 engine/__throwaway_*
+tsconfig.tsbuildinfo
+arena/out/
