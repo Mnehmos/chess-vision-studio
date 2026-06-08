@@ -17,6 +17,7 @@ import {
 } from './motif';
 import { renderInsight } from './explain';
 import { buildMateProof } from './mateproof';
+import { phaseOf } from './features';
 import type {
   Eval,
   ExplanationConfidence,
@@ -166,6 +167,20 @@ function formatMove(fenBefore: string, san: string): string {
   return pos.turn === 'w' ? `${moveNumber}. ${san}` : `${moveNumber}... ${san}`;
 }
 
+/** Phase-aware neutral copy for a quiet, sub-gate move (replaces the old, too-absolute
+ *  "nothing important changed"). It names the KIND of move and that no tactic fired —
+ *  honest and still a steer for a 300–1400 player. */
+function neutralFallback(fenBefore: string): string {
+  switch (phaseOf(fenBefore)) {
+    case 'opening':
+      return 'Opening move: improves development or central control. No immediate tactic detected.';
+    case 'endgame':
+      return 'Endgame move: no immediate tactic detected. Check pawn races, king activity, and rook activity.';
+    default:
+      return 'No forcing tactic found. The move changes piece activity and defensive relationships.';
+  }
+}
+
 /**
  * The central seam producer. PURE: evals are injected (the engine is called by
  * a higher-level orchestrator), so the discriminating saliency tests are
@@ -276,10 +291,13 @@ export function analyzeMove(
       };
     }
     if (events.length === 0 && !forced) {
+      // A quiet, low-stakes move. Don't claim "nothing changed" (too absolute, and a
+      // 300–1400 player still wants a steer): give a phase-aware neutral frame that
+      // says what KIND of move it is and that no tactic was detected.
       return {
         ...base,
         rankedInsights: [],
-        topExplanation: 'Solid move — nothing important changed.',
+        topExplanation: neutralFallback(fenBefore),
         confidence: 'low_salience_fallback',
       };
     }

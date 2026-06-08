@@ -109,7 +109,10 @@ describe('M4.2 — silence: a solid equal move says nothing', () => {
     });
     expect(result.cpLoss).toBeLessThan(0.3);
     expect(result.rankedInsights).toEqual([]);
-    expect(result.topExplanation).toBe('Solid move — nothing important changed.');
+    // fullmove 1 in the FEN → phaseOf = opening; quiet move → phase-aware neutral copy
+    expect(result.topExplanation).toBe('Opening move: improves development or central control. No immediate tactic detected.');
+    expect(result.topExplanation).not.toMatch(/nothing important changed/i);
+    expect(result.confidence).toBe('low_salience_fallback');
   });
 });
 
@@ -145,15 +148,53 @@ describe('captures and the silence gate (SEE-guarded)', () => {
 
   it('an even-trade capture (SEE 0) stays quiet — a routine recapture is not flagged', () => {
     const r = analyzeMove({
-      fenBefore: '4k3/8/3p4/4p3/3P4/8/8/4K3 w - - 0 1', // dxe5, recaptured by d6xe5 → even
-      fenAfter: '4k3/8/3p4/4P3/8/8/8/4K3 b - - 0 1',
+      fenBefore: '4k3/8/3p4/4p3/3P4/8/8/4K3 w - - 0 40', // dxe5, recaptured by d6xe5 → even
+      fenAfter: '4k3/8/3p4/4P3/8/8/8/4K3 b - - 0 40',
       san: 'dxe5',
       evalBefore: ev(0, ['dxe5']),
       evalAfter: ev(0, ['dxe5']),
     });
     expect(r.cpLoss).toBeLessThan(0.3);
-    expect(r.topExplanation).toBe('Solid move — nothing important changed.');
+    // even trade → no capture event → phase-aware neutral copy (endgame here); never "nothing changed"
+    expect(r.topExplanation).toBe('Endgame move: no immediate tactic detected. Check pawn races, king activity, and rook activity.');
+    expect(r.topExplanation).not.toMatch(/nothing important changed/i);
     expect(r.confidence).toBe('low_salience_fallback');
+  });
+});
+
+describe('quiet-move fallback is phase-aware (replaces the absolute "nothing important changed")', () => {
+  const quiet = (fenBefore: string, fenAfter: string, san: string) =>
+    analyzeMove({ fenBefore, fenAfter, san, evalBefore: ev(20, [san]), evalAfter: ev(-20, ['a6']) });
+
+  it('opening → development / central-control framing', () => {
+    const r = quiet(
+      'rnbqkb1r/pppppppp/5n2/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 4 3',
+      'rnbqkb1r/pppppppp/5n2/8/8/3P1N2/PPP1PPPP/RNBQKB1R b KQkq - 0 3',
+      'd3',
+    );
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.confidence).toBe('low_salience_fallback');
+    expect(r.topExplanation).toBe('Opening move: improves development or central control. No immediate tactic detected.');
+  });
+
+  it('middlegame → activity / defensive-relationships framing', () => {
+    const r = quiet(
+      'r1bq1rk1/pp2bppp/2n1pn2/3p4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 0 11',
+      'r1bq1rk1/pp2bppp/2n1pn2/3p4/3P4/2NBPN1P/PP3PP1/R1BQ1RK1 b - - 0 11',
+      'h3',
+    );
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).toBe('No forcing tactic found. The move changes piece activity and defensive relationships.');
+  });
+
+  it('endgame → pawn-race / king-activity framing', () => {
+    const r = quiet(
+      'r5k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 25',
+      'r5k1/5ppp/8/8/8/8/5PPP/R4K2 b - - 1 25',
+      'Kf1',
+    );
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).toBe('Endgame move: no immediate tactic detected. Check pawn races, king activity, and rook activity.');
   });
 });
 

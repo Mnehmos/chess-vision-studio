@@ -660,7 +660,7 @@ function playedCaptureValue(fen: string, san: string): number | null {
   return seeCapture(fen, moved.from, moved.to);
 }
 
-function phaseOf(fen: string): Phase {
+export function phaseOf(fen: string): Phase {
   const board = parseFen(fen);
   const moveNo = Number(fen.trim().split(/\s+/)[5] ?? 1);
   const material = allPieces(board)
