@@ -56,6 +56,8 @@ function renderChange(c: ChangedRelation): string {
           )} (SEE ${signed(c.materialSwing)}).`;
     case 'now_undefended':
       return `${capitalize(sq)} is no longer defended.`;
+    case 'now_attacked':
+      return `${capitalize(sq)} is now attacked.`;
     case 'now_defended':
       return `${capitalize(sq)} is now defended.`;
     case 'defender_left':

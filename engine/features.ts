@@ -386,7 +386,10 @@ function defenseSummary(fen: string): DefenseFeatureSummary {
     const see = seeOnSquare(fen, p.square).swing;
     if (defenders === 0) loosePieces[p.color] += 1;
     if (defenders === 0 && value >= 3) undefendedHighValue[p.color] += 1;
-    if (see > 0) {
+    // The king is NOT hangable material — a capturable king is check/mate, surfaced by
+    // king-pressure + the mate layer, not the hanging-material tally. Excluding it (and
+    // any king-sentinel-polluted SEE ≥ 100) keeps material values real (no "997").
+    if (see > 0 && see < 100 && p.type !== 'k') {
       hangingPieces[p.color] += 1;
       hangingValue[p.color] += see;
     }
@@ -638,7 +641,10 @@ function bestSeeWinForSide(fen: string, color: Color): number {
   let best = 0;
   for (const m of chess.moves({ verbose: true }) as Array<{ from: Square; to: Square; flags: string }>) {
     if (!(m.flags.includes('c') || m.flags.includes('e'))) continue;
-    best = Math.max(best, seeCapture(turnFen(fen, color), m.from, m.to));
+    const win = seeCapture(turnFen(fen, color), m.from, m.to);
+    // Ignore king-sentinel wins (~1000): you can't win the king as material — that's
+    // checkmate, surfaced by the mate layer. Real material wins are well under 100.
+    if (win > best && win < 100) best = win;
   }
   return best;
 }

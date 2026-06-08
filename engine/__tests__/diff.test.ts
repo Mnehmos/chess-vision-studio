@@ -3,7 +3,8 @@
 // (the "Bxb5 wins a pawn on an empty b5" hallucination). And a line the refuter drives
 // with CHECKS must never be called "quiet" (the 56.Rxe6? perpetual case).
 import { describe, it, expect } from 'vitest';
-import { diffRefutation, pvRefutation } from '../diff';
+import { diffRefutation, pvRefutation, diffPlayedMove } from '../diff';
+import { renderInsight } from '../explain';
 import type { Eval } from '../types';
 
 const ev = (pv: string[], over: Partial<Eval> = {}): Eval => ({ depth: 16, pv, ...over });
@@ -48,5 +49,34 @@ describe('pvRefutation — a line driven by checks is never "quiet"', () => {
     const r = pvRefutation(checkFen, ev(['Kf8', 'Kg2', 'Ke7'], { cp: 30 }), 1.0);
     expect(r!.type).toBe('pv_refutation');
     expect(r!.evidence[0].toLowerCase()).toContain('quiet');
+  });
+
+  it('a check line that SIMPLIFIES (has captures) is a forcing resource, not a perpetual', () => {
+    // The 10.dxe4 case: …Bxf2+ Kxf2 Nxe4+ … Qxd1 Rxd1 is a queen trade, not a repetition.
+    const fen = 'r2qk2r/ppp3pp/2n1Bn2/2b1p1B1/4P3/8/PPP2PPP/RN1Q1RK1 b kq - 0 10';
+    const r = pvRefutation(fen, ev(['Bxf2+', 'Kxf2', 'Nxe4+', 'Kg1', 'Qxd1', 'Rxd1'], { cp: 26 }), 1.52);
+    expect(r!.type).toBe('forcing_check_resource');
+    expect(r!.evidence[0].toLowerCase()).not.toContain('perpetual');
+    expect(r!.evidence[0].toLowerCase()).not.toContain('draw by repetition');
+  });
+
+  it('does not say "punishes" when the replying side is still worse (best resistance)', () => {
+    // The 15...Ne4 case: White (to move) is clearly worse; Na3 only limits the damage.
+    const fen = '3rk2r/ppp3pp/4n3/4p3/4n3/2P5/PP3PPP/RN2R1K1 w k - 2 16';
+    const r = pvRefutation(fen, ev(['Na3', 'Nd6', 'Rxe5'], { cp: -220 }), 1.04);
+    expect(r).not.toBeNull();
+    expect(r!.evidence[0].toLowerCase()).not.toContain('punishes');
+    expect(r!.evidence[0].toLowerCase()).toContain('limits the damage');
+  });
+});
+
+describe('diffPlayedMove — the right word for the relation change', () => {
+  it('a newly-attacked but still-defended square is "now attacked", not "undefended"', () => {
+    // After 7...Nf6 the e4 pawn keeps its defender (1→1) but is now attacked (0→1).
+    const before = 'r2qk1nr/ppp3pp/2npB3/2b1p3/4P3/3P4/PPP2PPP/RNBQK2R b KQkq - 0 7';
+    const after = 'r2qk2r/ppp3pp/2npBn2/2b1p3/4P3/3P4/PPP2PPP/RNBQK2R w KQkq - 1 8';
+    const e4 = diffPlayedMove(before, after).find((c) => c.squares[0] === 'e4');
+    expect(e4?.type).toBe('now_attacked');
+    expect(renderInsight(e4!)).toBe('E4 is now attacked.');
   });
 });

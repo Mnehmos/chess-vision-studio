@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { controlShare, type ThreatFeatureSummary } from '../features';
+import { controlShare, extractPlyFeatures, type ThreatFeatureSummary } from '../features';
+import type { MoveAnalysis } from '../types';
+
+const mkA = (positionBefore: string, positionAfter: string, move: string): MoveAnalysis => ({
+  positionBefore,
+  positionAfter,
+  move,
+  classification: 'good',
+  evalBefore: { depth: 14, pv: [] },
+  evalAfter: { depth: 14, pv: [] },
+  cpLoss: 0,
+  rankedInsights: [],
+  topExplanation: '',
+});
 
 const threat = (over: Partial<ThreatFeatureSummary>): ThreatFeatureSummary => ({
   whiteControl: 0,
@@ -35,5 +48,20 @@ describe('controlShare — board-territory analytics from the threat map', () =>
     expect(c.centerWhite).toBe(3);
     expect(c.centerBlack).toBe(1);
     expect(c.exclusiveWhitePct).toBeGreaterThanOrEqual(0); // contested > control is clamped
+  });
+});
+
+describe('material features exclude the king sentinel (no "997"/"1000" material)', () => {
+  it('a king in check does not inflate hangingValue or bestSafeCapture', () => {
+    // After 12.Qxd8+ the black king is in check; flipping the side to move would let SEE
+    // "capture" the king (~1000) — that must NOT surface as material (the export's 997/991).
+    const inCheck = 'r2Qk2r/ppp3pp/4nn2/2b1p1B1/4P3/2P5/PP3PPP/RN3RK1 b kq - 0 12';
+    const after = '3rk2r/ppp3pp/4nn2/2b1p1B1/4P3/2P5/PP3PPP/RN3RK1 w k - 0 13';
+    const f = extractPlyFeatures(inCheck, after, 'Rxd8', mkA(inCheck, after, '12... Rxd8'));
+    expect(f.quarantined).toBeUndefined(); // really computed
+    expect(f.see.bestWin.w).toBeLessThan(100);
+    expect(f.see.bestWin.b).toBeLessThan(100);
+    expect(f.defenseBefore.hangingValue.w).toBeLessThan(100);
+    expect(f.defenseBefore.hangingValue.b).toBeLessThan(100);
   });
 });

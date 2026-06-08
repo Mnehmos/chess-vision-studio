@@ -155,6 +155,35 @@ describe('captures and the silence gate (SEE-guarded)', () => {
   });
 });
 
+describe('forced moves and mate-in-play are never "nothing changed"', () => {
+  it('the only legal move into a lost position names the forced mate (the 17.Re1 case)', () => {
+    const r = analyzeMove({
+      fenBefore: '4k2r/ppp3pp/4n3/4p3/4R3/2P5/PP3PPP/RN1r2K1 w k - 1 17', // White in check, only Re1
+      fenAfter: '4k2r/ppp3pp/4n3/4p3/8/2P5/PP3PPP/RN1rR1K1 b k - 2 17',
+      san: 'Re1',
+      evalBefore: { mate: -1, depth: 14, pv: ['Re1', 'Rxe1#'] },
+      evalAfter: { mate: 1, depth: 14, pv: ['Rxe1#'] }, // Black still mates in 1
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).not.toMatch(/nothing important changed/i);
+    expect(r.topExplanation.toLowerCase()).toContain('forced');
+    expect(r.topExplanation.toLowerCase()).toContain('mate in 1');
+  });
+
+  it('a quiet move while the mover has a forced mate says so', () => {
+    const r = analyzeMove({
+      fenBefore: FEN_BEFORE,
+      fenAfter: FEN_AFTER_Nd4,
+      san: 'Nd4',
+      evalBefore: { mate: 2, depth: 14, pv: ['Nd4'] }, // White mates in 2 (mate scores cancel → cpLoss≈0)
+      evalAfter: { mate: -1, depth: 14, pv: ['Re8'] },
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).not.toMatch(/nothing important changed/i);
+    expect(r.topExplanation.toLowerCase()).toContain('forced mate');
+  });
+});
+
 describe('an unavailable eval is "unclassified", never a fake best/0.00', () => {
   it('does not collapse a failed search to cpLoss 0 → best → "Solid move"', () => {
     const r = analyzeMove({

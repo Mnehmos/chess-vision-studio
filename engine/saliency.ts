@@ -99,6 +99,15 @@ function inCheckSafe(fen: string): boolean {
   }
 }
 
+/** True when the side to move has exactly one legal move (a forced reply). */
+function onlyLegalMove(fen: string): boolean {
+  try {
+    return new Chess(fen).moves().length === 1;
+  } catch {
+    return false;
+  }
+}
+
 /** Hard board events that must never be summarized as "nothing changed", even at a
  *  zero eval swing: a promotion, a check, or a mate. Returns the event names found. */
 function hardEvents(fenBefore: string, fenAfter: string, san: string): string[] {
@@ -221,21 +230,51 @@ export function analyzeMove(
   }
 
   // §5 Step B — the gate. Small swing → nothing salient → say nothing... UNLESS the
-  // move is a hard board event (promotion / check / mate): those are never "nothing",
-  // even when the evaluation is flat (e.g. promoting-with-check while already winning).
+  // move is a hard board event (promotion / check / mate / capture), the position has a
+  // forced mate on it, or the move is forced (the only legal reply). A flat eval does
+  // NOT mean "nothing changed" when mate is unavoidable or the move was forced.
   if (cpLoss < GATE) {
+    const mover = (() => {
+      try {
+        return parseFen(fenBefore).turn;
+      } catch {
+        return 'w' as const;
+      }
+    })();
+    const moverName = mover === 'w' ? 'White' : 'Black';
+    const opponentName = mover === 'w' ? 'Black' : 'White';
+    const forced = onlyLegalMove(fenBefore);
     const events = hardEvents(fenBefore, fenAfter, san);
-    if (events.length === 0) {
+
+    // The opponent has a forced mate after this move → the move is losing by force,
+    // however "best" it scores. Never call this uneventful (the 17.Re1 case).
+    if (evalAfter.mate !== undefined && evalAfter.mate > 0) {
+      return {
+        ...base,
+        rankedInsights: [],
+        topExplanation: `${move}${forced ? ' is forced' : ''} — but ${opponentName} still has a forced mate (mate in ${evalAfter.mate}).`,
+      };
+    }
+    // The mover is the one delivering a forced mate — keep that front and centre.
+    if (evalBefore.mate !== undefined && evalBefore.mate > 0) {
+      return {
+        ...base,
+        rankedInsights: [],
+        topExplanation: `${move}${events.length ? ` — ${events.join(' + ')}` : ''}; ${moverName} has a forced mate (mate in ${evalBefore.mate}).`,
+      };
+    }
+    if (events.length === 0 && !forced) {
       return {
         ...base,
         rankedInsights: [],
         topExplanation: 'Solid move — nothing important changed.',
       };
     }
+    const parts = [...events, ...(forced ? ['only legal move'] : [])];
     return {
       ...base,
       rankedInsights: [],
-      topExplanation: `${move} — ${events.join(' + ')}; the evaluation is unchanged.`,
+      topExplanation: `${move} — ${parts.join(' + ')}; the evaluation is unchanged.`,
     };
   }
 

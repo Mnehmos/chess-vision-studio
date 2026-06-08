@@ -83,6 +83,7 @@ export interface InsightBase {
 export type ChangeType =
   | 'piece_captured'
   | 'now_undefended'
+  | 'now_attacked'
   | 'now_defended'
   | 'now_see_losing'
   | 'defender_left'

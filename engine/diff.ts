@@ -93,16 +93,21 @@ export function diffPlayedMove(fenBefore: string, fenAfter: string): ChangedRela
     // (it is now the opponent's turn to capture).
     const swing = owner === mover ? seeOnSquare(fenAfter, sq).swing : 0;
 
+    // Use the RIGHT word: "undefended" means it lost its defenders; a square whose
+    // defenders are unchanged but that came under new attack is "attacked", not
+    // "undefended"; a square that shed one of several defenders is "defender_left".
     let type: ChangeType = 'now_defended';
     if (swing > 0) {
       // SEE-losing dominates the framing — this is a material loss (Invariant 3).
       type = 'now_see_losing';
-    } else if (a.defendedBy.length === 0 && b.defendedBy.length > 0 && a.attackedBy.length > 0) {
-      type = 'now_undefended';
+    } else if (b.defendedBy.length > 0 && a.defendedBy.length === 0 && a.attackedBy.length > 0) {
+      type = 'now_undefended'; // lost its LAST defender while under attack
+    } else if (a.attackedBy.length > b.attackedBy.length) {
+      type = 'now_attacked'; // came under new attack — defenders unchanged
+    } else if (a.defendedBy.length < b.defendedBy.length) {
+      type = 'defender_left'; // shed a defender but still has others
     } else if (a.defendedBy.length > b.defendedBy.length) {
       type = 'now_defended';
-    } else if (a.attackedBy.length > b.attackedBy.length) {
-      type = 'now_undefended';
     }
 
     out.push({
@@ -222,18 +227,27 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
   const who = sideName(winner) === 'white' ? 'White' : 'Black';
   const lineText = formatPvLine(fenAfter, pv, 6);
   const shape = pvForcingShape(fenAfter, pv);
+  const evalStr = `${evalPawns >= 0 ? '+' : ''}${evalPawns.toFixed(1)}`;
+  const stand = standingPhrase(evalPawns); // "is winning" … "is clearly worse"
+  // Is this actually a REFUTATION (the replying side ends up at least equal), or just
+  // the best defence in a still-worse position? If the replier stays worse, never say
+  // it "punishes" the move (the 15...Ne4 contradiction) — it limits the damage.
+  const refuted = evalPawns >= 0;
 
-  // A line the refuter drives with CHECKS is never "quiet". If it also repeats / the
-  // eval is level, it is a perpetual-check / forced-draw resource (the 56.Rxe6 case);
-  // otherwise it is a forcing-check sequence that wins something.
+  // A line the refuter drives with CHECKS is never "quiet". It is a true perpetual /
+  // forced draw ONLY when the position actually repeats (proven) or the check sequence
+  // is pure (no captures) and the eval is level — a sequence with captures is material
+  // SIMPLIFICATION, not a repetition (the 10.dxe4 over-claim). Otherwise it is just a
+  // forcing-check resource.
   if (shape.firstIsCheck || shape.refuterAllChecks) {
-    const drawish = shape.repeats || Math.abs(evalPawns) < 0.75;
-    const type: ChangeType = drawish ? 'perpetual_check' : 'forcing_check_resource';
-    const headline = drawish
-      ? `${who} has a perpetual check — ${pv[0]} forces a draw by repetition: ${lineText}. ` +
-        `The winning advantage disappears.`
-      : `${who} has a forcing check sequence (not quiet — these are checks) — ${pv[0]}: ${lineText} ` +
-        `(${who} ${standingPhrase(evalPawns)}, ${evalPawns >= 0 ? '+' : ''}${evalPawns.toFixed(1)}).`;
+    const perpetual =
+      shape.repeats || (shape.refuterAllChecks && !shape.lineHasCapture && Math.abs(evalPawns) < 0.5);
+    const type: ChangeType = perpetual ? 'perpetual_check' : 'forcing_check_resource';
+    const headline = perpetual
+      ? `${who} has a perpetual check — ${pv[0]} repeats the position for a draw: ${lineText}.`
+      : refuted
+        ? `${who} has a forcing-check resource — ${pv[0]} (not a quiet line; these are checks); ${who} ${stand} (${evalStr}). Line: ${lineText}.`
+        : `${who}'s best resistance is the forcing check ${pv[0]} — it limits the damage; ${who} ${stand} (${evalStr}). Line: ${lineText}.`;
     return {
       ...blankRelation(),
       id: nextId('pvref'),
@@ -243,20 +257,20 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
       arrows: [[first.from, first.to]],
       source: 'refutation',
       materialSwing: 0,
-      kingSafetyDelta: drawish ? 0 : 0.5,
+      kingSafetyDelta: perpetual ? 0 : 0.5,
       inPV: true,
       templateId: type,
       evidence: [
         headline,
-        `tags: ${drawish ? 'perpetual_check forced_draw' : 'forcing_check_resource'} evalLoss=${evalLoss.toFixed(2)}`,
+        `tags: ${perpetual ? 'perpetual_check forced_draw' : 'forcing_check_resource'} evalLoss=${evalLoss.toFixed(2)}`,
       ],
     };
   }
 
-  const headline =
-    `${who} has a quiet refutation — ${pv[0]} starts the line that punishes the move ` +
-    `(${who} ${standingPhrase(evalPawns)}, ${evalPawns >= 0 ? '+' : ''}${evalPawns.toFixed(1)}). ` +
-    `Not a direct capture or mate yet: ${lineText}.`;
+  const headline = refuted
+    ? `${who} has a quiet refutation — ${pv[0]} punishes the move; ${who} ${stand} (${evalStr}). ` +
+      `Not a direct capture or mate yet: ${lineText}.`
+    : `${who}'s best reply ${pv[0]} only limits the damage — ${who} ${stand} (${evalStr}). Line: ${lineText}.`;
 
   return {
     ...blankRelation(),
@@ -287,11 +301,12 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
 function pvForcingShape(
   fenAfter: string,
   pv: string[],
-): { firstIsCheck: boolean; refuterAllChecks: boolean; repeats: boolean } {
+): { firstIsCheck: boolean; refuterAllChecks: boolean; repeats: boolean; lineHasCapture: boolean } {
   let firstIsCheck = false;
   let refuterAllChecks = true;
   let refuterPlies = 0;
   let repeats = false;
+  let lineHasCapture = false;
   try {
     const chess = new Chess(fenAfter);
     const n = Math.min(pv.length, 8);
@@ -299,6 +314,7 @@ function pvForcingShape(
       const m = chess.move(pv[i]);
       if (!m) break;
       const isCheck = m.san.includes('+') || m.san.includes('#');
+      if (m.san.includes('x')) lineHasCapture = true; // captures ⇒ simplification, not a repetition
       if (i === 0) firstIsCheck = isCheck;
       if (i % 2 === 0) {
         refuterPlies += 1;
@@ -310,9 +326,9 @@ function pvForcingShape(
       }
     }
   } catch {
-    return { firstIsCheck: false, refuterAllChecks: false, repeats: false };
+    return { firstIsCheck: false, refuterAllChecks: false, repeats: false, lineHasCapture: false };
   }
-  return { firstIsCheck, refuterAllChecks: refuterPlies > 0 && refuterAllChecks, repeats };
+  return { firstIsCheck, refuterAllChecks: refuterPlies > 0 && refuterAllChecks, repeats, lineHasCapture };
 }
 
 /** Phrase the magnitude of an advantage (winner's POV, in pawns). */
