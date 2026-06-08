@@ -6,7 +6,7 @@
 // raw quantities into a magic score. Saliency ranks among VALIDATED candidates;
 // it is never a substitute for validation (Invariant 7).
 import { Chess } from 'chess.js';
-import { parseFen } from './board';
+import { allPieces, parseFen, type Color } from './board';
 import { computeCpLoss, classify } from './classify';
 import { diffPlayedMove, diffRefutation, pvRefutation } from './diff';
 import { seeCapture } from './see';
@@ -17,14 +17,23 @@ import {
 } from './motif';
 import { renderInsight } from './explain';
 import { buildMateProof } from './mateproof';
-import { phaseOf } from './features';
+import {
+  defenseSummary,
+  legalSummaryForSide,
+  pawnSummary,
+  phaseOf,
+  threatSummary,
+} from './features';
 import type {
+  ChangedRelation,
+  ChangeType,
   Eval,
   ExplanationConfidence,
   InsightCandidate,
   MateProof,
   Motif,
   MoveAnalysis,
+  Square,
 } from './types';
 
 export interface AnalyzeInput {
@@ -50,9 +59,16 @@ const TYPE_PRIORITY: Record<string, number> = {
   now_see_losing: 70,
   now_undefended: 50,
   piece_captured: 40,
-  defender_left: 35,
+  defender_left: 23,
+  king_safety_weakened: 34,
+  defense_improved: 29,
   now_attacked: 30, // a NEW threat outranks a consolidation — never let "now defended" win a tie
+  mobility_improved: 28,
+  center_control_gained: 26,
+  development_improved: 24,
+  king_safety_improved: 22,
   now_defended: 20,
+  pawn_structure_weakened: 19,
   line_opened: 18,
   line_closed: 16,
   escape_squares_changed: 15,
@@ -86,6 +102,216 @@ function actionableMotifs(fen: string): Motif[] {
   return detectAvailableMotifs(fen).motifs.filter(
     (m) => m.type === 'fork' || m.type === 'mating_net' || m.type === 'back_rank',
   );
+}
+
+const other = (c: Color): Color => (c === 'w' ? 'b' : 'w');
+const sideName = (c: Color): 'white' | 'black' => (c === 'w' ? 'white' : 'black');
+
+let ladderCounter = 0;
+function ladderId(type: ChangeType): string {
+  ladderCounter += 1;
+  return `ladder-${type}-${ladderCounter}`;
+}
+
+function ladderRelation(over: {
+  type: ChangeType;
+  side: 'white' | 'black';
+  squares: Square[];
+  arrows?: [Square, Square][];
+  kingSafetyDelta?: number;
+  evidence: string[];
+}): ChangedRelation {
+  return {
+    id: ladderId(over.type),
+    kind: 'changed_relation',
+    type: over.type,
+    side: over.side,
+    squares: over.squares,
+    arrows: over.arrows ?? [],
+    source: 'played_move',
+    materialSwing: 0,
+    kingSafetyDelta: over.kingSafetyDelta ?? 0,
+    inPV: false,
+    saliency: 0,
+    templateId: over.type,
+    evidence: over.evidence,
+  };
+}
+
+function safe<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
+}
+
+function centerCount(t: ReturnType<typeof threatSummary>, side: Color): number {
+  return side === 'w' ? t.centerWhite : t.centerBlack;
+}
+
+function kingPressure(t: ReturnType<typeof threatSummary>, side: Color): number {
+  return side === 'w' ? t.whiteKingPressure : t.blackKingPressure;
+}
+
+function defenseLoad(d: ReturnType<typeof defenseSummary>, side: Color): number {
+  return d.loosePieces[side] + d.undefendedHighValue[side] + d.hangingPieces[side] + d.hangingValue[side];
+}
+
+function pawnWeakness(p: ReturnType<typeof pawnSummary>, side: Color): number {
+  return p.isolated[side] + p.doubled[side] + p.kingShieldMissing[side];
+}
+
+function kingSquare(fen: string, side: Color): Square | null {
+  const board = safe(() => parseFen(fen));
+  return board ? (allPieces(board).find((p) => p.color === side && p.type === 'k')?.square ?? null) : null;
+}
+
+function playedMoveInfo(fenBefore: string, san: string): {
+  from: Square;
+  to: Square;
+  piece: string;
+  flags: string;
+  san: string;
+} | null {
+  return safe(() => {
+    const moved = new Chess(fenBefore).move(san);
+    return moved
+      ? {
+          from: moved.from,
+          to: moved.to,
+          piece: moved.piece,
+          flags: moved.flags,
+          san: moved.san,
+        }
+      : null;
+  });
+}
+
+function isDevelopmentMove(fenBefore: string, side: Color, move: ReturnType<typeof playedMoveInfo>): boolean {
+  if (!move) return false;
+  if (move.san === 'O-O' || move.san === 'O-O-O') return true;
+  if (move.piece !== 'n' && move.piece !== 'b') return false;
+  if (phaseOf(fenBefore) !== 'opening') return false;
+  const homeRank = side === 'w' ? '1' : '8';
+  return move.from[1] === homeRank && move.to[1] !== homeRank;
+}
+
+function insightLadderCandidates(fenBefore: string, fenAfter: string, san: string): ChangedRelation[] {
+  const before = safe(() => parseFen(fenBefore));
+  if (!before) return [];
+  const mover = before.turn;
+  const opponent = other(mover);
+  const side = sideName(mover);
+  const out: ChangedRelation[] = [];
+  const moved = playedMoveInfo(fenBefore, san);
+
+  if (moved && isDevelopmentMove(fenBefore, mover, moved)) {
+    out.push(
+      ladderRelation({
+        type: 'development_improved',
+        side,
+        squares: [moved.to],
+        arrows: [[moved.from, moved.to]],
+        evidence: [`${mover}${moved.piece.toUpperCase()} from ${moved.from} to ${moved.to}`],
+      }),
+    );
+  }
+
+  const threatsBefore = safe(() => threatSummary(fenBefore));
+  const threatsAfter = safe(() => threatSummary(fenAfter));
+  if (threatsBefore && threatsAfter) {
+    const centerDelta = centerCount(threatsAfter, mover) - centerCount(threatsBefore, mover);
+    const opponentCenterDelta = centerCount(threatsAfter, opponent) - centerCount(threatsBefore, opponent);
+    if (centerDelta > 0 && centerDelta >= opponentCenterDelta) {
+      out.push(
+        ladderRelation({
+          type: 'center_control_gained',
+          side,
+          squares: moved ? [moved.to] : [],
+          evidence: [`center control ${centerCount(threatsBefore, mover)}->${centerCount(threatsAfter, mover)}`],
+        }),
+      );
+    }
+
+    const beforePressure = kingPressure(threatsBefore, mover);
+    const afterPressure = kingPressure(threatsAfter, mover);
+    const pressureDelta = afterPressure - beforePressure;
+    const ksq = kingSquare(fenAfter, mover);
+    if (pressureDelta >= 2 && ksq) {
+      out.push(
+        ladderRelation({
+          type: 'king_safety_weakened',
+          side,
+          squares: [ksq],
+          kingSafetyDelta: clamp(pressureDelta / 4, 0.25, 1),
+          evidence: [`king pressure ${beforePressure}->${afterPressure}`],
+        }),
+      );
+    } else if (pressureDelta <= -2 && ksq) {
+      out.push(
+        ladderRelation({
+          type: 'king_safety_improved',
+          side,
+          squares: [ksq],
+          kingSafetyDelta: clamp(Math.abs(pressureDelta) / 6, 0.1, 0.5),
+          evidence: [`king pressure ${beforePressure}->${afterPressure}`],
+        }),
+      );
+    }
+  }
+
+  const moverLegalBefore = safe(() => legalSummaryForSide(fenBefore, mover));
+  const moverLegalAfter = safe(() => legalSummaryForSide(fenAfter, mover));
+  if (moverLegalBefore && moverLegalAfter) {
+    const safeDelta = moverLegalAfter.safe - moverLegalBefore.safe;
+    if (safeDelta >= 3) {
+      out.push(
+        ladderRelation({
+          type: 'mobility_improved',
+          side,
+          squares: moved ? [moved.to] : [],
+          evidence: [`safe moves ${moverLegalBefore.safe}->${moverLegalAfter.safe}`],
+        }),
+      );
+    }
+  }
+
+  const defenseBefore = safe(() => defenseSummary(fenBefore));
+  const defenseAfter = safe(() => defenseSummary(fenAfter));
+  if (defenseBefore && defenseAfter) {
+    const beforeLoad = defenseLoad(defenseBefore, mover);
+    const afterLoad = defenseLoad(defenseAfter, mover);
+    if (beforeLoad - afterLoad >= 2) {
+      out.push(
+        ladderRelation({
+          type: 'defense_improved',
+          side,
+          squares: moved ? [moved.to] : [],
+          evidence: [`piece-safety load ${beforeLoad}->${afterLoad}`],
+        }),
+      );
+    }
+  }
+
+  const pawnsBefore = safe(() => pawnSummary(fenBefore));
+  const pawnsAfter = safe(() => pawnSummary(fenAfter));
+  if (pawnsBefore && pawnsAfter) {
+    const beforeWeakness = pawnWeakness(pawnsBefore, mover);
+    const afterWeakness = pawnWeakness(pawnsAfter, mover);
+    if (afterWeakness - beforeWeakness >= 2) {
+      out.push(
+        ladderRelation({
+          type: 'pawn_structure_weakened',
+          side,
+          squares: moved ? [moved.to] : [],
+          evidence: [`pawn weakness ${beforeWeakness}->${afterWeakness}`],
+        }),
+      );
+    }
+  }
+
+  return out;
 }
 
 function priorityOf(c: InsightCandidate): number {
@@ -333,6 +559,7 @@ export function analyzeMove(
     .map((m) => ({ ...m, source: 'available', inPV: false }));
 
   const motifs = [...refutationMotifs, ...playedMotifs, ...missedMotifs];
+  const ladder = insightLadderCandidates(fenBefore, fenAfter, san);
   const motifSquares = new Set(motifs.flatMap((m) => m.squares));
   const refutedSquares = new Set(refutation.flatMap((r) => r.squares));
 
@@ -345,6 +572,7 @@ export function analyzeMove(
   const rawCandidates: InsightCandidate[] = [
     ...refutation,
     ...motifs,
+    ...ladder,
     ...played,
     ...extraCandidates,
   ];

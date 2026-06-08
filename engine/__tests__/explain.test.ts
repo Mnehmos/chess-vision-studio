@@ -54,6 +54,13 @@ describe('M6 — every ChangeType renders a non-empty, clean string', () => {
     'line_closed',
     'check_created',
     'mate_threat',
+    'development_improved',
+    'center_control_gained',
+    'mobility_improved',
+    'defense_improved',
+    'king_safety_improved',
+    'king_safety_weakened',
+    'pawn_structure_weakened',
     'escape_squares_changed',
   ];
   it.each(types)('%s', (t) => {
@@ -90,6 +97,21 @@ describe('M6 — every Tier-1 & Tier-2 MotifType renders a non-empty, clean stri
 });
 
 describe('M6 — the marquee topExplanation', () => {
+  it('renders ladder-grade semantic insights with color-specific copy', () => {
+    expect(
+      renderInsight(
+        baseChange({
+          type: 'development_improved',
+          squares: ['f3'],
+          evidence: ['wN from g1 to f3'],
+        }),
+      ),
+    ).toBe('White develops the knight to f3.');
+    expect(renderInsight(baseChange({ type: 'king_safety_weakened', squares: ['g1'] }))).toBe(
+      "White's king safety weakens around g1.",
+    );
+  });
+
   it('renders a color-specific "missed a fork" line from a real validated fork', () => {
     const { motifs } = findForks('r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1');
     const fork = { ...motifs.find((m) => m.type === 'fork')!, source: 'available' as const };

@@ -198,6 +198,24 @@ describe('quiet-move fallback is phase-aware (replaces the absolute "nothing imp
   });
 });
 
+describe('insight ladder — semantic feature facts below tactics/material', () => {
+  it('surfaces opening development/center evidence without claiming a tactic', () => {
+    const r = analyzeMove({
+      fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      fenAfter: 'rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq - 1 1',
+      san: 'Nf3',
+      evalBefore: ev(20, ['Nf3']),
+      evalAfter: ev(20, ['Nf6']), // cpLoss = 0.4, enough to enter the ranker
+    });
+    expect(r.classification).toBe('good');
+    expect(r.rankedInsights.some((i) => i.type === 'development_improved')).toBe(true);
+    expect(r.rankedInsights.some((i) => i.type === 'center_control_gained')).toBe(true);
+    expect(['development_improved', 'center_control_gained']).toContain(r.rankedInsights[0].type);
+    expect(r.topExplanation).toMatch(/develops|central control/i);
+    expect(r.confidence).toBe('low_salience_fallback');
+  });
+});
+
 describe('forced moves and mate-in-play are never "nothing changed"', () => {
   it('the only legal move into a lost position names the forced mate (the 17.Re1 case)', () => {
     const r = analyzeMove({

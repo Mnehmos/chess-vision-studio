@@ -300,7 +300,7 @@ export function computePatternProfile(entries: FeatureEntry[]): PatternProfile {
   return { totalPlies: entries.length, patternCounts, phase, motifCreated, motifSuffered, looseByPiece, topPatterns };
 }
 
-function legalSummary(fen: string, withMotifs = true): LegalFeatureSummary {
+export function legalSummary(fen: string, withMotifs = true): LegalFeatureSummary {
   const chess = new Chess(fen);
   const board = parseFen(fen);
   // Tactical-candidate detection makes hypothetical moves; only run it on the real
@@ -344,7 +344,7 @@ function legalSummary(fen: string, withMotifs = true): LegalFeatureSummary {
   return { total: moves.length, safe, captures, checks, forcing, tacticalCandidates, byPiece, kingEscapes };
 }
 
-function threatSummary(fen: string): ThreatFeatureSummary {
+export function threatSummary(fen: string): ThreatFeatureSummary {
   const rel = buildRelationMap(fen);
   const white = new Set(rel.controlledByWhite);
   const black = new Set(rel.controlledByBlack);
@@ -369,7 +369,7 @@ function threatSummary(fen: string): ThreatFeatureSummary {
   };
 }
 
-function defenseSummary(fen: string): DefenseFeatureSummary {
+export function defenseSummary(fen: string): DefenseFeatureSummary {
   const board = parseFen(fen);
   const rel = buildRelationMap(fen);
   const loosePieces = emptySide();
@@ -414,7 +414,7 @@ function seeSummary(fen: string, san: string, mover: Color): SeeFeatureSummary {
   };
 }
 
-function pawnSummary(fen: string): PawnFeatureSummary {
+export function pawnSummary(fen: string): PawnFeatureSummary {
   const board = parseFen(fen);
   const pawns = allPieces(board).filter((p) => p.type === 'p');
   const isolated = emptySide();
@@ -588,7 +588,7 @@ function isSafeDestination(fen: string, move: { san: string; to: Square; from: S
   return seeOnSquare(chess.fen(), move.to).swing <= 0;
 }
 
-function legalSummaryForSide(fen: string, color: Color): LegalFeatureSummary {
+export function legalSummaryForSide(fen: string, color: Color): LegalFeatureSummary {
   return legalSummary(turnFen(fen, color), false);
 }
 

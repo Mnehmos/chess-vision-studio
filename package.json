@@ -13,6 +13,9 @@
     "llm:eval": "vitest run llm/__tests__/llm-eval.test.ts",
     "llm:commentary": "vite-node --script llm/run.ts",
     "arena:ooda": "vite-node --script arena/ooda.ts",
+    "lichess:account": "vite-node --script arena/lichess/account.ts",
+    "lichess:upgrade": "vite-node --script arena/lichess/upgrade.ts",
+    "lichess:bot": "vite-node --script arena/lichess/run.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
   },

@@ -73,6 +73,20 @@ function renderChange(c: ChangedRelation): string {
     case 'forcing_check_resource':
       // The diff layer already built a full, correctly-framed sentence.
       return c.evidence[0] ?? `${who} has a refutation starting on ${sq}.`;
+    case 'development_improved':
+      return `${who} develops the ${pieceName(pieceOnSquare(c))}${sq ? ` to ${sq}` : ''}.`;
+    case 'center_control_gained':
+      return `${who} gains central control${sq ? ` around ${sq}` : ''}.`;
+    case 'mobility_improved':
+      return `${who} improves piece mobility${deltaPhrase(c.evidence[0])}.`;
+    case 'defense_improved':
+      return `${who} improves piece safety${sq ? ` around ${sq}` : ''}.`;
+    case 'king_safety_improved':
+      return `${who} improves king safety${sq ? ` around ${sq}` : ''}.`;
+    case 'king_safety_weakened':
+      return `${who}'s king safety weakens${sq ? ` around ${sq}` : ''}.`;
+    case 'pawn_structure_weakened':
+      return `${who}'s pawn structure weakens${sq ? ` around ${sq}` : ''}.`;
     case 'line_opened':
       return `A line was opened through ${sq}.`;
     case 'line_closed':
@@ -177,6 +191,12 @@ function matePhrase(evidence: string | undefined): string {
   if (!evidence) return 'mate is forced';
   const m = /mate in (\d+)/.exec(evidence);
   return m ? `mate in ${m[1]}` : 'mate is forced';
+}
+function deltaPhrase(evidence: string | undefined): string {
+  if (!evidence) return '.';
+  const m = /(\d+)->(\d+)/.exec(evidence);
+  if (!m) return '.';
+  return ` (${m[1]} to ${m[2]}).`;
 }
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
