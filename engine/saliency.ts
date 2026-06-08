@@ -17,7 +17,14 @@ import {
 } from './motif';
 import { renderInsight } from './explain';
 import { buildMateProof } from './mateproof';
-import type { Eval, InsightCandidate, MateProof, Motif, MoveAnalysis } from './types';
+import type {
+  Eval,
+  ExplanationConfidence,
+  InsightCandidate,
+  MateProof,
+  Motif,
+  MoveAnalysis,
+} from './types';
 
 export interface AnalyzeInput {
   fenBefore: string;
@@ -43,6 +50,7 @@ const TYPE_PRIORITY: Record<string, number> = {
   now_undefended: 50,
   piece_captured: 40,
   defender_left: 35,
+  now_attacked: 30, // a NEW threat outranks a consolidation — never let "now defended" win a tie
   now_defended: 20,
   line_opened: 18,
   line_closed: 16,
@@ -195,6 +203,7 @@ export function analyzeMove(
       cpLoss: 0,
       rankedInsights: [],
       topExplanation: `${move} — analysis unavailable (the engine did not return an evaluation).`,
+      confidence: 'low_salience_fallback',
     };
   }
 
@@ -226,6 +235,7 @@ export function analyzeMove(
       ...base,
       rankedInsights: [],
       topExplanation: `Checkmate — ${san} ends the game.`,
+      confidence: 'certain_tactical',
     };
   }
 
@@ -253,6 +263,7 @@ export function analyzeMove(
         ...base,
         rankedInsights: [],
         topExplanation: `${move}${forced ? ' is forced' : ''} — but ${opponentName} still has a forced mate (mate in ${evalAfter.mate}).`,
+        confidence: 'certain_tactical',
       };
     }
     // The mover is the one delivering a forced mate — keep that front and centre.
@@ -261,6 +272,7 @@ export function analyzeMove(
         ...base,
         rankedInsights: [],
         topExplanation: `${move}${events.length ? ` — ${events.join(' + ')}` : ''}; ${moverName} has a forced mate (mate in ${evalBefore.mate}).`,
+        confidence: 'certain_tactical',
       };
     }
     if (events.length === 0 && !forced) {
@@ -268,6 +280,7 @@ export function analyzeMove(
         ...base,
         rankedInsights: [],
         topExplanation: 'Solid move — nothing important changed.',
+        confidence: 'low_salience_fallback',
       };
     }
     const parts = [...events, ...(forced ? ['only legal move'] : [])];
@@ -275,6 +288,7 @@ export function analyzeMove(
       ...base,
       rankedInsights: [],
       topExplanation: `${move} — ${parts.join(' + ')}; the evaluation is unchanged.`,
+      confidence: 'semantic_overlay',
     };
   }
 
@@ -364,8 +378,38 @@ export function analyzeMove(
         ? renderInsight(ranked[0])
         : `${move} — ${classification}.`;
 
-  return { ...base, rankedInsights: ranked, topExplanation };
+  return {
+    ...base,
+    rankedInsights: ranked,
+    topExplanation,
+    confidence: explanationConfidence(ranked[0], headlinesSomething),
+  };
 }
 
 // Below this, an insight is treated as not explaining the move (saliency-0 trivia).
 const SALIENT_MIN = 0.05;
+
+/**
+ * How strongly the headline is backed (the salience-honesty signal). A generic
+ * relation delta that only headlines because nothing better existed is
+ * 'low_salience_fallback'; a proven tactic is 'certain_tactical'. Consumers use
+ * this to avoid sounding decisive when they are merely describing a board fact.
+ */
+function explanationConfidence(
+  top: InsightCandidate | undefined,
+  headlinesSomething: boolean,
+): ExplanationConfidence {
+  if (!top || !headlinesSomething) return 'low_salience_fallback';
+  if (top.kind === 'motif') return 'certain_tactical'; // geometry/SEE/mate-proven
+  if (top.type === 'mate_threat') return 'certain_tactical';
+  if (
+    top.type === 'pv_refutation' ||
+    top.type === 'forcing_check_resource' ||
+    top.type === 'perpetual_check' ||
+    top.templateId === 'refutation_wins_material'
+  ) {
+    return 'engine_pv'; // the oracle's line, not a named/geometry tactic
+  }
+  if (top.materialSwing > 0 || top.kingSafetyDelta > 0) return 'semantic_overlay';
+  return 'low_salience_fallback';
+}

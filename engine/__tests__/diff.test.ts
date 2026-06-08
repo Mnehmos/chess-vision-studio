@@ -45,10 +45,20 @@ describe('pvRefutation — a line driven by checks is never "quiet"', () => {
     expect(r!.evidence[0].toLowerCase()).toContain('perpetual');
   });
 
-  it('keeps the quiet-refutation framing for a genuinely non-checking PV', () => {
+  it('a non-checking modest-edge PV "keeps the advantage" — never the tactic-sounding "quiet refutation"', () => {
     const r = pvRefutation(checkFen, ev(['Kf8', 'Kg2', 'Ke7'], { cp: 30 }), 1.0);
     expect(r!.type).toBe('pv_refutation');
-    expect(r!.evidence[0].toLowerCase()).toContain('quiet');
+    expect(r!.evidence[0].toLowerCase()).not.toContain('quiet');
+    expect(r!.evidence[0].toLowerCase()).toContain('not an immediate tactic');
+    expect(r!.evidence[0].toLowerCase()).toContain('balance'); // +0.3 → "holding the balance"
+  });
+
+  it('"punishes" only when the reply hands a CLEAR edge (≥1.5); a modest edge merely keeps it', () => {
+    const big = pvRefutation(checkFen, ev(['Kf8', 'Kg2', 'Ke7'], { cp: 220 }), 1.5);
+    expect(big!.evidence[0].toLowerCase()).toContain('punishes');
+    const modest = pvRefutation(checkFen, ev(['Kf8', 'Kg2', 'Ke7'], { cp: 90 }), 0.8);
+    expect(modest!.evidence[0].toLowerCase()).not.toContain('punishes');
+    expect(modest!.evidence[0].toLowerCase()).toContain('keeping the advantage');
   });
 
   it('a check line that SIMPLIFIES (has captures) is a forcing resource, not a perpetual', () => {

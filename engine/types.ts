@@ -161,6 +161,18 @@ export interface DeepCheck {
   shallowClassification: Classification;
 }
 
+// How far the headline can be trusted — lets the UI avoid sounding overconfident
+// when it only has a generic relation delta (the salience-honesty signal).
+//   certain_tactical      — mate/checkmate, or a geometry/SEE-PROVEN motif
+//   engine_pv             — the oracle's principal-variation refutation (no named tactic)
+//   semantic_overlay      — a real material / king-safety change attributed from the eval
+//   low_salience_fallback — only a generic relation delta (or "nothing important changed")
+export type ExplanationConfidence =
+  | 'certain_tactical'
+  | 'engine_pv'
+  | 'semantic_overlay'
+  | 'low_salience_fallback';
+
 // Mate-proof obligation facts (oracle says mate exists; the evaluator explains it).
 export interface MateProof {
   mateInMoves: number;
@@ -189,6 +201,7 @@ export interface MoveAnalysis {
   rankedInsights: InsightCandidate[]; // VALIDATED only, sorted desc by saliency
   topExplanation: string; // = rankedInsights[0] rendered, or "solid move"
   mateProof?: MateProof; // present when a forced mate is in play (oracle-confirmed)
+  confidence?: ExplanationConfidence; // how strongly the headline is backed (salience honesty)
   deepCheck?: DeepCheck; // present when a forcing/sacrificial move was re-searched deeper
   ledMap?: LedMap; // active-mode color map (later)
 }

@@ -121,10 +121,14 @@ function renderMotif(m: Motif): string {
       )} on ${m.squares[0]}, checking the king.`;
     case 'discovered_attack':
       return `${prefix}discovered attack — an uncovered ${pieceName(m.byPiece)} hits a target.`;
-    case 'removal_of_guard':
-      return `${prefix}removal of the guard — the piece on ${
-        m.squares[0]
-      } loses its defender and drops ${materialNoun(m.materialSwing)}.`;
+    case 'removal_of_guard': {
+      // Plainer than "has a removal of the guard"; reads as the action it is.
+      const side = m.side === 'white' ? 'White' : 'Black';
+      const noun = materialNoun(m.materialSwing);
+      return m.source === 'available'
+        ? `${side} missed removing the guard of ${m.squares[0]} (wins ${noun}).`
+        : `${side} removes the guard of ${m.squares[0]}, winning ${noun}.`;
+    }
     case 'back_rank':
       return `${prefix}back-rank mate — ${line}.`;
     case 'mating_net':

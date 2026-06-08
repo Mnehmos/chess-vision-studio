@@ -267,10 +267,20 @@ export function pvRefutation(fenAfter: string, evalAfter: Eval, evalLoss: number
     };
   }
 
-  const headline = refuted
-    ? `${who} has a quiet refutation — ${pv[0]} punishes the move; ${who} ${stand} (${evalStr}). ` +
-      `Not a direct capture or mate yet: ${lineText}.`
-    : `${who}'s best reply ${pv[0]} only limits the damage — ${who} ${stand} (${evalStr}). Line: ${lineText}.`;
+  // "punishes" is reserved for a move that hands the replier a CLEAR edge (≥1.5);
+  // a modest positional improvement merely "keeps the advantage", and a reply that
+  // stays worse is "best resistance" (never "punishes"). We drop the word "quiet
+  // refutation" entirely — it reads like a decisive tactic when it is just the best
+  // (often positional) reply.
+  let headline: string;
+  if (!refuted) {
+    headline = `${who}'s best reply ${pv[0]} only limits the damage — ${who} ${stand} (${evalStr}). Line: ${lineText}.`;
+  } else if (Math.abs(evalPawns) >= 1.5) {
+    headline = `${who}'s best reply ${pv[0]} punishes the move — ${who} ${stand} (${evalStr}). Not an immediate tactic; the line: ${lineText}.`;
+  } else {
+    const hold = Math.abs(evalPawns) >= 0.5 ? 'keeping the advantage' : 'holding the balance';
+    headline = `${who}'s best reply is ${pv[0]}, ${hold} (${evalStr}). Not an immediate tactic — ${who} consolidates. Line: ${lineText}.`;
+  }
 
   return {
     ...blankRelation(),

@@ -35,6 +35,7 @@ describe('M4.1 — quiet move, ~10 changes: the ranker names the material one', 
     expect(top.source).toBe('played_move');
     expect(result.topExplanation.toLowerCase()).toContain('e5');
     expect(result.topExplanation.toLowerCase()).toContain('losing material');
+    expect(result.confidence).toBe('semantic_overlay'); // a real material change, not a proven tactic
   });
 
   it('the noise changes rank below the material one (saliency ordering)', () => {
@@ -152,6 +153,7 @@ describe('captures and the silence gate (SEE-guarded)', () => {
     });
     expect(r.cpLoss).toBeLessThan(0.3);
     expect(r.topExplanation).toBe('Solid move — nothing important changed.');
+    expect(r.confidence).toBe('low_salience_fallback');
   });
 });
 
@@ -181,6 +183,27 @@ describe('forced moves and mate-in-play are never "nothing changed"', () => {
     expect(r.cpLoss).toBeLessThan(0.3);
     expect(r.topExplanation).not.toMatch(/nothing important changed/i);
     expect(r.topExplanation.toLowerCase()).toContain('forced mate');
+    expect(r.confidence).toBe('certain_tactical');
+  });
+});
+
+// Iteration 3: salience — the most chess-important fact headlines, not the first valid one.
+describe('salience priority — a new threat outranks a consolidation (the "F2 is now defended" bug)', () => {
+  it('13.Be3 headlines the threat it creates (C5 now attacked), not a generic "now defended"', () => {
+    // The exact position from the export: Be3 attacks the c5 bishop and also re-defends
+    // f2/f6 — all saliency-0 deltas. now_attacked must win the tie over now_defended.
+    const r = analyzeMove({
+      fenBefore: '3rk2r/ppp3pp/4nn2/2b1p1B1/4P3/2P5/PP3PPP/RN3RK1 w k - 0 13',
+      fenAfter: '3rk2r/ppp3pp/4nn2/2b1p3/4P3/2P1B3/PP3PPP/RN3RK1 b k - 1 13',
+      san: 'Be3',
+      evalBefore: ev(-268, ['Bxf6']),
+      evalAfter: ev(320, ['Bxe3']), // even trade → no material refutation insight
+    });
+    expect(r.classification).toBe('good'); // cpLoss ≈ 0.52
+    expect(r.topExplanation.toLowerCase()).toContain('now attacked');
+    expect(r.topExplanation.toLowerCase()).not.toContain('now defended');
+    // honest about it: it is only a generic relation delta, not a proven tactic
+    expect(r.confidence).toBe('low_salience_fallback');
   });
 });
 
@@ -257,9 +280,12 @@ describe('pv_refutation fallback — a quiet/positional blunder no detector name
     expect(top.saliency).toBeGreaterThanOrEqual(0.05);
     expect(top.inPV).toBe(true);
     expect(top.materialSwing).toBe(0); // honest: claims no proven material
-    expect(result.topExplanation.toLowerCase()).toContain('quiet refutation');
+    // +3.0 for the refuter is a CLEAR edge → "punishes" (never the old "quiet refutation").
+    expect(result.topExplanation.toLowerCase()).toContain('punishes');
+    expect(result.topExplanation.toLowerCase()).not.toContain('quiet refutation');
     expect(result.topExplanation).toContain('e5'); // names the refuting first move
     expect(result.topExplanation.toLowerCase()).not.toContain('now defended');
+    expect(result.confidence).toBe('engine_pv'); // oracle PV line, not a named tactic
   });
 
   it('tags the gap as future detector work and keeps the literal facts below', () => {
