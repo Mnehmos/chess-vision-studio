@@ -24,6 +24,7 @@
     "eval:matrix": "vite-node --script arena/eval-matrix.ts",
     "bench:search": "vite-node --script arena/bench-search.ts",
     "perft:chessjs": "vite-node --script arena/perft-chessjs.ts",
+    "export:eval-fixtures": "vite-node --script arena/export-eval-fixtures.ts",
     "train:loop": "vite-node --script arena/train-loop.ts",
     "training:ui": "vite --host 127.0.0.1 --port 5174",
     "lichess:import": "vite-node --script arena/lichess/import-db.ts",
