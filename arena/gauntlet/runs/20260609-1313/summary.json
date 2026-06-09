@@ -1,0 +1,144 @@
+{
+  "run": "arena/gauntlet/runs/20260609-1313",
+  "config": {
+    "startedAt": "2026-06-09T20:13:06.782Z",
+    "finishedAt": "2026-06-09T20:46:52.461Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "5dc5fe7",
+    "cvsDepth": 5,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      800,
+      1000,
+      1200
+    ],
+    "opponentSettings": {
+      "800": {
+        "eloLabel": 800,
+        "mechanism": "SkillLevel",
+        "skillLevel": 0,
+        "movetimeMs": 80
+      },
+      "1000": {
+        "eloLabel": 1000,
+        "mechanism": "SkillLevel",
+        "skillLevel": 2,
+        "movetimeMs": 80
+      },
+      "1200": {
+        "eloLabel": 1200,
+        "mechanism": "SkillLevel",
+        "skillLevel": 4,
+        "movetimeMs": 80
+      }
+    },
+    "gamesPerOpponent": 20,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 80,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 60,
+    "wins": 56,
+    "draws": 4,
+    "losses": 0,
+    "cvsMoves": 1993,
+    "failures": 108,
+    "rsiCandidates": 116
+  },
+  "ladder": [
+    {
+      "opponent": "SF-800",
+      "eloLabel": 800,
+      "settings": {
+        "eloLabel": 800,
+        "mechanism": "SkillLevel",
+        "skillLevel": 0,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 19,
+      "draws": 1,
+      "losses": 0,
+      "scorePct": 97.5,
+      "eloDiff": 636,
+      "estimatedCvsElo": 1436,
+      "avgCpLoss": 0.475,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.0069,
+      "mateMissed": 2,
+      "illegal": 0,
+      "avgTimePerMoveMs": 194.4
+    },
+    {
+      "opponent": "SF-1000",
+      "eloLabel": 1000,
+      "settings": {
+        "eloLabel": 1000,
+        "mechanism": "SkillLevel",
+        "skillLevel": 2,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 20,
+      "draws": 0,
+      "losses": 0,
+      "scorePct": 100,
+      "eloDiff": 636,
+      "estimatedCvsElo": 1636,
+      "avgCpLoss": 0.365,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.0094,
+      "mateMissed": 1,
+      "illegal": 0,
+      "avgTimePerMoveMs": 159.9
+    },
+    {
+      "opponent": "SF-1200",
+      "eloLabel": 1200,
+      "settings": {
+        "eloLabel": 1200,
+        "mechanism": "SkillLevel",
+        "skillLevel": 4,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 17,
+      "draws": 3,
+      "losses": 0,
+      "scorePct": 92.5,
+      "eloDiff": 436,
+      "estimatedCvsElo": 1636,
+      "avgCpLoss": 0.587,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.022,
+      "mateMissed": 2,
+      "illegal": 0,
+      "avgTimePerMoveMs": 163.1
+    }
+  ],
+  "classificationCounts": {
+    "good": 214,
+    "excellent": 410,
+    "best": 1048,
+    "inaccuracy": 196,
+    "mistake": 98,
+    "mate_missed": 5,
+    "blunder": 22
+  },
+  "tagCounts": {
+    "value_miseval": 75,
+    "search_horizon": 33,
+    "quiet_refutation_missed": 28,
+    "tactical_motif_missed": 23,
+    "mate_missed": 5,
+    "hanging_piece_missed": 20,
+    "king_safety_missed": 5,
+    "opening_structure": 3,
+    "passed_pawn_missed": 2,
+    "endgame_conversion": 8
+  }
+}

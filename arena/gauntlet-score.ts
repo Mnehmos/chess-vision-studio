@@ -105,7 +105,22 @@ async function main(): Promise<void> {
         out.push(JSON.stringify(scored));
         continue;
       }
-      const after = await pool.evalFen(fenAfter);
+      // Terminal after-positions can't be SF-scored (a mated position has no PV).
+      // Delivering checkmate IS the best move; a drawn terminal scores as 0cp.
+      if (chess.isCheckmate()) {
+        scored.stockfishBest = before.pv[0];
+        scored.stockfishEvalBefore = before.mate !== undefined ? `M${before.mate}` : before.cp;
+        scored.stockfishEvalAfter = 'mate_delivered';
+        scored.fenAfter = fenAfter;
+        scored.cpLoss = 0;
+        scored.classification = 'best';
+        out.push(JSON.stringify(scored));
+        if (++done % 200 === 0) console.log(`  ${done}/${rows.length}…`);
+        continue;
+      }
+      const after = chess.isGameOver()
+        ? { cp: 0, depth: 0, pv: [] } // stalemate / draw terminal: dead-equal by rule
+        : await pool.evalFen(fenAfter);
       const cpLoss = Math.max(0, computeCpLoss(before, after));
       const isBest = normalize(row.cvsSan ?? '') === normalize(before.pv[0]);
       const mateMissed =

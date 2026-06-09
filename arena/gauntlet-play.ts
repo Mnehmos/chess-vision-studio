@@ -104,9 +104,12 @@ async function main(): Promise<void> {
 
   const startedAt = new Date().toISOString();
   const allSettings: Record<string, unknown> = {};
+  // ONE Stockfish process serves the whole ladder (the WASM build is single-
+  // instance per process); strength is reconfigured between opponents.
+  const sf = await SfOpponent.create(cfg.opponents[0], cfg.movetimeMs);
 
   for (const elo of cfg.opponents) {
-    const sf = await SfOpponent.create(elo, cfg.movetimeMs);
+    await sf.setStrength(elo, cfg.movetimeMs);
     allSettings[String(elo)] = sf.settings;
     console.log(`opponent SF-${elo}: ${JSON.stringify(sf.settings)}`);
     let w = 0;
@@ -201,11 +204,14 @@ async function main(): Promise<void> {
         }) + '\n', 'utf8');
         console.log(`  ${gameId} ${opening.id} cvs=${cvsWhite ? 'W' : 'B'} → ${result} (${termination}, ${plies} plies) [${w}W/${d}D/${l}L]`);
       }
-    } finally {
+    } catch (e) {
       sf.dispose();
+      rust.dispose();
+      throw e;
     }
     console.log(`SF-${elo} done: ${w}W ${d}D ${l}L (score ${(((w + 0.5 * d) / cfg.gamesPerOpponent) * 100).toFixed(1)}%)`);
   }
+  sf.dispose();
   rust.dispose();
 
   writeFileSync(`${cfg.output}/run_config.json`, JSON.stringify({

@@ -31,27 +31,38 @@ export function settingsFor(eloLabel: number, movetimeMs = 80): OpponentSettings
 export class SfOpponent {
   private transport!: EngineTransport;
   private handlers: ((line: string) => void)[] = [];
-  readonly settings: OpponentSettings;
+  // NOTE: the single-threaded Stockfish WASM build is ONE instance per process,
+  // EVER (the module factory is single-use, even after dispose). So one
+  // SfOpponent serves a whole ladder run: create() once, then setStrength()
+  // between opponents (UCI options may be changed whenever no search runs).
+  settings!: OpponentSettings;
 
-  private constructor(settings: OpponentSettings) {
-    this.settings = settings;
-  }
+  private constructor() {}
 
-  static async create(eloLabel: number, movetimeMs = 80): Promise<SfOpponent> {
-    const opp = new SfOpponent(settingsFor(eloLabel, movetimeMs));
+  static async create(eloLabel?: number, movetimeMs = 80): Promise<SfOpponent> {
+    const opp = new SfOpponent();
     opp.transport = await createNodeStockfishTransport();
     opp.transport.onLine((line) => {
       for (const h of opp.handlers) h(line);
     });
     await opp.expect('uci', 'uciok');
-    if (opp.settings.mechanism === 'UCI_Elo') {
-      opp.transport.send('setoption name UCI_LimitStrength value true');
-      opp.transport.send(`setoption name UCI_Elo value ${opp.settings.uciElo}`);
-    } else {
-      opp.transport.send(`setoption name Skill Level value ${opp.settings.skillLevel}`);
-    }
-    await opp.expect('isready', 'readyok');
+    await opp.setStrength(eloLabel ?? 1320, movetimeMs);
     return opp;
+  }
+
+  /** Reconfigure the limiter for the next ladder rung (resets both mechanisms). */
+  async setStrength(eloLabel: number, movetimeMs = 80): Promise<void> {
+    this.settings = settingsFor(eloLabel, movetimeMs);
+    // Reset both mechanisms, then apply the active one, so rungs don't leak.
+    this.transport.send('setoption name UCI_LimitStrength value false');
+    this.transport.send('setoption name Skill Level value 20');
+    if (this.settings.mechanism === 'UCI_Elo') {
+      this.transport.send('setoption name UCI_LimitStrength value true');
+      this.transport.send(`setoption name UCI_Elo value ${this.settings.uciElo}`);
+    } else {
+      this.transport.send(`setoption name Skill Level value ${this.settings.skillLevel}`);
+    }
+    await this.expect('isready', 'readyok');
   }
 
   private expect(cmd: string, token: string): Promise<void> {
