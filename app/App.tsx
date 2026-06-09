@@ -20,6 +20,7 @@ import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
 import { PlayMode } from './PlayMode';
+import { TrainingMonitor } from './TrainingMonitor';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
@@ -50,6 +51,7 @@ const primaryBtn: React.CSSProperties = {
 };
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+type AppTab = 'board' | 'dataset' | 'play' | 'training';
 
 // "Analyze all games" progress. done/total count PLIES (drives the bar);
 // gamesDone/gamesTotal + currentGame give a human-meaningful "Game X/Y".
@@ -78,7 +80,7 @@ export function App() {
   const plies = useMemo(() => currentGame?.plies ?? [], [currentGame]);
   const currentGameKey = useMemo(() => gameCacheKey(currentGame), [currentGame]);
   const [view, setView] = useState(0); // 0 = start; k = after move k
-  const [tab, setTab] = useState<'board' | 'dataset' | 'play'>('board');
+  const [tab, setTab] = useState<AppTab>('board');
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   const [showThreats, setShowThreats] = useState(true);
@@ -598,7 +600,9 @@ export function App() {
           onLoad={loadPgn}
         />
 
-      {tab === 'dataset' ? (
+      {tab === 'training' ? (
+        <TrainingMonitor />
+      ) : tab === 'dataset' ? (
         <DatasetPanel
           games={games}
           engineReady={engineState === 'ready'}
@@ -794,8 +798,8 @@ function SourceBar({
   games: ParsedGame[];
   gameIndex: number;
   onSelectGame: (i: number) => void;
-  tab: 'board' | 'dataset' | 'play';
-  setTab: (t: 'board' | 'dataset' | 'play') => void;
+  tab: AppTab;
+  setTab: (t: AppTab) => void;
   datasetJob: DatasetJob;
   pgnText: string;
   setPgnText: (s: string) => void;
@@ -834,6 +838,9 @@ function SourceBar({
             </TabButton>
             <TabButton active={tab === 'play'} onClick={() => setTab('play')}>
               Play
+            </TabButton>
+            <TabButton active={tab === 'training'} onClick={() => setTab('training')}>
+              Training
             </TabButton>
             {multi && (
               <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>

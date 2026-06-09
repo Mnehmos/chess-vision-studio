@@ -1,0 +1,19 @@
+{
+  "bias": 0,
+  "weights": {
+    "isCapture": 1.0660886210037634,
+    "isCheck": 1.4792109296172777,
+    "isPromotion": 0.16602844303718908,
+    "isCastle": 0.5118083025497853,
+    "isEnPassant": -0.0038525543476090824,
+    "see": 0.8179835737826865,
+    "captureValue": 0.12455051006579036,
+    "escapesAttack": 1.1404322970000431,
+    "movesIntoDanger": -0.5186626440314555,
+    "pstDelta": 0.8712211167606106,
+    "develops": -0.18976858748541933,
+    "attacksKingZone": 0.48794573757845644,
+    "movesToCenter": 0.41026541663720745,
+    "createsThreat": 0.5963797717182899
+  }
+}

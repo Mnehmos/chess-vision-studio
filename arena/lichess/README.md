@@ -49,6 +49,43 @@ for on-demand diversity without waiting for human challengers.
 All policy knobs live in `.env` (see `.env.example`): casual/rated, min clock,
 correspondence, bots-only, concurrency, AI-seed levels, review depth.
 
+## Pre-live training from public Lichess games
+
+Before the bot plays rated/casual games, use the Lichess open database offline:
+
+```bash
+# Download a monthly .pgn.zst from https://database.lichess.org/standard/
+# Then stream-decompress it into the importer.
+zstd -dc lichess_db_standard_rated_2026-05.pgn.zst | npm run lichess:import -- - --limit 200 --min-elo 2400
+
+# Train policy weights from the imported master-game rows.
+npm run dataset:train -- arena/out/lichess-master-dataset.jsonl --out arena/out/weights.json
+```
+
+`lichess:import` reviews selected public PGN games with local Stockfish and writes
+`source: "master_game"` rows. It keeps low/no-cp-loss positions; master games are
+mostly good moves, so those rows teach the policy what strong play chooses rather
+than only what blunders avoid. `lichess:bot` loads `LICHESS_WEIGHTS`
+(`arena/out/weights.json` by default) when that file exists.
+
+For official broadcast PGNs, use `--min-elo 0` if the file has no Elo tags. For
+huge standard dumps, keep `--limit`, `--sample-every`, and `--max-plies` modest
+until the import throughput is known on the local machine.
+
+### Supervised training UI
+
+Start the local monitor:
+
+```bash
+npm run training:ui
+```
+
+Open `http://127.0.0.1:5174`, then use the **Training** tab. The tab starts and
+stops the same importer/trainer commands, streams stdout/stderr live, tracks
+import rows, holdout accuracy, and writes the configured dataset, weights, and
+report artifacts. This is a dev-server tool; production preview does not expose
+the local process-control endpoints.
+
 ## UCI shim (cutechess / lichess-bot)
 
 Build the engine, then point any UCI host at `cvs-engine uci`:

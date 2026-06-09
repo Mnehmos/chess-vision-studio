@@ -106,8 +106,9 @@ export async function playSession(
     if (turn !== cvsColor) continue; // opponent to move
 
     const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
+    const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
     const budget = Number.isFinite(myTimeMs)
-      ? Math.max(minMoveMs, Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction)))
+      ? Math.max(minMoveMs, Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8)))
       : undefined;
 
     const uci = await picker.pick(chess.fen(), budget);

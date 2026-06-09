@@ -17,10 +17,25 @@ interface FetchResponse {
   ok: boolean;
   status: number;
   body: AsyncIterable<Uint8Array> | ReadableStream<Uint8Array> | null;
+  headers?: { get(name: string): string | null };
   json(): Promise<unknown>;
   text(): Promise<string>;
 }
 export type FetchLike = (url: string, init?: RequestInit) => Promise<FetchResponse>;
+
+/** Lichess's allowed challenge-decline reason keys. */
+export type DeclineReason =
+  | 'generic'
+  | 'later'
+  | 'tooFast'
+  | 'tooSlow'
+  | 'timeControl'
+  | 'rated'
+  | 'casual'
+  | 'standard'
+  | 'variant'
+  | 'noBot'
+  | 'onlyBot';
 
 export interface LichessClientOptions {
   token: string;
@@ -82,7 +97,7 @@ export class LichessClient {
     return this.postOk(`/api/challenge/${challengeId}/accept`);
   }
 
-  declineChallenge(challengeId: string, reason?: string): Promise<boolean> {
+  declineChallenge(challengeId: string, reason?: DeclineReason): Promise<boolean> {
     return this.postOk(`/api/challenge/${challengeId}/decline`, reason ? new URLSearchParams({ reason }) : undefined);
   }
 
@@ -132,17 +147,32 @@ export class LichessClient {
     return this.postOk('/api/bot/account/upgrade');
   }
 
-  private async postOk(path: string, body?: URLSearchParams): Promise<boolean> {
+  // POSTs return a bare boolean (kept simple for callers), but transient failures —
+  // 429 rate-limit, 503 — are retried with backoff (honoring Retry-After) so a blip
+  // doesn't drop a move; a network reject resolves to false rather than throwing.
+  private async postOk(path: string, body?: URLSearchParams, attempt = 0): Promise<boolean> {
     const headers = body
       ? this.authHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
       : this.authHeaders();
-    const res = await this.f(this.baseUrl + path, {
-      method: 'POST',
-      headers,
-      body: body ? body.toString() : undefined,
-    });
-    return res.ok;
+    let res: FetchResponse;
+    try {
+      res = await this.f(this.baseUrl + path, { method: 'POST', headers, body: body ? body.toString() : undefined });
+    } catch {
+      return false; // network reject — caller treats as a failed POST
+    }
+    if (res.ok) return true;
+    if ((res.status === 429 || res.status === 503) && attempt < 3) {
+      const retryAfter = Number(res.headers?.get('Retry-After')) || 0;
+      const waitMs = retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt;
+      await delay(waitMs);
+      return this.postOk(path, body, attempt + 1);
+    }
+    return false;
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ---- Event shapes (the subset we read) ----

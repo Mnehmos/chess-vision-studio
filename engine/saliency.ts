@@ -9,7 +9,6 @@ import { Chess } from 'chess.js';
 import { allPieces, parseFen, type Color } from './board';
 import { computeCpLoss, classify } from './classify';
 import { diffPlayedMove, diffRefutation, pvRefutation } from './diff';
-import { seeCapture } from './see';
 import {
   detectAvailableMotifs,
   findRemovalOfGuard,
@@ -63,9 +62,9 @@ const TYPE_PRIORITY: Record<string, number> = {
   king_safety_weakened: 34,
   defense_improved: 29,
   now_attacked: 30, // a NEW threat outranks a consolidation — never let "now defended" win a tie
+  center_control_gained: 32,
+  development_improved: 30,
   mobility_improved: 28,
-  center_control_gained: 26,
-  development_improved: 24,
   king_safety_improved: 22,
   now_defended: 20,
   pawn_structure_weakened: 19,
@@ -186,6 +185,10 @@ function playedMoveInfo(fenBefore: string, san: string): {
         }
       : null;
   });
+}
+
+function isCaptureMove(move: ReturnType<typeof playedMoveInfo>): boolean {
+  return !!move && (move.flags.includes('c') || move.flags.includes('e'));
 }
 
 function isDevelopmentMove(fenBefore: string, side: Color, move: ReturnType<typeof playedMoveInfo>): boolean {
@@ -350,14 +353,14 @@ function hardEvents(fenBefore: string, fenAfter: string, san: string): string[] 
   if (san.includes('=')) ev.push('promotion');
   if (san.includes('#')) ev.push('checkmate');
   else if (san.includes('+') || inCheckSafe(fenAfter)) ev.push('check');
-  // A capture is a hard event UNLESS it's an even trade (SEE swing 0): a routine
-  // recapture stays quiet, but a material-changing capture is never "nothing changed".
+  // Captures are concrete even when eval-flat; strong games need these explained
+  // as trades/recaptures instead of generic opening moves.
   // (We deliberately do NOT add board heuristics like king-zone pressure here — the
   // eval is the oracle; only objective board events override its silence.)
   if (san.includes('x')) {
     try {
       const m = new Chess(fenBefore).move(san);
-      if (m && (m.flags.includes('c') || m.flags.includes('e')) && seeCapture(fenBefore, m.from, m.to) !== 0) {
+      if (m && isCaptureMove(m)) {
         ev.push('capture');
       }
     } catch {
@@ -365,6 +368,44 @@ function hardEvents(fenBefore: string, fenAfter: string, san: string): string[] 
     }
   }
   return ev;
+}
+
+/** Name the immediate engine-PV recapture for eval-flat trades. */
+function immediateRecapture(fenAfter: string, target: Square, evalAfter: Eval): string | null {
+  const reply = evalAfter.pv?.[0];
+  if (!reply) return null;
+  return safe(() => {
+    const moved = new Chess(fenAfter).move(reply);
+    return moved && isCaptureMove(moved) && moved.to === target ? moved.san : null;
+  });
+}
+
+function lowGateEventParts(
+  fenBefore: string,
+  fenAfter: string,
+  san: string,
+  events: string[],
+  forced: boolean,
+  evalAfter: Eval,
+  opponentName: string,
+): string[] {
+  const played = playedMoveInfo(fenBefore, san);
+  if (played && isCaptureMove(played)) {
+    const recapture = immediateRecapture(fenAfter, played.to, evalAfter);
+    const extraEvents = events.filter((event) => event !== 'capture');
+    return [
+      `captures on ${played.to}`,
+      ...extraEvents,
+      ...(recapture ? [`${opponentName} can recapture with ${recapture}`] : []),
+      ...(forced ? ['only legal move'] : []),
+    ];
+  }
+
+  return [...events, ...(forced ? ['only legal move'] : [])];
+}
+
+function lowGateRankedInsights(fenBefore: string, fenAfter: string, san: string): ChangedRelation[] {
+  return insightLadderCandidates(fenBefore, fenAfter, san).sort((a, b) => priorityOf(b) - priorityOf(a));
 }
 
 /** A capture claim ("reply X wins material on Y") is only kept if X is a LEGAL
@@ -517,6 +558,15 @@ export function analyzeMove(
       };
     }
     if (events.length === 0 && !forced) {
+      const lowRanked = lowGateRankedInsights(fenBefore, fenAfter, san);
+      if (lowRanked.length > 0) {
+        return {
+          ...base,
+          rankedInsights: lowRanked,
+          topExplanation: renderInsight(lowRanked[0]),
+          confidence: 'low_salience_fallback',
+        };
+      }
       // A quiet, low-stakes move. Don't claim "nothing changed" (too absolute, and a
       // 300–1400 player still wants a steer): give a phase-aware neutral frame that
       // says what KIND of move it is and that no tactic was detected.
@@ -527,7 +577,7 @@ export function analyzeMove(
         confidence: 'low_salience_fallback',
       };
     }
-    const parts = [...events, ...(forced ? ['only legal move'] : [])];
+    const parts = lowGateEventParts(fenBefore, fenAfter, san, events, forced, evalAfter, opponentName);
     return {
       ...base,
       rankedInsights: [],

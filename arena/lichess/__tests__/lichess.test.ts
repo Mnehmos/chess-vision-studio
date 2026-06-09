@@ -31,6 +31,7 @@ const CFG: LichessConfig = {
   maxConcurrentGames: 1,
   review: false,
   reviewDepth: 10,
+  weightsPath: 'arena/out/weights.json',
   outDir: 'arena/out',
 };
 

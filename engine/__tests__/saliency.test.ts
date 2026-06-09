@@ -98,7 +98,7 @@ describe('Invariant 4 — no insight may claim more material than the eval budge
   });
 });
 
-describe('M4.2 — silence: a solid equal move says nothing', () => {
+describe('M4.2 — low-loss moves still get semantic explanations', () => {
   it('cpLoss below the gate → explicit silence, no insights', () => {
     const result = analyzeMove({
       fenBefore: FEN_BEFORE,
@@ -108,9 +108,9 @@ describe('M4.2 — silence: a solid equal move says nothing', () => {
       evalAfter: ev(-20, ['Re8']), // opponent sees ≈ −0.2 → cpLoss ≈ 0
     });
     expect(result.cpLoss).toBeLessThan(0.3);
-    expect(result.rankedInsights).toEqual([]);
-    // fullmove 1 in the FEN → phaseOf = opening; quiet move → phase-aware neutral copy
-    expect(result.topExplanation).toBe('Opening move: improves development or central control. No immediate tactic detected.');
+    expect(result.rankedInsights.some((i) => i.type === 'mobility_improved')).toBe(true);
+    // Low-loss no longer means no insight; master-game moves are usually low-loss.
+    expect(result.topExplanation).toMatch(/mobility/i);
     expect(result.topExplanation).not.toMatch(/nothing important changed/i);
     expect(result.confidence).toBe('low_salience_fallback');
   });
@@ -132,7 +132,7 @@ describe('hard board events are never "nothing changed", even at zero eval swing
   });
 });
 
-describe('captures and the silence gate (SEE-guarded)', () => {
+describe('captures and the low-loss gate', () => {
   it('a material-winning capture is never "nothing changed" (SEE != 0)', () => {
     const r = analyzeMove({
       fenBefore: '4k3/8/8/4p3/8/5N2/8/4K3 w - - 0 1', // Nxe5 wins the free e5 pawn
@@ -146,7 +146,7 @@ describe('captures and the silence gate (SEE-guarded)', () => {
     expect(r.topExplanation.toLowerCase()).toContain('capture');
   });
 
-  it('an even-trade capture (SEE 0) stays quiet — a routine recapture is not flagged', () => {
+  it('an even-trade capture (SEE 0) names the recapture instead of falling back', () => {
     const r = analyzeMove({
       fenBefore: '4k3/8/3p4/4p3/3P4/8/8/4K3 w - - 0 40', // dxe5, recaptured by d6xe5 → even
       fenAfter: '4k3/8/3p4/4P3/8/8/8/4K3 b - - 0 40',
@@ -155,10 +155,25 @@ describe('captures and the silence gate (SEE-guarded)', () => {
       evalAfter: ev(0, ['dxe5']),
     });
     expect(r.cpLoss).toBeLessThan(0.3);
-    // even trade → no capture event → phase-aware neutral copy (endgame here); never "nothing changed"
-    expect(r.topExplanation).toBe('Endgame move: no immediate tactic detected. Check pawn races, king activity, and rook activity.');
+    // Even trades are still concrete chess events.
+    expect(r.topExplanation).toContain('captures on e5');
+    expect(r.topExplanation).toContain('Black can recapture with dxe5');
     expect(r.topExplanation).not.toMatch(/nothing important changed/i);
-    expect(r.confidence).toBe('low_salience_fallback');
+    expect(r.confidence).toBe('semantic_overlay');
+  });
+  it('a master-game equal capture names the immediate PV recapture', () => {
+    const r = analyzeMove({
+      fenBefore: 'r1bqk2r/p2nppbp/2pp1npB/1p6/3PP3/2N2P2/PPPQN1PP/R3KB1R b KQkq - 3 8',
+      fenAfter: 'r1bqk2r/p2npp1p/2pp1npb/1p6/3PP3/2N2P2/PPPQN1PP/R3KB1R w KQkq - 0 9',
+      san: 'Bxh6',
+      evalBefore: ev(-4, ['O-O', 'Bxg7', 'Kxg7']),
+      evalAfter: ev(-8, ['Qxh6', 'Qa5', 'Qd2']),
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.topExplanation).toContain('captures on h6');
+    expect(r.topExplanation).toContain('White can recapture with Qxh6');
+    expect(r.topExplanation).not.toMatch(/Opening move/i);
+    expect(r.confidence).toBe('semantic_overlay');
   });
 });
 
@@ -174,7 +189,8 @@ describe('quiet-move fallback is phase-aware (replaces the absolute "nothing imp
     );
     expect(r.cpLoss).toBeLessThan(0.3);
     expect(r.confidence).toBe('low_salience_fallback');
-    expect(r.topExplanation).toBe('Opening move: improves development or central control. No immediate tactic detected.');
+    expect(r.rankedInsights.some((i) => i.type === 'center_control_gained')).toBe(true);
+    expect(r.topExplanation).toMatch(/central control/i);
   });
 
   it('middlegame → activity / defensive-relationships framing', () => {
@@ -212,6 +228,21 @@ describe('insight ladder — semantic feature facts below tactics/material', () 
     expect(r.rankedInsights.some((i) => i.type === 'center_control_gained')).toBe(true);
     expect(['development_improved', 'center_control_gained']).toContain(r.rankedInsights[0].type);
     expect(r.topExplanation).toMatch(/develops|central control/i);
+    expect(r.confidence).toBe('low_salience_fallback');
+  });
+
+  it('runs the ladder even when the move has no cp loss', () => {
+    const r = analyzeMove({
+      fenBefore: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      fenAfter: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      san: 'e4',
+      evalBefore: ev(13, ['e4', 'e5']),
+      evalAfter: ev(-17, ['e5', 'd4']),
+    });
+    expect(r.cpLoss).toBeLessThan(0.3);
+    expect(r.rankedInsights.some((i) => i.type === 'center_control_gained')).toBe(true);
+    expect(r.topExplanation).toMatch(/central control/i);
+    expect(r.topExplanation).not.toMatch(/Opening move/i);
     expect(r.confidence).toBe('low_salience_fallback');
   });
 });

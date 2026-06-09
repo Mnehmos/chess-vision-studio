@@ -30,6 +30,8 @@ export interface LichessConfig {
   /** Run Stockfish review -> OODA dataset on each finished game. */
   review: boolean;
   reviewDepth: number;
+  /** Optional trained @cvs/engine policy weights JSON. */
+  weightsPath: string;
   outDir: string;
 }
 
@@ -79,6 +81,7 @@ export function loadLichessConfig(): LichessConfig {
     maxConcurrentGames: num('LICHESS_MAX_GAMES', 1),
     review: bool('LICHESS_REVIEW', false),
     reviewDepth: num('LICHESS_REVIEW_DEPTH', 10),
+    weightsPath: get('LICHESS_WEIGHTS', 'arena/out/weights.json'),
     outDir: get('LICHESS_OUT_DIR', 'arena/out'),
   };
 }

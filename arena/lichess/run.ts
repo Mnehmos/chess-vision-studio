@@ -5,7 +5,8 @@
 //
 // Run: `npm run lichess:bot` (needs LICHESS_BOT_TOKEN in .env, scope bot:play,
 // on an account already upgraded to BOT). See arena/lichess/README.md.
-import { CvsEngine } from '@cvs/engine';
+import { existsSync, readFileSync } from 'node:fs';
+import { CvsEngine, type PolicyWeights } from '@cvs/engine';
 import { LichessClient, type LichessEvent } from './client';
 import { loadLichessConfig, hasToken, type LichessConfig } from './env';
 import { shouldAccept } from './policy';
@@ -34,7 +35,8 @@ export async function runBot(
     log('  curl -d "" https://lichess.org/api/bot/account/upgrade -H "Authorization: Bearer <TOKEN>"');
   }
 
-  const picker = opts.picker ?? cvsPicker(new CvsEngine(), { depth: cfg.depth });
+  const weights = loadWeights(cfg.weightsPath, log);
+  const picker = opts.picker ?? cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });
   const active = new Set<string>();
 
   if (cfg.seedAi) {
@@ -106,6 +108,18 @@ export async function runBot(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function loadWeights(path: string, log: (m: string) => void): PolicyWeights | undefined {
+  if (!path || !existsSync(path)) return undefined;
+  try {
+    const weights = JSON.parse(readFileSync(path, 'utf8')) as PolicyWeights;
+    log(`loaded trained weights: ${path}`);
+    return weights;
+  } catch (e) {
+    log(`could not load weights ${path}: ${String(e)}; using default policy`);
+    return undefined;
+  }
 }
 
 // Auto-run as a script, never under Vitest. Refuses to start without a token.

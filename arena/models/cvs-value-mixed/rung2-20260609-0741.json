@@ -1,0 +1,20 @@
+{
+  "mobilityKnight": -0.009146501731852639,
+  "mobilityBishop": 0.00016349551044791255,
+  "mobilityRook": 0.006378351731255912,
+  "mobilityQueen": -0.00036997911865755686,
+  "kingShield": 0.017731980650213256,
+  "kingZonePressure": 0.01378222703226844,
+  "kingOpenFile": 0.033772526103628596,
+  "passedPawnMg": 0.007602397638218445,
+  "passedPawnEg": 0.018127666604861484,
+  "connectedPassedPawn": 0.010872373767425616,
+  "rookOpenFile": 0.008498171140976132,
+  "rookSemiOpenFile": 0.03282360389980055,
+  "rookSeventh": 0.0015515627033692678,
+  "doubledPawn": 0.020250295106513848,
+  "isolatedPawn": 0.01702436744770549,
+  "bishopPairMg": -0.0038147687016005663,
+  "bishopPairEg": -0.0021954325165857483,
+  "hangingPiece": 0.004266146980266788
+}
