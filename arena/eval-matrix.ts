@@ -11,7 +11,7 @@
 //   npm run eval:matrix -- --positions 95 --offset 543 --depths 2,3,4 \
 //     --sf-depth 10 --engines default,mixed --concurrency 2 \
 //     --cache arena/out/sf-eval-cache.jsonl
-import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { Chess } from 'chess.js';
 import {
@@ -25,10 +25,10 @@ import {
   type ValueWeights,
 } from '@cvs/engine';
 import { UciEngine } from '../engine/evaluation';
-import type { Eval } from '../engine/types';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { median, normalize } from './quality';
+import { SfCachePool } from './sf-cache';
 
 interface Cfg {
   input: string;
@@ -79,53 +79,8 @@ interface Report {
   nodes: number;
 }
 
-/** Pool of Stockfish engines with a shared, persisted eval cache keyed by FEN@depth. */
-class SfCachePool {
-  private cache = new Map<string, Eval>();
-  private inflight = new Map<string, Promise<Eval>>();
-  private rr = 0;
-  constructor(
-    private engines: UciEngine[],
-    private depth: number,
-    private cachePath: string,
-  ) {
-    if (existsSync(cachePath)) {
-      for (const line of readFileSync(cachePath, 'utf8').split('\n')) {
-        if (!line.trim()) continue;
-        try {
-          const { k, e } = JSON.parse(line) as { k: string; e: Eval };
-          this.cache.set(k, e);
-        } catch {
-          /* skip bad line */
-        }
-      }
-    }
-  }
-  get cachedCount(): number {
-    return this.cache.size;
-  }
-  async evalFen(fen: string): Promise<Eval> {
-    const key = `${fen}@${this.depth}`;
-    const hit = this.cache.get(key);
-    if (hit) return hit;
-    const pending = this.inflight.get(key);
-    if (pending) return pending;
-    const eng = this.engines[this.rr++ % this.engines.length]!;
-    const p = (async () => {
-      const e = await eng.evaluate({ fen, depth: this.depth });
-      this.cache.set(key, e);
-      this.inflight.delete(key);
-      try {
-        appendFileSync(this.cachePath, JSON.stringify({ k: key, e }) + '\n', 'utf8');
-      } catch {
-        /* cache persist best-effort */
-      }
-      return e;
-    })();
-    this.inflight.set(key, p);
-    return p;
-  }
-}
+// SfCachePool lives in ./sf-cache (side-effect-free) so other harnesses can
+// import it WITHOUT triggering this script's auto-run below.
 
 async function parallelMap<T, R>(items: T[], concurrency: number, fn: (item: T, idx: number) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);

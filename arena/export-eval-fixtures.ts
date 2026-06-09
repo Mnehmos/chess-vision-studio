@@ -12,7 +12,6 @@ import {
   evaluateWhiteFloat,
   loadDataset,
   DEFAULT_VALUE_WEIGHTS,
-  DEFAULT_RUNG2_WEIGHTS,
   type Rung2Weights,
   type ValueWeights,
 } from '@cvs/engine';
