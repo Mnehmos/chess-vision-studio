@@ -139,7 +139,11 @@ async function main(): Promise<void> {
 
   // ---- failures + RSI tagging ----
   const failures = moves.filter(
-    (m) => m.classification === 'illegal' || m.classification === 'mate_missed' || (m.cpLoss !== null && m.cpLoss >= 1.0),
+    (m) =>
+      m.classification === 'illegal' ||
+      m.classification === 'mate_missed' ||
+      m.classification === 'slow_mate' ||
+      (m.cpLoss !== null && m.cpLoss >= 1.0),
   );
   // Deeper probe on every failure FEN (batch, fast — Rust).
   const probe = failures.length
@@ -201,6 +205,7 @@ async function main(): Promise<void> {
       if (f.stockfishBest && (f.stockfishBest.includes('x') || f.stockfishBest.includes('+')) && f.cpLoss !== null && f.cpLoss >= 2) {
         tags.push('tactical_motif_missed');
       }
+      if (f.classification === 'slow_mate') tags.push('mate_net_tightening');
       if (f.ply <= 12) tags.push('opening_structure');
       if (tags.length === 0) tags.push('unknown');
 
@@ -215,44 +220,83 @@ async function main(): Promise<void> {
         primaryTag: tags[0],
       });
     }
-  } finally {
-    sfEngine.dispose();
-  }
-
-  // Game-level endgame_conversion: CVS was winning (≥ +2 from its POV) but didn't win.
-  for (const g of games.filter((x) => x.cvsResult !== 'win')) {
-    const ms = moves.filter((m) => m.gameId === g.gameId && typeof m.stockfishEvalBefore === 'number');
-    const winning = ms.some((m) => {
-      const stmCp = m.stockfishEvalBefore as number; // stm POV = CVS POV on CVS moves
-      return stmCp >= 200;
-    });
-    if (winning) {
-      const worst = ms.filter((m) => m.cpLoss !== null).sort((a, b) => b.cpLoss! - a.cpLoss!).slice(0, 2);
+    // Game-level conversion failures: CVS was winning (≥ +2 from its POV) but
+    // didn't win. Subtype from the termination + final halfmove clock:
+    //   draw_rule + halfmove ≥ 100 → fifty_move_pressure
+    //   draw_rule (otherwise: threefold etc.) → repetition_shuffle
+    //   maxply adjudication → non_progress_shuffle
+    for (const g of games.filter((x) => x.cvsResult !== 'win')) {
+      const ms = moves.filter((m) => m.gameId === g.gameId && typeof m.stockfishEvalBefore === 'number');
+      const winning = ms.some((m) => (m.stockfishEvalBefore as number) >= 200); // stm POV = CVS POV on CVS moves
+      if (!winning) continue;
+      const halfmove = Number(((g as unknown as { finalFen?: string }).finalFen ?? '').split(' ')[4] ?? 0);
+      const subtype =
+        g.termination === 'maxply_adjudicated_draw'
+          ? 'non_progress_shuffle'
+          : halfmove >= 100
+            ? 'fifty_move_pressure'
+            : 'repetition_shuffle';
+      const worst = ms.filter((m) => m.cpLoss !== null).sort((a, b) => b.cpLoss! - a.cpLoss!).slice(0, 3);
       for (const m of worst) {
         tagged.push({
           ...m,
+          classification: g.cvsResult === 'draw' ? 'draw_conversion_failure' : m.classification,
           opponent: g.opponentEloLabel,
           cvsColor: g.cvsColor,
           gameResult: g.cvsResult,
+          termination: g.termination,
           deeperProbe: null,
-          provisionalTags: ['endgame_conversion'],
-          primaryTag: 'endgame_conversion',
+          provisionalTags: [subtype, 'endgame_conversion'],
+          primaryTag: subtype,
         });
       }
     }
-  }
 
-  // RSI candidates: the high-signal subset.
-  const rsi = tagged.filter((t) => {
-    const m = t as unknown as ScoredMove & { primaryTag: string };
-    return (
-      (m.cpLoss !== null && m.cpLoss >= 1.0) ||
-      m.classification === 'mate_missed' ||
-      m.classification === 'illegal' ||
-      m.primaryTag === 'endgame_conversion' ||
-      m.primaryTag === 'search_horizon'
-    );
-  });
+    // RSI candidates: the high-signal subset.
+    const rsi = tagged.filter((t) => {
+      const m = t as unknown as ScoredMove & { primaryTag: string };
+      return (
+        (m.cpLoss !== null && m.cpLoss >= 1.0) ||
+        m.classification === 'mate_missed' ||
+        m.classification === 'slow_mate' ||
+        m.classification === 'illegal' ||
+        m.classification === 'draw_conversion_failure' ||
+        m.primaryTag === 'endgame_conversion' ||
+        m.primaryTag === 'search_horizon'
+      );
+    });
+
+    // Deep oracle (depth 20): every RSI candidate is rescored before it may be
+    // used for training or patch decisions (mission policy). Cached forever.
+    const deepPool = new SfCachePool([sfEngine], 20, 'arena/out/sf-eval-cache.jsonl');
+    let deepDone = 0;
+    for (const r of rsi) {
+      const row = r as Record<string, unknown>;
+      const fenBefore = row.fenBefore as string | undefined;
+      if (!fenBefore) continue;
+      try {
+        const dBefore = await deepPool.evalFen(fenBefore);
+        if (dBefore.status === 'unavailable' || !dBefore.pv?.[0]) continue;
+        row.deepOracleDepth = 20;
+        row.deepStockfishBest = dBefore.pv[0];
+        row.deepEvalBefore = dBefore.mate !== undefined ? `M${dBefore.mate}` : dBefore.cp;
+        const fenAfter = row.fenAfter as string | undefined;
+        if (fenAfter) {
+          const cAfter = new Chess(fenAfter);
+          const dAfter = cAfter.isGameOver() ? { cp: 0, depth: 0, pv: [] } : await deepPool.evalFen(fenAfter);
+          row.deepCpLoss = Number(Math.max(0, computeCpLoss(dBefore, dAfter)).toFixed(3));
+        }
+        if (++deepDone % 20 === 0) console.log(`  deep-oracle d20: ${deepDone}/${rsi.length}…`);
+      } catch {
+        /* best-effort */
+      }
+    }
+    console.log(`deep-oracle d20 rescored ${deepDone}/${rsi.length} RSI candidates`);
+    var rsiOut = rsi; // hoist for the output section below
+  } finally {
+    sfEngine.dispose();
+  }
+  const rsi = rsiOut!;
 
   // ---- outputs ----
   const summary = {

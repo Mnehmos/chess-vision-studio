@@ -30,6 +30,7 @@
     "gauntlet:score": "vite-node --script arena/gauntlet-score.ts",
     "gauntlet:analyze": "vite-node --script arena/gauntlet-analyze.ts",
     "engine:compare": "vite-node --script arena/engine-compare.ts",
+    "forensic:loss": "vite-node --script arena/forensic-loss.ts",
     "train:loop": "vite-node --script arena/train-loop.ts",
     "training:ui": "vite --host 127.0.0.1 --port 5174",
     "lichess:import": "vite-node --script arena/lichess/import-db.ts",

@@ -36,14 +36,28 @@ export type Classification =
   | 'mistake'
   | 'blunder'
   | 'mate_missed'
+  | 'slow_mate'
   | 'illegal'
   | 'timeout';
 
-/** cpLoss is in PAWNS (computeCpLoss convention). */
-export function classify(cpLoss: number, isBest: boolean, mateMissed: boolean, illegal: boolean): Classification {
+/**
+ * cpLoss thresholds (PAWNS, computeCpLoss convention):
+ *   best = matches SF's first line · excellent ≤0.1 · good ≤0.3 · inaccuracy ≤0.75
+ *   mistake <2.0 · blunder ≥2.0 · mate_missed = forced mate available, no longer
+ *   forced after the move (loss ≥2) · slow_mate = forced mate available, mover
+ *   STILL forces mate after the move but didn't play the oracle line.
+ */
+export function classify(
+  cpLoss: number,
+  isBest: boolean,
+  mateMissed: boolean,
+  illegal: boolean,
+  slowMate = false,
+): Classification {
   if (illegal) return 'illegal';
   if (mateMissed) return 'mate_missed';
   if (isBest) return 'best';
+  if (slowMate) return 'slow_mate';
   if (cpLoss <= 0.1) return 'excellent';
   if (cpLoss <= 0.3) return 'good';
   if (cpLoss <= 0.75) return 'inaccuracy';
@@ -113,6 +127,7 @@ async function main(): Promise<void> {
         scored.stockfishEvalAfter = 'mate_delivered';
         scored.fenAfter = fenAfter;
         scored.cpLoss = 0;
+        scored.oracleDepth = sfDepth;
         scored.classification = 'best';
         out.push(JSON.stringify(scored));
         if (++done % 200 === 0) console.log(`  ${done}/${rows.length}…`);
@@ -123,14 +138,17 @@ async function main(): Promise<void> {
         : await pool.evalFen(fenAfter);
       const cpLoss = Math.max(0, computeCpLoss(before, after));
       const isBest = normalize(row.cvsSan ?? '') === normalize(before.pv[0]);
-      const mateMissed =
-        before.mate !== undefined && before.mate > 0 && !(after.mate !== undefined && after.mate < 0) && cpLoss >= 2;
+      const hadMate = before.mate !== undefined && before.mate > 0;
+      const keptMate = after.mate !== undefined && after.mate < 0; // opponent still gets mated
+      const mateMissed = hadMate && !keptMate && cpLoss >= 2;
+      const slowMate = hadMate && keptMate && !isBest;
       scored.stockfishBest = before.pv[0];
       scored.stockfishEvalBefore = before.mate !== undefined ? `M${before.mate}` : before.cp;
       scored.stockfishEvalAfter = after.mate !== undefined ? `M${after.mate}` : after.cp;
       scored.fenAfter = fenAfter;
       scored.cpLoss = Number(cpLoss.toFixed(3));
-      scored.classification = classify(cpLoss, isBest, mateMissed, false);
+      scored.oracleDepth = sfDepth;
+      scored.classification = classify(cpLoss, isBest, mateMissed, false, slowMate);
       out.push(JSON.stringify(scored));
       if (++done % 200 === 0) console.log(`  ${done}/${rows.length}…`);
     }

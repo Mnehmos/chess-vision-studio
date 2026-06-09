@@ -78,16 +78,42 @@ export class SfOpponent {
     });
   }
 
-  /** Best move (UCI) for `fen` at the configured limited strength. */
-  bestMove(fen: string): Promise<string | null> {
+  /**
+   * Best move (UCI) for `fen` at the configured limited strength. Guarded by a
+   * timeout + one retry: under heavy CPU contention a `bestmove` line can be
+   * lost, and an unguarded await deadlocks the whole gauntlet (observed once).
+   * A second timeout throws — loud failure beats a silently hung run.
+   */
+  async bestMove(fen: string): Promise<string | null> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await this.tryBestMove(fen, this.settings.movetimeMs + 10_000);
+      if (result.ok) return result.move;
+      // Recover the engine state, then retry once.
+      this.transport.send('stop');
+      await this.expect('isready', 'readyok');
+    }
+    throw new Error(`SF opponent unresponsive twice on ${fen}`);
+  }
+
+  private tryBestMove(fen: string, timeoutMs: number): Promise<{ ok: boolean; move: string | null }> {
     return new Promise((resolve) => {
+      let settled = false;
       const onLine = (line: string) => {
-        if (line.startsWith('bestmove')) {
+        if (line.startsWith('bestmove') && !settled) {
+          settled = true;
+          clearTimeout(timer);
           this.handlers = this.handlers.filter((h) => h !== onLine);
           const mv = line.split(/\s+/)[1];
-          resolve(!mv || mv === '(none)' ? null : mv);
+          resolve({ ok: true, move: !mv || mv === '(none)' ? null : mv });
         }
       };
+      const timer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          this.handlers = this.handlers.filter((h) => h !== onLine);
+          resolve({ ok: false, move: null });
+        }
+      }, timeoutMs);
       this.handlers.push(onLine);
       this.transport.send(`position fen ${fen}`);
       this.transport.send(`go movetime ${this.settings.movetimeMs}`);
