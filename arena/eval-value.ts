@@ -17,9 +17,11 @@ import {
   CvsEngine,
   DEFAULT_POLICY_WEIGHTS,
   DEFAULT_VALUE_WEIGHTS,
+  DEFAULT_RUNG2_WEIGHTS,
   loadDataset,
   type PolicyWeights,
   type ValueWeights,
+  type Rung2Weights,
 } from '@cvs/engine';
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
@@ -30,6 +32,7 @@ interface EvalConfig {
   policy: string; // path to policy weights JSON, or "default"
   a: string; // path to value weights JSON, or "default"
   b: string; // path to value weights JSON, or "default"
+  bRung2: string; // path to Rung-2 weights JSON for engine B, or "default" (none)
   offset: number;
   positions: number;
   depth: number; // CVS search depth
@@ -41,6 +44,7 @@ const DEFAULT_CONFIG: EvalConfig = {
   policy: 'arena/out/weights.json',
   a: 'default',
   b: 'arena/out/value-weights.json',
+  bRung2: 'default',
   offset: 543,
   positions: 95,
   depth: 3,
@@ -55,6 +59,11 @@ function loadPolicy(path: string): PolicyWeights {
 function loadValue(path: string): ValueWeights {
   if (path === 'default') return DEFAULT_VALUE_WEIGHTS;
   return JSON.parse(readFileSync(path, 'utf8')) as ValueWeights;
+}
+
+function loadRung2(path: string): Rung2Weights {
+  if (path === 'default') return DEFAULT_RUNG2_WEIGHTS;
+  return JSON.parse(readFileSync(path, 'utf8')) as Rung2Weights;
 }
 
 function fmt(label: string, r: QualityReport): string {
@@ -74,11 +83,13 @@ export async function evalValue(
   const policy = loadPolicy(cfg.policy);
   const aWeights = loadValue(cfg.a);
   const bWeights = loadValue(cfg.b);
+  const bRung2 = loadRung2(cfg.bRung2);
 
   // For the A/B comparison we always inject a value closure (even for "default")
-  // so both sides take the identical injected-Searcher code path.
+  // so both sides take the identical injected-Searcher code path. Engine B also
+  // carries Rung-2 weights when supplied (engine A is the handcrafted baseline).
   const engineA = new CvsEngine({ weights: policy, valueWeights: aWeights });
-  const engineB = new CvsEngine({ weights: policy, valueWeights: bWeights });
+  const engineB = new CvsEngine({ weights: policy, valueWeights: bWeights, rung2Weights: bRung2 });
 
   const qcfg: QualityConfig = { qualityPositions: cfg.positions, qualityDepth: cfg.qualityDepth, searchDepth: cfg.depth };
 
@@ -89,7 +100,7 @@ export async function evalValue(
   try {
     log(`eval-value: ${slice.length} positions [${cfg.offset}..${cfg.offset + cfg.positions}) @ CVS depth ${cfg.depth}, SF depth ${cfg.qualityDepth}`);
     log(`  A = ${cfg.a}`);
-    log(`  B = ${cfg.b}`);
+    log(`  B = ${cfg.b}${cfg.bRung2 !== 'default' ? ` + rung2:${cfg.bRung2}` : ''}`);
     a = await evaluateQuality(engineA, slice, sf, qcfg, cfg.depth);
     b = await evaluateQuality(engineB, slice, sf, qcfg, cfg.depth);
   } finally {
@@ -120,6 +131,7 @@ function parseArgs(argv: string[]): EvalConfig {
     else if (a === '--policy') cfg.policy = next();
     else if (a === '--a') cfg.a = next();
     else if (a === '--b') cfg.b = next();
+    else if (a === '--rung2') cfg.bRung2 = next();
     else if (a === '--offset') cfg.offset = Number(next()) || 0;
     else if (a === '--positions') cfg.positions = Number(next()) || cfg.positions;
     else if (a === '--depth') cfg.depth = Number(next()) || cfg.depth;
