@@ -164,7 +164,16 @@ export class LichessClient {
       headers: this.authHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
       body: new URLSearchParams(body).toString(),
     });
-    if (!res.ok) throw new Error(`POST /api/challenge/${username} -> ${res.status}`);
+    if (!res.ok) {
+      // Lichess 400s carry the actual reason (challenge prefs, bad params) in the body.
+      let detail = '';
+      try {
+        detail = (await res.text()).slice(0, 200);
+      } catch {
+        /* body unreadable */
+      }
+      throw new Error(`POST /api/challenge/${username} -> ${res.status}${detail ? ` ${detail}` : ''}`);
+    }
     return (await res.json()) as { id?: string; status?: string } & Record<string, unknown>;
   }
 
