@@ -1,0 +1,65 @@
+[Event "CVS Gauntlet (EXPERIMENTAL danger)"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "CVS-Rust-d5+danger-EXPERIMENTAL"]
+[Black "SF-2200"]
+[Result "1-0"]
+[Opening "italian_giuoco"]
+[SetUp "1"]
+[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. Nc3 d6 5. Na4 Na5 6. Bd3 Qf6 7. Nxc5 dxc5 8. Bb5+ Bd7 9. Bxd7+ Kxd7 10. d3 Ne7 11. Be3 b6 12. Ng5 Qg6 13. Qf3 f6 14. Qh3+ Kc6 15. Qe6+ Kb7 16. Qxe7 Rhe8 17. Qf7 fxg5 18. Qxg6 hxg6 19. Bxg5 Nc6 20. Kd2 Rab8 21. f4 c4 22. dxc4 exf4 23. Rae1 Ne5 24. Bxf4 Nxc4+ 25. Kc3 b5 26. a4 a6 27. b3 Ne5 28. axb5 a5 29. Ra1 Kb6 30. Rhd1 c6 31. bxc6 Ra8 32. c7 Nc6 33. Ra4 Rf8 34. Bg3 Rac8 35. Rd7 Rf1 36. Rxg7 Rd1 37. Rxg6 Kb7 38. Rc4 Ne7 39. Re6 Rh1 40. Rc5 Rf8 41. Rb5+ Ka7 42. Rxe7 Rc8 43. Rb8 a4 44. Bf2+ Ka6 45. Re6+ Ka5 46. b4# 1-0
+
+[Event "CVS Gauntlet (EXPERIMENTAL danger)"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "SF-2200"]
+[Black "CVS-Rust-d5+danger-EXPERIMENTAL"]
+[Result "0-1"]
+[Opening "italian_giuoco"]
+[SetUp "1"]
+[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. Nc3 Nf6 5. Ng5 O-O 6. O-O d6 7. d3 Bg4 8. Qd2 Nd4 9. h3 Bd7 10. Nd5 Nxd5 11. exd5 b5 12. c3 bxc4 13. cxd4 Bxd4 14. Nf3 cxd3 15. Re1 Bf5 16. g4 Bg6 17. Nxd4 exd4 18. Qf4 Qh4 19. Kg2 Qf6 20. Qxf6 gxf6 21. Rb1 Rfe8 22. Rd1 Be4+ 23. Kg1 Bf3 24. Rxd3 Be4 25. Rxd4 Bxb1 26. Be3 Bxa2 27. b4 Re5 28. b5 Bxd5 29. Rd1 Be4 30. Rc1 Rxb5 31. f3 Bxf3 32. Kf2 Bd5 33. Rxc7 Rb3 34. Re7 a6 35. g5 fxg5 36. Ke1 h6 37. Bf2 Rxh3 38. Re8+ Rxe8+ 39. Kd2 Rh2 40. Kc3 Rxf2 41. Kd3 Re4 42. Kc3 Ra4 43. Kd3 Ra3+ 44. Kd4 Rd2# 0-1
+
+[Event "CVS Gauntlet (EXPERIMENTAL danger)"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "CVS-Rust-d5+danger-EXPERIMENTAL"]
+[Black "SF-2200"]
+[Result "1-0"]
+[Opening "ruy_berlin"]
+[SetUp "1"]
+[FEN "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. Nc3 Nd4 5. Bc4 Qe7 6. Ng5 h6 7. Nxf7 Rh7 8. Nd5 Nxd5 9. Bxd5 c6 10. Bc4 d5 11. Bd3 Kxf7 12. exd5 Qg5 13. Bxh7 Qxg2 14. Qh5+ g6 15. Qxg6+ Qxg6 16. Bxg6+ Kxg6 17. Rg1+ Kf7 18. Kd1 Bf5 19. d3 cxd5 20. Be3 Nf3 21. Rg2 Rc8 22. Bxa7 Bh3 23. Rg3 Ng5 24. Be3 Bf5 25. Bxg5 hxg5 26. Rxg5 Kf6 27. Rg8 Bc5 28. Rxc8 Bg4+ 29. Kd2 Bxc8 30. Rg1 Bf5 31. Ke2 e4 32. a3 exd3+ 33. cxd3 b5 34. Rg8 Be6 35. Rb8 Bd4 36. Rxb5 Ke5 37. Rb4 Bg4+ 38. f3 Bh5 39. h3 Bg1 40. Rh4 Be8 41. f4+ Kf5 42. Rh8 Bb5 43. Rb8 Bc6 44. Rc8 Ba4 45. Rf8+ Ke6 46. Ra8 Bb5 47. Rb8 Ba6 48. b4 Ba7 49. Ra8 Bc8 50. Rxa7 d4 51. Ra5 Kf6 52. Rd5 Bxh3 53. Rxd4 Bc8 54. Ke3 Bb7 55. Rd7 Bg2 56. Rd6+ Kf7 57. f5 Bh3 58. Kf4 Bf1 59. d4 Bb5 60. Ke5 Kf8 61. f6 Be8 62. Rd8 Kf7 63. Rc8 Ba4 64. Rc7+ Ke8 65. f7+ Kf8 66. Ke6 Bb3+ 67. d5 Ba4 68. Rc8+ Kg7 69. f8=Q+ Kh7 70. Qh8+ Kg6 71. Rg8# 1-0
+
+[Event "CVS Gauntlet (EXPERIMENTAL danger)"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "SF-2200"]
+[Black "CVS-Rust-d5+danger-EXPERIMENTAL"]
+[Result "0-1"]
+[Opening "ruy_berlin"]
+[SetUp "1"]
+[FEN "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. O-O a6 5. Ba4 b5 6. Bb3 Nxe4 7. Nc3 Nc5 8. d3 Nxb3 9. axb3 d5 10. d4 e4 11. Ne5 Nxe5 12. dxe5 Be6 13. Be3 Be7 14. f4 g6 15. Qd4 c5 16. Qd2 d4 17. Nxe4 dxe3 18. Qxe3 Qd4 19. Rfe1 Qxb2 20. Nf6+ Bxf6 21. f5 gxf5 22. exf6 Qd4 23. Rad1 Qxe3+ 24. Rxe3 Rd8 25. Rc1 Rg8 26. Re5 Rd2 27. g4 Rxg4+ 28. Kh1 Rh4 29. Kg1 Rdxh2 30. Rf1 Rh1+ 31. Kg2 R4h2+ 32. Kg3 Rxf1 33. Kxh2 Rf2+ 34. Kh3 f4+ 35. Kh4 h6 36. Rxe6+ fxe6 37. Kg4 Kf7 38. c4 b4 39. Kh5 Kxf6 40. Kg4 e5 41. Kh4 Kf5 42. Kh3 e4 43. Kh4 Rh2# 0-1
+
+[Event "CVS Gauntlet (EXPERIMENTAL danger)"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "5"]
+[White "CVS-Rust-d5+danger-EXPERIMENTAL"]
+[Black "SF-2200"]
+[Result "0-1"]
+[Opening "sicilian_old"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3"]
+
+3. Nc3 Nc6 4. d4 cxd4 5. Nxd4 e5 6. Nxc6 bxc6 7. Bc4 Nf6 8. Be3 Be7 9. O-O h6 10. h3 Be6 11. Bxe6 fxe6 12. Qf3 O-O 13. Qg3 Kh7 14. Rfe1 Qb8 15. Rab1 d5 16. exd5 cxd5 17. Ne2 Bd6 18. a3 Qc8 19. Rbc1 Qa6 20. f3 d4 21. Bd2 e4 22. f4 Qb6 23. Qb3 Qxb3 24. cxb3 e3 25. Bb4 Bxb4 26. axb4 d3 27. Rc3 Rad8 28. Ng3 d2 29. Rd1 Nd5 30. Rd3 a6 31. Ne2 Rd6 32. g3 Kg6 33. f5+ Rxf5 34. b5 axb5 35. Ra1 Rf7 36. Nf4+ Kf5 37. Ne2 Ke4 38. Rd4+ Kf3 39. Nc3 Rdd7 40. Nxb5 Kxg3 41. Rg4+ Kxh3 42. Re4 Rf3 43. Rd1 e5 44. Rxe5 Rg3+ 45. Kh1 Re7 46. Rh5+ Kg4 47. Rxd5 e2 48. R5xd2 exd1=R+ 49. Rxd1 Re5 50. Rd2 Kh3 51. Rh2+ Kg4 52. Rc2 Rh5+ 53. Rh2 Rf5 54. Rc2 Rh5+ 55. Rh2 Rxb5 56. Rc2 Rh5+ 57. Rh2 Rxh2+ 58. Kxh2 Rxb3 59. Kg1 Kg3 60. Kf1 Kf3 61. Ke1 Rxb2 62. Kd1 Re2 63. Kc1 Re7 64. Kc2 g6 65. Kd3 Rd7+ 66. Kc4 Ke2 67. Kc5 Rd8 68. Kc6 Rf8 69. Kc5 Kd3 70. Kd5 g5 71. Ke5 g4 72. Kd6 g3 73. Ke7 Rf2 74. Kd6 Rf1 75. Kc5 g2 76. Kb5 Rf5+ 77. Kc6 g1=Q 78. Kc7 Rc5+ 79. Kd6 Rc8 80. Kd7 Ra8 81. Kc6 h5 82. Kb7 Ra7+ 83. Kc6 Rg7 84. Kb5 Qg5+ 85. Kb6 h4 86. Kc6 h3 87. Kd6 h2 88. Kc6 h1=Q+ 89. Kb6 Qb7# 0-1
+

@@ -32,8 +32,9 @@ export class RustEngine {
     depth: number,
     baseWeights?: string,
     rung2Weights?: string,
+    extraArgs: string[] = [],
   ) {
-    const args = ['--serve', '--depth', String(depth)];
+    const args = ['--serve', '--depth', String(depth), ...extraArgs];
     if (baseWeights) args.push('--base', baseWeights);
     if (rung2Weights) args.push('--rung2', rung2Weights);
     this.proc = spawn(exe, args, { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -55,6 +56,21 @@ export class RustEngine {
         }
       });
       this.proc.stdin.write(fen + '\n');
+    });
+  }
+
+  /** Search with a per-request wall-clock budget via `go <ms> <fen>` (the
+   * process's depth acts as the cap — spawn with a high cap for clock mode). */
+  analyzeTimed(fen: string, budgetMs: number): Promise<RustPick> {
+    return new Promise((resolve, reject) => {
+      this.queue.push((line) => {
+        try {
+          resolve(JSON.parse(line) as RustPick);
+        } catch (e) {
+          reject(e);
+        }
+      });
+      this.proc.stdin.write(`go ${Math.max(50, Math.round(budgetMs))} ${fen}\n`);
     });
   }
 
