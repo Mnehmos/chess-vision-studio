@@ -1,0 +1,260 @@
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "1"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "italian_giuoco"]
+[SetUp "1"]
+[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. Nc3 d6 5. Na4 Nf6 6. Nxc5 Qe7 7. Nb3 O-O 8. d3 Be6 9. Bxe6 Qxe6 10. O-O h6 11. Re1 Qg4 12. h3 Qg6 13. Bd2 Rad8 14. Nh4 Qh7 15. Nf5 Kh8 16. Qf3 Rg8 17. Nxh6 Rgf8 18. Nf5 Rg8 19. d4 d5 20. exd5 Nxd5 21. Re4 Nce7 22. Rh4 f6 23. Rxh7+ Kxh7 24. Qh5# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "2"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "italian_giuoco"]
+[SetUp "1"]
+[FEN "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. c3 Qe7 5. b4 Bb6 6. b5 Na5 7. Bd5 Nf6 8. Ba3 d6 9. c4 Nxd5 10. cxd5 Nc4 11. O-O Nxa3 12. Nxa3 f5 13. Re1 fxe4 14. Rxe4 Qf7 15. Qb3 O-O 16. Rf1 Bf5 17. Ra4 e4 18. Nd4 Bd7 19. Nac2 a6 20. Kh1 axb5 21. Ra3 Rxa3 22. Qxa3 Qxd5 23. Qg3 Bxd4 24. Ne3 Qxa2 25. h3 Qxd2 26. Qg5 Bxe3 27. Qd8 Rxd8 28. g4 Rf8 29. Ra1 Qxf2 30. Rd1 Bf4 31. Rg1 Qh2# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "3"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "ruy_berlin"]
+[SetUp "1"]
+[FEN "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. Nc3 Nd4 5. Bc4 Bd6 6. d3 b6 7. Be3 Nc6 8. O-O O-O 9. Re1 a6 10. d4 Bb7 11. dxe5 Nxe5 12. Nxe5 Bxe5 13. Bd4 Qe8 14. f4 Bxf4 15. e5 Ne4 16. Nxe4 b5 17. Qg4 Bxe5 18. Nf6+ Bxf6 19. Bxf6 g6 20. Rxe8 Rfxe8 21. Qf4 d5 22. Qh6 Rad8 23. Qg7# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "4"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "ruy_berlin"]
+[SetUp "1"]
+[FEN "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"]
+
+4. d3 Bc5 5. Nc3 d6 6. Bg5 h6 7. Bd2 O-O 8. O-O Be6 9. a4 Qe7 10. a5 a6 11. Bxc6 bxc6 12. Be3 Bxe3 13. fxe3 Rab8 14. Qc1 c5 15. Nd2 d5 16. h3 d4 17. Ne2 dxe3 18. Nb3 Bxb3 19. Rxf6 Qxf6 20. Qxe3 Bxc2 21. Rf1 Qd6 22. Nc1 Rxb2 23. Rf5 Rfb8 24. Rf1 R8b5 25. Rf3 Rxa5 26. Rf5 Qd4 27. Kf2 Bd1+ 28. Ke1 Qxe3+ 29. Kf1 Be2+ 30. Ke1 Bxd3+ 31. Kd1 Bc2# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "5"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "sicilian_old"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3"]
+
+3. Nc3 e5 4. Bc4 Nd7 5. d3 Be7 6. Nd5 h6 7. O-O Bg5 8. Nxg5 a6 9. Nxf7 Kxf7 10. Nc7+ Ke7 11. Nxa8 b5 12. Qg4 g5 13. Qe6+ Kf8 14. Qf7# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "6"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "sicilian_old"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3"]
+
+3. d4 cxd4 4. Qxd4 Nc6 5. Qa4 Nf6 6. Nc3 e5 7. h4 Bd7 8. Bg5 Nd4 9. Nb5 a6 10. Nfxd4 axb5 11. Bxf6 gxf6 12. Qxa8 Qxa8 13. Nb3 Rg8 14. g3 f5 15. Bg2 Bc6 16. a3 fxe4 17. Rd1 Qa7 18. Rd2 e3 19. Bxc6+ bxc6 20. fxe3 Qxe3+ 21. Re2 Qxg3+ 22. Kd1 Qg4 23. h5 c5 24. Re1 Bh6 25. Rh1 Qf3 26. Rf1 Qxf1+ 27. Re1 Qf3+ 28. Re2 Rg1# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "7"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "french_main"]
+[SetUp "1"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d6 0 3"]
+
+3. e5 Nc6 4. Nc3 Bb4 5. Qg4 Kf8 6. Nf3 h5 7. Qg5 f6 8. Qf4 b6 9. a3 Bxc3+ 10. bxc3 Rb8 11. Bb5 Nce7 12. O-O Ng6 13. Qg3 c6 14. exf6 gxf6 15. Bd3 Ba6 16. Bxa6 Kg7 17. Bf4 h4 18. Nxh4 Ne7 19. Bd3 Rxh4 20. Bxb8 Nf5 21. Bxf5 exf5 22. Bxa7 Kh7 23. Rab1 Qe7 24. Bxb6 Re4 25. Qh3+ Kg7 26. Qxf5 Nh4 27. Qc8 Ng6 28. Qxc6 Re2 29. Bc5 Qd8 30. Rb7+ Ne7 31. Rd7 Kg6 32. Bxe7 Qxd7 33. Qxf6+ Kh7 34. Qf7+ Kh8 35. Bf6# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "8"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "french_main"]
+[SetUp "1"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d6 0 3"]
+
+3. Nd2 dxe4 4. Nxe4 Nc6 5. Nf3 Nf6 6. Qd3 Nxe4 7. Qb5 Bb4+ 8. Ke2 Qf6 9. h4 O-O 10. Be3 Rd8 11. a3 Bc3 12. Qd3 Bxb2 13. Rh3 Nc3+ 14. Qxc3 Bxc3 15. Re1 Qf5 16. Kd1 Bxe1 17. Bd3 Qa5 18. Ke2 Bc3 19. Ne5 Nxd4+ 20. Bxd4 Bxd4 21. Ng4 Qh5 22. f3 Qc5 23. f4 Qh5 24. f5 Qxg4+ 25. Ke1 Qxg2 26. a4 Bc3+ 27. Kd1 Qf1# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "9"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "caro_kann"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d6 0 3"]
+
+3. e5 h5 4. Nc3 Be6 5. Nf3 Bg4 6. h3 Be6 7. Be2 Bf5 8. Nh4 Bh7 9. Bg5 g6 10. Nf3 Qb6 11. Na4 Qd8 12. O-O f6 13. Bf4 g5 14. Nxg5 Bg6 15. exf6 Nxf6 16. Ne6 Qa5 17. Nc7+ Kf7 18. Nxa8 e5 19. Bxe5 Nbd7 20. c4 Be7 21. Nc7 b5 22. cxb5 Bd8 23. Bd6 Bxc7 24. b4 Qxa4 25. Qxa4 Bxd6 26. bxc6 Rd8 27. Qxa7 Ke7 28. cxd7 Bxb4 29. Qa4 Bd6 30. Rfe1 Rb8 31. Bxh5+ Be4 32. f3 Kf8 33. fxe4 dxe4 34. Qb3 Ra8 35. Qf7# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "10"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "caro_kann"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d6 0 3"]
+
+3. Nd2 dxe4 4. Ne2 Nf6 5. c3 c5 6. Qb3 cxd4 7. Nxd4 e5 8. Bb5+ Bd7 9. Bc4 exd4 10. Bxf7+ Ke7 11. cxd4 Nc6 12. f3 Na5 13. Qe3 Kxf7 14. b3 exf3 15. O-O fxg2 16. Rf4 Bd6 17. Nf3 Bxf4 18. Qxf4 Nc6 19. Be3 Kg8 20. Rd1 Nd5 21. Qg5 Qxg5 22. Bxg5 Bh3 23. Bh4 Bg4 24. Kxg2 Ne3+ 25. Kg3 Rf8 26. Rf1 Nxf1+ 27. Kxg4 h5+ 28. Kg5 Rxf3 29. a4 Nxd4 30. Bf2 Ne6+ 31. Kh4 g5# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "11"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "qgd"]
+[SetUp "1"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"]
+
+3. cxd5 Qxd5 4. Nc3 Bb4 5. Nf3 Nd7 6. Bf4 Ngf6 7. a3 Qe4 8. Bxc7 Bxc3+ 9. bxc3 O-O 10. Bd6 Nd5 11. c4 Nc3 12. Qb3 Nc5 13. Bxc5 Re8 14. Qxc3 b6 15. Bd6 Rd8 16. Nd2 Qf5 17. e4 Qg5 18. Bc7 Rd7 19. Be5 Qg6 20. c5 f6 21. c6 Rf7 22. Bd6 a6 23. Rb1 Raa7 24. Rxb6 Qg5 25. Rb8 Rfc7 26. Qb3 Kf7 27. Bxc7 Qxd2+ 28. Kxd2 Rxc7 29. Qb6 Re7 30. Rxc8 f5 31. exf5 Kf6 32. Rf8+ Rf7 33. Rxf7+ Kxf7 34. c7 exf5 35. Bc4+ Ke7 36. Qe6+ Kf8 37. c8=Q# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "12"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "qgd"]
+[SetUp "1"]
+[FEN "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"]
+
+3. cxd5 exd5 4. Nc3 Nc6 5. h4 Nf6 6. e3 Bb4 7. Be2 Ne4 8. Kf1 Nxc3 9. bxc3 Bxc3 10. Rb1 O-O 11. Ba3 Re8 12. Rc1 Bb4 13. Qd3 Bf5 14. Qb3 Bxa3 15. Rxc6 bxc6 16. g4 Be4 17. Rh2 Rb8 18. Qa4 Rb4 19. Qa6 Rb1+ 20. Bd1 Bd6 21. f4 Rxd1+ 22. Kf2 Rd2+ 23. Kg3 Bd3 24. Qxd3 Rxd3 25. Re2 Qf6 26. Kh3 Qxf4 27. g5 Qg3# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "13"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "slav"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"]
+
+3. cxd5 e6 4. dxe6 Bb4+ 5. Bd2 Qxd4 6. exf7+ Kf8 7. fxg8=Q+ Rxg8 8. Nc3 Qf6 9. Nf3 Qf7 10. Ng5 Qf5 11. e4 Qg6 12. Bc4 Rh8 13. Qf3+ Ke7 14. Nf7 Rf8 15. Nd5+ Ke8 16. Nc7+ Kd7 17. Bxb4 Kxc7 18. Qf4+ Kb6 19. Qe5 Rxf7 20. Ba5# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "14"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "slav"]
+[SetUp "1"]
+[FEN "rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3"]
+
+3. Nd2 Nf6 4. e3 Bf5 5. Ne2 Nbd7 6. Qb3 Qb6 7. h4 e5 8. cxd5 cxd5 9. Ng3 Bg4 10. f3 Be6 11. dxe5 Nxe5 12. h5 Bb4 13. Kf2 Rc8 14. a3 Rxc1 15. Bb5+ Qxb5 16. Raxc1 d4 17. axb4 Bxb3 18. Nxb3 Nd3+ 19. Kf1 Nxc1+ 20. Kg1 Nxb3 21. Ne4 Nxe4 22. g4 Nbd2 23. fxe4 Qe2 24. Rh4 Nf3+ 25. Kh1 Qf1# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "15"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "nimzo_indian"]
+[SetUp "1"]
+[FEN "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"]
+
+4. Nf3 Ne4 5. Qd3 f5 6. a3 Ba5 7. b4 Nxc3 8. Bg5 Qxg5 9. Nxg5 Ne4 10. bxa5 Nc6 11. Nxe4 O-O 12. Nc3 b6 13. axb6 e5 14. bxc7 Ba6 15. dxe5 Rae8 16. f4 Ne7 17. Qd4 h6 18. e3 Bc8 19. Qxa7 Kf7 20. c5 Rh8 21. Bc4+ Nd5 22. Nxd5 Re6 23. Nb6 Kg6 24. Bxe6 Rf8 25. Bxd7 Bxd7 26. Nxd7 Re8 27. Rb1 Kh7 28. Nf6+ Kg6 29. Nxe8 Kh5 30. Qa6 Kh4 31. Qg6 h5 32. Qg3# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "16"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "nimzo_indian"]
+[SetUp "1"]
+[FEN "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"]
+
+4. Bg5 h6 5. Bh4 d5 6. e3 g5 7. Bg3 Ne4 8. Qc1 Bxc3+ 9. bxc3 Nxg3 10. fxg3 Nd7 11. Nf3 g4 12. Ne5 Nxe5 13. dxe5 Qg5 14. cxd5 exd5 15. Qd2 Qxe5 16. a3 O-O 17. Rd1 Re8 18. Qd4 Qxe3+ 19. Qxe3 Rxe3+ 20. Kf2 Rxc3 21. Be2 Be6 22. Ra1 d4 23. Rhb1 Rc2 24. Rxb7 d3 25. Ke3 dxe2 26. Rg1 Re8 27. Kf2 Bd5 28. Re1 Bxb7 29. h4 Ra2 30. a4 a5 31. Kg1 Rxa4 32. h5 Rae4 33. Kh2 Re3 34. Kg1 Rxg3 35. Kh2 Rxg2+ 36. Kh1 Re3 37. Rxe2 Rh3# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "17"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "kings_indian"]
+[SetUp "1"]
+[FEN "rnbqk2r/ppppppbp/5np1/8/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"]
+
+4. e4 d6 5. Nf3 O-O 6. Bf4 Bg4 7. Qb3 Nbd7 8. Qxb7 Rb8 9. Qxa7 Rxb2 10. Qa3 Qb8 11. Nb5 Bxf3 12. gxf3 Nh5 13. Be3 Rxb5 14. cxb5 Rd8 15. Bc4 Nb6 16. Bb3 c5 17. bxc6 Rc8 18. Rc1 Kf8 19. d5 Qc7 20. Qa6 Rb8 21. Rb1 Nc8 22. O-O Kg8 23. Bc2 e6 24. Rb7 Rxb7 25. cxb7 Nb6 26. Bxb6 Qb8 27. Qa8 Qxa8 28. bxa8=Q+ Bf8 29. Bc7 Kg7 30. dxe6 f6 31. Qe8 Kh6 32. Qxf8+ Kg5 33. e7 Ng7 34. Qxg7 d5 35. h4+ Kxh4 36. Qh6# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "18"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "kings_indian"]
+[SetUp "1"]
+[FEN "rnbqk2r/ppppppbp/5np1/8/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4"]
+
+4. d5 d6 5. h3 Na6 6. Nf3 Nc5 7. Bg5 Nfe4 8. Rc1 Nxg5 9. Qd2 Nge4 10. Qe3 Nxc3 11. Rxc3 Bxc3+ 12. Qxc3 O-O 13. h4 e5 14. b4 Ne4 15. Qd3 Bf5 16. g3 Nxg3 17. e4 Bxe4 18. fxg3 Bxd3 19. Nxe5 Bxf1 20. a3 Bg2 21. Nxg6 fxg6 22. Rh2 Qe7+ 23. Kd2 Rf2+ 24. Kc3 Qe3# 0-1
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "19"]
+[White "CVS-Rust-d5"]
+[Black "SF-800"]
+[Result "1-0"]
+[Opening "english_sym"]
+[SetUp "1"]
+[FEN "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 2 3"]
+
+3. Nf3 e6 4. e4 Nge7 5. d3 Nd4 6. Bg5 h6 7. Bf4 g5 8. Be5 Ng6 9. Bxh8 Nxf3+ 10. Qxf3 d5 11. Bf6 Ne7 12. cxd5 Qc7 13. d4 a6 14. Be5 Qa5 15. Bc4 exd5 16. exd5 cxd4 17. Bxd4 b5 18. d6 Nf5 19. Qc6+ Kd8 20. Bf6+ Be7 21. dxe7+ Nxe7 22. Rd1+ Bd7 23. Qxd7# 1-0
+
+[Event "CVS Gauntlet"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "20"]
+[White "SF-800"]
+[Black "CVS-Rust-d5"]
+[Result "0-1"]
+[Opening "english_sym"]
+[SetUp "1"]
+[FEN "r1bqkbnr/pp1ppppp/2n5/2p5/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 2 3"]
+
+3. d3 Nf6 4. e3 d6 5. Nf3 e5 6. Be2 Be7 7. O-O O-O 8. Nd2 Be6 9. a3 d5 10. Bf3 d4 11. Nce4 dxe3 12. Nb1 Nxe4 13. Bxe4 f5 14. Bd5 Bxd5 15. cxd5 exf2+ 16. Rxf2 Qxd5 17. Qf3 Rad8 18. Qxd5+ Rxd5 19. Rf3 Nd4 20. Re3 Nc2 21. Nd2 Nxe3 22. Nf1 Nxf1 23. a4 Nxh2 24. b4 Ng4 25. Bd2 Rxd3 26. Ra2 cxb4 27. Rb2 Rfd8 28. Bxb4 Rd1+ 29. Be1 Rxe1# 0-1
+

@@ -1,0 +1,145 @@
+{
+  "run": "arena/gauntlet/runs/20260609-1503",
+  "config": {
+    "startedAt": "2026-06-09T22:03:45.511Z",
+    "finishedAt": "2026-06-09T22:37:16.605Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "5dc5fe7",
+    "cvsDepth": 5,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      1400,
+      1600,
+      1800
+    ],
+    "opponentSettings": {
+      "1400": {
+        "eloLabel": 1400,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1400,
+        "movetimeMs": 80
+      },
+      "1600": {
+        "eloLabel": 1600,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1600,
+        "movetimeMs": 80
+      },
+      "1800": {
+        "eloLabel": 1800,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1800,
+        "movetimeMs": 80
+      }
+    },
+    "gamesPerOpponent": 20,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 80,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 60,
+    "wins": 60,
+    "draws": 0,
+    "losses": 0,
+    "cvsMoves": 2009,
+    "failures": 105,
+    "rsiCandidates": 105
+  },
+  "ladder": [
+    {
+      "opponent": "SF-1400",
+      "eloLabel": 1400,
+      "settings": {
+        "eloLabel": 1400,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1400,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 20,
+      "draws": 0,
+      "losses": 0,
+      "scorePct": 100,
+      "eloDiff": 636,
+      "estimatedCvsElo": 2036,
+      "avgCpLoss": 0.702,
+      "medianCpLoss": 0.03,
+      "blunderRate": 0.0194,
+      "mateMissed": 3,
+      "illegal": 0,
+      "avgTimePerMoveMs": 183
+    },
+    {
+      "opponent": "SF-1600",
+      "eloLabel": 1600,
+      "settings": {
+        "eloLabel": 1600,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1600,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 20,
+      "draws": 0,
+      "losses": 0,
+      "scorePct": 100,
+      "eloDiff": 636,
+      "estimatedCvsElo": 2236,
+      "avgCpLoss": 0.296,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.0075,
+      "mateMissed": 1,
+      "illegal": 0,
+      "avgTimePerMoveMs": 175.2
+    },
+    {
+      "opponent": "SF-1800",
+      "eloLabel": 1800,
+      "settings": {
+        "eloLabel": 1800,
+        "mechanism": "UCI_Elo",
+        "uciElo": 1800,
+        "movetimeMs": 80
+      },
+      "games": 20,
+      "wins": 20,
+      "draws": 0,
+      "losses": 0,
+      "scorePct": 100,
+      "eloDiff": 636,
+      "estimatedCvsElo": 2436,
+      "avgCpLoss": 0.703,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.0116,
+      "mateMissed": 4,
+      "illegal": 0,
+      "avgTimePerMoveMs": 166
+    }
+  ],
+  "classificationCounts": {
+    "good": 225,
+    "best": 1097,
+    "excellent": 359,
+    "mistake": 71,
+    "inaccuracy": 212,
+    "blunder": 17,
+    "slow_mate": 20,
+    "mate_missed": 8
+  },
+  "tagCounts": {
+    "value_miseval": 49,
+    "search_horizon": 36,
+    "quiet_refutation_missed": 24,
+    "opening_structure": 3,
+    "hanging_piece_missed": 15,
+    "mate_net_tightening": 20,
+    "mate_missed": 8,
+    "tactical_motif_missed": 21,
+    "king_safety_missed": 2,
+    "passed_pawn_missed": 4
+  }
+}
