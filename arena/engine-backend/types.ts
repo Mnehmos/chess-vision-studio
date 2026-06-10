@@ -17,6 +17,11 @@ export interface SearchOpts {
   depth?: number;
 }
 
+export interface PositionContext {
+  initialFen: string;
+  moves: string[];
+}
+
 export interface MoveResult {
   uci: string | null;
   san: string | null;
@@ -38,9 +43,9 @@ export interface EvalResult {
 
 export interface CvsEngineBackend {
   id(): BackendId;
-  bestMove(fen: string, options?: SearchOpts): Promise<MoveResult>;
+  bestMove(fen: string, options?: SearchOpts, context?: PositionContext): Promise<MoveResult>;
   /** analyze == bestMove with full telemetry; same shape, future superset. */
-  analyze(fen: string, options?: SearchOpts): Promise<MoveResult>;
+  analyze(fen: string, options?: SearchOpts, context?: PositionContext): Promise<MoveResult>;
   evaluate(fen: string): Promise<EvalResult>;
   dispose(): void;
 }

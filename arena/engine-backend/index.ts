@@ -36,6 +36,6 @@ export function createEngineBackend(kind?: string, rustOptions?: RustBackendOpti
   return new RustBackend(rustOptions);
 }
 
-export type { CvsEngineBackend, MoveResult, EvalResult, SearchOpts, BackendId } from './types';
+export type { CvsEngineBackend, MoveResult, EvalResult, PositionContext, SearchOpts, BackendId } from './types';
 export { TsLegacyBackend } from './ts-legacy';
 export { RustBackend, RUST_DEFAULT_DEPTH } from './rust-backend';

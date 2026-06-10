@@ -10,10 +10,10 @@ export function rustPicker(opts: { fallbackMs?: number; backend?: RustBackend } 
   const backend = opts.backend ?? new RustBackend();
   return {
     name: `cvs-rust@${fallbackMs}ms`,
-    async pick(fen, budgetMs) {
+    async pick(fen, budgetMs, context) {
       const budget = budgetMs && Number.isFinite(budgetMs) ? Math.max(100, Math.min(budgetMs, 10_000)) : fallbackMs;
       try {
-        const r = await backend.bestMoveTimed(fen, budget);
+        const r = await backend.bestMoveTimed(fen, budget, context);
         return r.uci;
       } catch {
         return null; // session treats null as engine failure and resigns safely

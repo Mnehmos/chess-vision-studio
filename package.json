@@ -18,6 +18,7 @@
     "eval:value": "vite-node --script arena/eval-value.ts",
     "train:ranking": "vite-node --script arena/train-ranking.ts",
     "train:mixed": "vite-node --script arena/train-mixed.ts",
+    "train:rung3": "vite-node --script arena/train-rung3-net.ts",
     "rung2:dump": "vite-node --script arena/rung2-dump.ts",
     "forensic:blunder": "vite-node --script arena/forensic-blunder.ts",
     "pv:attribution": "vite-node --script arena/pv-attribution.ts",

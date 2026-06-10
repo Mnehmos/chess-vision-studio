@@ -22,6 +22,11 @@ export interface RustPick {
   error?: string;
 }
 
+export interface RustPositionContext {
+  initialFen: string;
+  moves: string[];
+}
+
 export class RustEngine {
   private proc: ChildProcessWithoutNullStreams;
   private rl: Interface;
@@ -46,7 +51,7 @@ export class RustEngine {
   }
 
   /** Search `fen` at the configured depth; resolves with the pick + telemetry. */
-  analyze(fen: string): Promise<RustPick> {
+  analyze(fen: string, context?: RustPositionContext): Promise<RustPick> {
     return new Promise((resolve, reject) => {
       this.queue.push((line) => {
         try {
@@ -55,13 +60,17 @@ export class RustEngine {
           reject(e);
         }
       });
-      this.proc.stdin.write(fen + '\n');
+      if (context) {
+        this.proc.stdin.write(JSON.stringify({ cmd: 'analyze', fen, initialFen: context.initialFen, moves: context.moves }) + '\n');
+      } else {
+        this.proc.stdin.write(fen + '\n');
+      }
     });
   }
 
   /** Search with a per-request wall-clock budget via `go <ms> <fen>` (the
    * process's depth acts as the cap — spawn with a high cap for clock mode). */
-  analyzeTimed(fen: string, budgetMs: number): Promise<RustPick> {
+  analyzeTimed(fen: string, budgetMs: number, context?: RustPositionContext): Promise<RustPick> {
     return new Promise((resolve, reject) => {
       this.queue.push((line) => {
         try {
@@ -70,7 +79,14 @@ export class RustEngine {
           reject(e);
         }
       });
-      this.proc.stdin.write(`go ${Math.max(50, Math.round(budgetMs))} ${fen}\n`);
+      const cappedBudgetMs = Math.max(50, Math.round(budgetMs));
+      if (context) {
+        this.proc.stdin.write(
+          JSON.stringify({ cmd: 'go', budgetMs: cappedBudgetMs, fen, initialFen: context.initialFen, moves: context.moves }) + '\n',
+        );
+      } else {
+        this.proc.stdin.write(`go ${cappedBudgetMs} ${fen}\n`);
+      }
     });
   }
 

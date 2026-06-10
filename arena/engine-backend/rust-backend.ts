@@ -5,7 +5,7 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { RustEngine } from '../gauntlet/rust-engine';
-import type { BackendId, CvsEngineBackend, EvalResult, MoveResult, SearchOpts } from './types';
+import type { BackendId, CvsEngineBackend, EvalResult, MoveResult, PositionContext, SearchOpts } from './types';
 
 // CVS_RUST_EXE overrides the binary path (e.g. a target-next build while the
 // default exe is locked by running gauntlets).
@@ -61,13 +61,13 @@ export class RustBackend implements CvsEngineBackend {
     return { backend: 'rust', engine: `cvs-bitboard-core@${this.engineVersion}`, weightsId: w };
   }
 
-  async bestMove(fen: string, options: SearchOpts = {}): Promise<MoveResult> {
-    return this.analyze(fen, options);
+  async bestMove(fen: string, options: SearchOpts = {}, context?: PositionContext): Promise<MoveResult> {
+    return this.analyze(fen, options, context);
   }
 
-  async analyze(fen: string, options: SearchOpts = {}): Promise<MoveResult> {
+  async analyze(fen: string, options: SearchOpts = {}, context?: PositionContext): Promise<MoveResult> {
     const depth = options.depth ?? this.opts.defaultDepth;
-    const p = await this.engineFor(depth).analyze(fen);
+    const p = await this.engineFor(depth).analyze(fen, context);
     if (p.error) throw new Error(`rust analyze failed: ${p.error}`);
     return {
       uci: p.uci,
@@ -91,8 +91,8 @@ export class RustBackend implements CvsEngineBackend {
 
   /** Clock-budgeted best move (`go <ms>`): depth 30 cap, wall clock drives the
    * search — the Lichess-bot / equal-clock mode. */
-  async bestMoveTimed(fen: string, budgetMs: number): Promise<MoveResult> {
-    const p = await this.engineFor(30).analyzeTimed(fen, budgetMs);
+  async bestMoveTimed(fen: string, budgetMs: number, context?: PositionContext): Promise<MoveResult> {
+    const p = await this.engineFor(30).analyzeTimed(fen, budgetMs, context);
     if (p.error) throw new Error(`rust timed analyze failed: ${p.error}`);
     return {
       uci: p.uci,

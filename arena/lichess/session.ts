@@ -11,9 +11,14 @@ import type { LichessClient, GameStreamEvent, GameState } from './client';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 /** Chooses a move (UCI) for a position, optionally within a wall-clock budget (ms). */
+export interface MoveContext {
+  initialFen: string;
+  moves: string[];
+}
+
 export interface MovePicker {
   readonly name: string;
-  pick(fen: string, budgetMs?: number): Promise<string | null>;
+  pick(fen: string, budgetMs?: number, context?: MoveContext): Promise<string | null>;
 }
 
 /** A MovePicker backed by CvsEngine (string boundary: FEN in, UCI out). */
@@ -31,6 +36,8 @@ export function cvsPicker(engine: CvsEngine, opts: { depth?: number; maxTimeMs?:
 export interface SessionOptions {
   /** Fraction of our remaining clock to spend on a move. Default 1/30. */
   clockFraction?: number;
+  /** Multiplier for forcing/check positions. Default 2x, capped by maxMoveMs. */
+  pressureClockMultiplier?: number;
   minMoveMs?: number;
   maxMoveMs?: number;
 }
@@ -49,6 +56,7 @@ export async function playSession(
   opts: SessionOptions = {},
 ): Promise<SessionResult> {
   const clockFraction = opts.clockFraction ?? 1 / 30;
+  const pressureClockMultiplier = opts.pressureClockMultiplier ?? 2;
   const minMoveMs = opts.minMoveMs ?? 50;
   const maxMoveMs = opts.maxMoveMs ?? 4000;
 
@@ -107,9 +115,13 @@ export async function playSession(
 
     const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
     const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
-    const budget = Number.isFinite(myTimeMs)
-      ? Math.max(minMoveMs, Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8)))
+    const baseBudget = Number.isFinite(myTimeMs)
+      ? Math.max(minMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8))
       : undefined;
+    const budget =
+      baseBudget === undefined
+        ? undefined
+        : Math.min(maxMoveMs, Math.floor(baseBudget * (clockPressure(chess) ? pressureClockMultiplier : 1)));
 
     // Engine failure is usually transient (process hiccup, transport blip) —
     // retry before giving up. Resigning is the LAST resort: it turned every
@@ -117,7 +129,7 @@ export async function playSession(
     let uci: string | null = null;
     for (let tryN = 0; tryN < 3 && !uci; tryN++) {
       if (tryN > 0) await sleepMs(1000 * tryN);
-      uci = await picker.pick(chess.fen(), budget);
+      uci = await picker.pick(chess.fen(), budget, { initialFen, moves: ucis });
     }
     if (!uci) {
       await client.resign(gameId); // engine truly dead — don't ghost the opponent
@@ -201,4 +213,21 @@ function buildRecord(
 
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+type VerboseMove = {
+  san: string;
+  flags: string;
+  captured?: string;
+  promotion?: string;
+};
+
+function clockPressure(chess: Chess): boolean {
+  if (chess.inCheck()) return true;
+  const moves = chess.moves({ verbose: true }) as VerboseMove[];
+  if (moves.length === 0) return false;
+  const forcing = moves.filter(
+    (m) => m.san.includes('+') || m.san.includes('#') || !!m.captured || !!m.promotion || m.flags.includes('c') || m.flags.includes('e'),
+  ).length;
+  return forcing >= 6 || forcing * 2 >= moves.length;
 }

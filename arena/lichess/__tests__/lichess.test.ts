@@ -140,10 +140,20 @@ describe('playSession', () => {
         return true;
       },
     } as unknown as LichessClient;
+    const seen: Array<{ fen: string; moves: string[] }> = [];
+    const picker: MovePicker = {
+      name: 'cvs@3',
+      async pick(fen, _budgetMs, context) {
+        seen.push({ fen, moves: context?.moves ?? [] });
+        return seen.length === 1 ? 'e2e4' : 'g1f3';
+      },
+    };
 
-    const res = await playSession(fakeClient, 'g1', 'cvsbot', scriptedPicker('cvs@3', ['e2e4', 'g1f3']), {});
+    const res = await playSession(fakeClient, 'g1', 'cvsbot', picker, {});
 
     expect(calls.move).toEqual([['g1', 'e2e4'], ['g1', 'g1f3']]);
+    expect(seen.map((s) => s.moves)).toEqual([[], ['e2e4', 'e7e5']]);
+    expect(seen[0]!.fen).toContain(' w KQkq - 0 1');
     expect(res.cvsColor).toBe('white');
     expect(res.record.result).toBe('1-0');
     expect(res.record.plies.map((p) => p.uci)).toEqual(['e2e4', 'e7e5', 'g1f3']);
@@ -182,6 +192,48 @@ describe('playSession', () => {
 
     expect(calls.move).toEqual([]);
     expect(calls.resign).toEqual(['g1']);
+  });
+
+  it('spends extra clock in forcing positions', async () => {
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: '4k3/8/8/8/8/8/4r3/4K3 w - - 0 1',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
+      },
+      { type: 'gameState', moves: 'e1e2', wtime: 58000, btime: 60000, status: 'draw' },
+    ];
+    const budgets: Array<number | undefined> = [];
+    const calls: { move: [string, string][]; resign: string[] } = { move: [], resign: [] };
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move(id: string, uci: string) {
+        calls.move.push([id, uci]);
+        return true;
+      },
+      async resign(id: string) {
+        calls.resign.push(id);
+        return true;
+      },
+    } as unknown as LichessClient;
+    const picker: MovePicker = {
+      name: 'clock-test',
+      async pick(_fen, budgetMs) {
+        budgets.push(budgetMs);
+        return 'e1e2';
+      },
+    };
+
+    await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 10000 });
+
+    expect(budgets).toEqual([4000]);
+    expect(calls.move).toEqual([['g1', 'e1e2']]);
+    expect(calls.resign).toEqual([]);
   });
 
   it('retries a rejected move POST and exits WITHOUT resigning (rate-limit storms are not losses)', async () => {
