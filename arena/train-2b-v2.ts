@@ -17,7 +17,7 @@
 // Output: arena/out/rung2-weights-2b.json (+ .meta.json), UNPROMOTED. The gate
 // stack (regression rows, eval-r4, mini-gauntlet, d20) decides promotion.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Chess } from 'chess.js';

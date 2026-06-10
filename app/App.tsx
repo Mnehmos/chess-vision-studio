@@ -3,6 +3,7 @@ import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
 import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
+import { repetitionConversionWarning } from '../engine/repetition';
 import type { AnalyzedEntry } from '../engine/analytics';
 import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures } from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
@@ -291,7 +292,7 @@ export function App() {
         if (target < 0) break; // whole game analyzed
         claimedRef.current.add(target);
         try {
-          const a = await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san);
+          const a = withRepetitionWarning(await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san), plies, target);
           if (!alive) return;
           setAnalyses((prev) => {
             const next = new Map(prev).set(target, a);
@@ -428,7 +429,7 @@ export function App() {
     // The actual work for one ply — shared by the pool and the single-engine fallback.
     const analyzeTask = async (engine: UciEngine, task: (typeof tasks)[number]) => {
       if (datasetRunRef.current !== runId) return;
-      const a = await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san);
+      const a = withRepetitionWarning(await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san), task.game.plies, task.plyIndex);
       if (datasetRunRef.current !== runId) return;
       const cached = analysisCacheRef.current.get(task.key) ?? new Map<number, MoveAnalysis>();
       cached.set(task.plyIndex, a);
@@ -720,6 +721,19 @@ export function App() {
 // lineArrows now lives in ./annotate (shared with Play mode).
 
 /** Spotlight one insight on the LED grid: executor purple, targets orange. */
+/** Game-level pass the per-move analyzer cannot do: repetition/conversion
+ * awareness (the IUBKTvjF lesson). When it fires, it OWNS the headline —
+ * "mobility improved" must never outrank "you are repeating a won game". */
+function withRepetitionWarning(a: MoveAnalysis, plies: PlyRecord[], plyIndex: number): MoveAnalysis {
+  const warning = repetitionConversionWarning(plies, plyIndex, a);
+  if (!warning) return a;
+  return {
+    ...a,
+    rankedInsights: [warning, ...a.rankedInsights],
+    topExplanation: warning.evidence[0],
+  };
+}
+
 function focusLedMap(ins: InsightCandidate): LedMap {
   const squares: Record<string, LedColor> = {};
   for (const sq of allSquares()) squares[sq] = 'off';

@@ -73,6 +73,9 @@ function renderChange(c: ChangedRelation): string {
     case 'forcing_check_resource':
       // The diff layer already built a full, correctly-framed sentence.
       return c.evidence[0] ?? `${who} has a refutation starting on ${sq}.`;
+    case 'repetition_conversion_warning':
+      // The detector built the full sentence (it knows the eval and PV move).
+      return c.evidence[0] ?? `${who} can repeat moves here, but the position is still winning — look for a progress move instead of taking the draw.`;
     case 'development_improved':
       return `${who} develops the ${pieceName(pieceOnSquare(c))}${sq ? ` to ${sq}` : ''}.`;
     case 'center_control_gained':

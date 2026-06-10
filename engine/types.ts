@@ -101,7 +101,10 @@ export type ChangeType =
   | 'king_safety_improved'
   | 'king_safety_weakened'
   | 'pawn_structure_weakened'
-  | 'escape_squares_changed';
+  | 'escape_squares_changed'
+  // Game-level conversion awareness (the IUBKTvjF lesson): the position has
+  // repeated while one side is clearly winning — repeating again is a draw.
+  | 'repetition_conversion_warning';
 
 export interface ChangedRelation extends InsightBase {
   kind: 'changed_relation';
