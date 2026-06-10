@@ -76,11 +76,19 @@ export async function runBot(
     enabled: process.env.CVS_CHALLENGE_BOTS !== '0',
     band: Number(process.env.CVS_CHALLENGE_BAND ?? 600),
     anchor: Number(process.env.CVS_CHALLENGE_ANCHOR ?? 2000), // target rating center until we have our own
-    cooldownMs: 45_000,
+    cooldownMs: Number(process.env.CVS_CHALLENGE_COOLDOWN_MS ?? 600_000), // 10 min — reliable beats hyperactive
     lastAttempt: 0,
+    maxPending: 1,
+    pausedUntil: 0, // any 429 pauses ALL outbound challenges for 5 minutes
   };
+  // Outbound challenges we sent that nobody has answered yet. Without this the
+  // ladder saw "no active games" and kept stacking challenges — which all got
+  // accepted at once (the 7-game pileup).
+  const pendingOutbound = new Set<string>();
   const maybeChallengeBot = async (): Promise<void> => {
-    if (!ladder.enabled || active.size > 0) return;
+    if (!ladder.enabled || active.size >= cfg.maxConcurrentGames) return;
+    if (pendingOutbound.size >= ladder.maxPending) return;
+    if (Date.now() < ladder.pausedUntil) return;
     if (Date.now() - ladder.lastAttempt < ladder.cooldownMs) return;
     ladder.lastAttempt = Date.now();
     try {
@@ -95,12 +103,19 @@ export async function runBot(
       }
       const pick = candidates[Math.floor(Math.random() * candidates.length)]!;
       const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: 180, clockIncrementSec: 2 });
+      if (res.id) pendingOutbound.add(res.id);
       log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated 3+2 -> ${res.id ?? res.status ?? 'sent'}`);
     } catch (e) {
+      if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
       log(`bot-ladder challenge failed: ${String(e)}`);
     }
   };
   void maybeChallengeBot();
+  // Retry tick: a never-accepted challenge used to strand the ladder (it only
+  // re-fired on game end). Tick once a minute; the caps above make it a no-op
+  // unless we are genuinely idle with nothing pending.
+  const ladderTick = setInterval(() => void maybeChallengeBot(), 60_000);
+  ladderTick.unref?.();
 
   log('listening on /api/stream/event …');
   let restarts = 0;
@@ -121,9 +136,13 @@ export async function runBot(
             await client.declineChallenge(ch.id, reason);
             log(`declined ${ch.id}: ${reason ?? 'busy'}`);
           }
+        } else if (ev.type === 'challengeDeclined' || ev.type === 'challengeCanceled') {
+          const chId = (ev as { challenge?: { id?: string } }).challenge?.id;
+          if (chId && pendingOutbound.delete(chId)) log(`outbound challenge ${chId} ${ev.type === 'challengeDeclined' ? 'declined' : 'canceled'}`);
         } else if (ev.type === 'gameStart' && ev.game) {
           const gameId = ev.game.gameId ?? ev.game.id ?? ev.game.fullId;
           if (!gameId || active.has(gameId)) continue;
+          pendingOutbound.delete(gameId); // an accepted challenge keeps its id as the game id
           active.add(gameId);
           log(`game start ${gameId}`);
           void playSession(client, gameId, botId, picker, { maxMoveMs: 4000 })
@@ -148,6 +167,7 @@ export async function runBot(
       }
       log('event stream ended; reconnecting');
     } catch (e) {
+      if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
       log(`event stream error: ${String(e)}; reconnecting`);
     }
     if (opts.maxEventStreamRestarts !== undefined && restarts >= opts.maxEventStreamRestarts) return;

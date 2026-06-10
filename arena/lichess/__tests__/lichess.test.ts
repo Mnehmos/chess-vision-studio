@@ -184,7 +184,7 @@ describe('playSession', () => {
     expect(calls.resign).toEqual(['g1']);
   });
 
-  it('resigns when Lichess rejects a posted move so the game cannot hang', async () => {
+  it('retries a rejected move POST and exits WITHOUT resigning (rate-limit storms are not losses)', async () => {
     const events: GameStreamEvent[] = [
       {
         type: 'gameFull',
@@ -212,9 +212,10 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', scriptedPicker('rejected', ['e2e4']), {});
 
-    expect(calls.move).toEqual([['g1', 'e2e4']]);
-    expect(calls.resign).toEqual(['g1']);
-  });
+    expect(calls.move.length).toBeGreaterThan(1); // retried, not one-shot
+    for (const [id, uci] of calls.move) expect([id, uci]).toEqual(['g1', 'e2e4']);
+    expect(calls.resign).toEqual([]); // a failed POST must never be a resignation
+  }, 45_000);
 });
 
 describe('runBot protocol resilience', () => {

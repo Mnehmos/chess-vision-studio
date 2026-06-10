@@ -111,9 +111,16 @@ export async function playSession(
       ? Math.max(minMoveMs, Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8)))
       : undefined;
 
-    const uci = await picker.pick(chess.fen(), budget);
+    // Engine failure is usually transient (process hiccup, transport blip) —
+    // retry before giving up. Resigning is the LAST resort: it turned every
+    // rate-limit storm into an instant loss.
+    let uci: string | null = null;
+    for (let tryN = 0; tryN < 3 && !uci; tryN++) {
+      if (tryN > 0) await sleepMs(1000 * tryN);
+      uci = await picker.pick(chess.fen(), budget);
+    }
     if (!uci) {
-      await client.resign(gameId);
+      await client.resign(gameId); // engine truly dead — don't ghost the opponent
       break;
     }
 
@@ -124,14 +131,20 @@ export async function playSession(
       legal = false;
     }
     if (!legal) {
+      // Correctness crisis (engine produced an illegal move) — resign honestly.
       await client.resign(gameId);
       break;
     }
 
-    const posted = await client.move(gameId, uci);
+    // Move POSTs fail under 429/network blips; the clock is the real judge, so
+    // keep retrying with backoff instead of resigning a playable position.
+    let posted = false;
+    for (let tryN = 0; tryN < 6 && !posted; tryN++) {
+      if (tryN > 0) await sleepMs(Math.min(15_000, 1000 * 2 ** tryN));
+      posted = await client.move(gameId, uci);
+    }
     if (!posted) {
-      await client.resign(gameId);
-      break;
+      break; // exit the session WITHOUT resigning — a reconnect can resume the game
     }
   }
 
@@ -184,4 +197,8 @@ function buildRecord(
   else if (status === 'draw' || status === 'stalemate' || chess.isDraw()) result = '1/2-1/2';
 
   return { white, black, plies, result, termination: status, pgn: chess.pgn() };
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
