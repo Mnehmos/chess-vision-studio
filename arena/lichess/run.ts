@@ -82,10 +82,13 @@ export async function runBot(
     pausedUntil: 0, // any 429 pauses ALL outbound challenges for 5 minutes
     tcIndex: 0, // rotates through CVS_CHALLENGE_TCS
   };
-  // Outbound challenges we sent that nobody has answered yet. Without this the
-  // ladder saw "no active games" and kept stacking challenges — which all got
-  // accepted at once (the 7-game pileup).
-  const pendingOutbound = new Set<string>();
+  // Outbound challenges we sent that nobody has answered yet (id -> username).
+  // Without this the ladder saw "no active games" and kept stacking challenges —
+  // which all got accepted at once (the 7-game pileup).
+  const pendingOutbound = new Map<string, string>();
+  // Bots that declined us recently (username -> ts): skip them for an hour so
+  // odds-only/picky bots don't eat every cooldown cycle.
+  const declinedRecently = new Map<string, number>();
   const maybeChallengeBot = async (): Promise<void> => {
     if (!ladder.enabled || active.size >= cfg.maxConcurrentGames) return;
     if (pendingOutbound.size >= ladder.maxPending) return;
@@ -97,7 +100,8 @@ export async function runBot(
       const candidates = bots
         .filter((b) => b.id.toLowerCase() !== botId)
         .map((b) => ({ b, rating: b.perfs?.blitz?.rating ?? b.perfs?.rapid?.rating ?? 0 }))
-        .filter((x) => x.rating > 0 && Math.abs(x.rating - ladder.anchor) <= ladder.band);
+        .filter((x) => x.rating > 0 && Math.abs(x.rating - ladder.anchor) <= ladder.band)
+        .filter((x) => Date.now() - (declinedRecently.get(x.b.username) ?? 0) > 3_600_000);
       if (candidates.length === 0) {
         log('bot-ladder: no online bots in band');
         return;
@@ -112,7 +116,7 @@ export async function runBot(
       const [limit, inc] = tcs[ladder.tcIndex % tcs.length] ?? [180, 2];
       ladder.tcIndex += 1;
       const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: limit, clockIncrementSec: inc });
-      if (res.id) pendingOutbound.add(res.id);
+      if (res.id) pendingOutbound.set(res.id, pick.b.username);
       log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`);
     } catch (e) {
       if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
@@ -147,7 +151,12 @@ export async function runBot(
           }
         } else if (ev.type === 'challengeDeclined' || ev.type === 'challengeCanceled') {
           const chId = (ev as { challenge?: { id?: string } }).challenge?.id;
-          if (chId && pendingOutbound.delete(chId)) log(`outbound challenge ${chId} ${ev.type === 'challengeDeclined' ? 'declined' : 'canceled'}`);
+          if (chId && pendingOutbound.has(chId)) {
+            const who = pendingOutbound.get(chId)!;
+            pendingOutbound.delete(chId);
+            if (ev.type === 'challengeDeclined') declinedRecently.set(who, Date.now());
+            log(`outbound challenge ${chId} (${who}) ${ev.type === 'challengeDeclined' ? 'declined — skipping them for 1h' : 'canceled'}`);
+          }
         } else if (ev.type === 'gameStart' && ev.game) {
           const gameId = ev.game.gameId ?? ev.game.id ?? ev.game.fullId;
           if (!gameId || active.has(gameId)) continue;
