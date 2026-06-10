@@ -69,7 +69,9 @@ export function loadLichessConfig(): LichessConfig {
     acceptCasual: bool('LICHESS_ACCEPT_CASUAL', true),
     acceptRated: bool('LICHESS_ACCEPT_RATED', true),
     botsOnly: bool('LICHESS_BOTS_ONLY', false),
-    minClockInitialSec: num('LICHESS_MIN_CLOCK_SEC', 180),
+    // 60s opens the bullet pool — the engine budgets ~1/30 of remaining clock
+    // per move (≥50ms floor), so even 1+0 is comfortably playable.
+    minClockInitialSec: num('LICHESS_MIN_CLOCK_SEC', 60),
     allowCorrespondence: bool('LICHESS_ALLOW_CORRESPONDENCE', true),
     seedAi: bool('LICHESS_SEED_AI', false),
     seedAiLevels: get('LICHESS_SEED_AI_LEVELS', '3,5,7')

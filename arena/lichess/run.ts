@@ -80,6 +80,7 @@ export async function runBot(
     lastAttempt: 0,
     maxPending: 1,
     pausedUntil: 0, // any 429 pauses ALL outbound challenges for 5 minutes
+    tcIndex: 0, // rotates through CVS_CHALLENGE_TCS
   };
   // Outbound challenges we sent that nobody has answered yet. Without this the
   // ladder saw "no active games" and kept stacking challenges — which all got
@@ -102,9 +103,17 @@ export async function runBot(
         return;
       }
       const pick = candidates[Math.floor(Math.random() * candidates.length)]!;
-      const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: 180, clockIncrementSec: 2 });
+      // Rotate time controls: many bots only accept their preferred speed, and
+      // each speed is its own Lichess rating pool (bullet/blitz/rapid).
+      const tcs = (process.env.CVS_CHALLENGE_TCS ?? '180+2,60+0,300+0,300+3,600+0')
+        .split(',')
+        .map((s) => s.trim().split('+').map(Number) as [number, number])
+        .filter(([l, i]) => Number.isFinite(l) && l >= 60 && Number.isFinite(i) && i >= 0);
+      const [limit, inc] = tcs[ladder.tcIndex % tcs.length] ?? [180, 2];
+      ladder.tcIndex += 1;
+      const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: limit, clockIncrementSec: inc });
       if (res.id) pendingOutbound.add(res.id);
-      log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated 3+2 -> ${res.id ?? res.status ?? 'sent'}`);
+      log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`);
     } catch (e) {
       if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
       log(`bot-ladder challenge failed: ${String(e)}`);
