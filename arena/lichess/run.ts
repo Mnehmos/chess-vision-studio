@@ -76,7 +76,7 @@ export async function runBot(
     enabled: process.env.CVS_CHALLENGE_BOTS !== '0',
     band: Number(process.env.CVS_CHALLENGE_BAND ?? 600),
     anchor: Number(process.env.CVS_CHALLENGE_ANCHOR ?? 2000), // target rating center until we have our own
-    cooldownMs: Number(process.env.CVS_CHALLENGE_COOLDOWN_MS ?? 600_000), // 10 min — reliable beats hyperactive
+    cooldownMs: Number(process.env.CVS_CHALLENGE_COOLDOWN_MS ?? 90_000), // pace between attempts; the pending/active caps + 429 pause are the real guardrails
     lastAttempt: 0,
     maxPending: 1,
     pausedUntil: 0, // any 429 pauses ALL outbound challenges for 5 minutes
