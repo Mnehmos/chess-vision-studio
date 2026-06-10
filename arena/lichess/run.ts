@@ -104,9 +104,11 @@ export async function runBot(
 
   log('listening on /api/stream/event …');
   let restarts = 0;
+  let consecutiveFailures = 0;
   for (;;) {
     try {
       for await (const ev of client.streamEvents<LichessEvent>()) {
+        consecutiveFailures = 0; // any event proves the connection is healthy
         if (ev.type === 'challenge' && ev.challenge) {
           const ch = ev.challenge;
           if ((ch.challenger?.id ?? '').toLowerCase() === botId) continue; // echo of our own challenge
@@ -150,7 +152,14 @@ export async function runBot(
     }
     if (opts.maxEventStreamRestarts !== undefined && restarts >= opts.maxEventStreamRestarts) return;
     restarts += 1;
-    await sleep(opts.reconnectDelayMs ?? 1000);
+    consecutiveFailures += 1;
+    // Exponential backoff with jitter, capped at 60s. Lichess throttles IPs that
+    // hammer it during outages — a fixed 1s retry loop is exactly that pattern.
+    const base = opts.reconnectDelayMs ?? 1000;
+    const backoff = Math.min(60_000, base * 2 ** Math.min(consecutiveFailures - 1, 6));
+    const jittered = backoff + Math.floor(Math.random() * (backoff / 4));
+    if (consecutiveFailures > 1) log(`backoff ${Math.round(jittered / 1000)}s (failure #${consecutiveFailures})`);
+    await sleep(jittered);
   }
 }
 
