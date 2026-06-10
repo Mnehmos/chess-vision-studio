@@ -86,6 +86,25 @@ export class RustBackend implements CvsEngineBackend {
     return { evalWhiteCp };
   }
 
+  /** Clock-budgeted best move (`go <ms>`): depth 30 cap, wall clock drives the
+   * search — the Lichess-bot / equal-clock mode. */
+  async bestMoveTimed(fen: string, budgetMs: number): Promise<MoveResult> {
+    const p = await this.engineFor(30).analyzeTimed(fen, budgetMs);
+    if (p.error) throw new Error(`rust timed analyze failed: ${p.error}`);
+    return {
+      uci: p.uci,
+      san: null,
+      scoreCp: p.scoreCp,
+      mate: p.mate,
+      pv: p.pv,
+      depth: p.depth,
+      nodes: p.nodes,
+      qNodes: p.qNodes ?? 0,
+      ttHits: p.ttHits,
+      timeMs: p.timeMs,
+    };
+  }
+
   dispose(): void {
     for (const e of this.engines.values()) e.dispose();
     this.engines.clear();

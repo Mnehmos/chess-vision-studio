@@ -1,21 +1,24 @@
 // The Lichess bot runner: connect, optionally seed games vs Lichess AI, then
 // stream incoming events — accept/decline challenges per policy and play each
-// game with CvsEngine. Finished games are (optionally) harvested into the OODA
-// dataset. Live games are the diversity the deterministic self-play loop lacked.
+// game with the ACTIVE engine backend (Rust by default; CVS_ENGINE_BACKEND=ts
+// selects the frozen legacy reference). Finished games are (optionally)
+// harvested into the OODA dataset.
 //
 // Run: `npm run lichess:bot` (needs LICHESS_BOT_TOKEN in .env, scope bot:play,
 // on an account already upgraded to BOT). See arena/lichess/README.md.
 import { existsSync, readFileSync } from 'node:fs';
 import { CvsEngine, type PolicyWeights } from '@cvs/engine';
+import { resolveBackendKind } from '../engine-backend';
+import { rustPicker } from './rust-picker';
 import { LichessClient, type LichessEvent } from './client';
 import { loadLichessConfig, hasToken, type LichessConfig } from './env';
 import { shouldAccept } from './policy';
-import { playSession, cvsPicker } from './session';
+import { playSession, cvsPicker, type MovePicker } from './session';
 import { harvestGame } from './harvest';
 
 export interface RunBotOptions {
   client?: LichessClient;
-  picker?: ReturnType<typeof cvsPicker>;
+  picker?: MovePicker;
   /** Test hook: undefined means keep reconnecting forever. */
   maxEventStreamRestarts?: number;
   reconnectDelayMs?: number;
@@ -35,8 +38,19 @@ export async function runBot(
     log('  curl -d "" https://lichess.org/api/bot/account/upgrade -H "Authorization: Bearer <TOKEN>"');
   }
 
-  const weights = loadWeights(cfg.weightsPath, log);
-  const picker = opts.picker ?? cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });
+  // Engine backend: Rust is the active default (R5); CVS_ENGINE_BACKEND=ts
+  // selects the frozen legacy reference for comparison runs.
+  const backendKind = resolveBackendKind();
+  let picker: MovePicker;
+  if (opts.picker) {
+    picker = opts.picker;
+  } else if (backendKind === 'rust') {
+    picker = rustPicker();
+  } else {
+    const weights = loadWeights(cfg.weightsPath, log);
+    picker = cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });
+  }
+  log(`engine backend: ${backendKind} (picker ${picker.name})`);
   const active = new Set<string>();
 
   if (cfg.seedAi) {
