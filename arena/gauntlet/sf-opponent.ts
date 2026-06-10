@@ -14,13 +14,18 @@ const SKILL_MAP: Record<number, number> = { 800: 0, 1000: 2, 1200: 4 };
 
 export interface OpponentSettings {
   eloLabel: number;
-  mechanism: 'UCI_Elo' | 'SkillLevel';
+  mechanism: 'UCI_Elo' | 'SkillLevel' | 'Unlimited';
   uciElo?: number;
   skillLevel?: number;
   movetimeMs: number;
 }
 
 export function settingsFor(eloLabel: number, movetimeMs = 80): OpponentSettings {
+  // Labels above the UCI_Elo ceiling (3190) mean FULL-STRENGTH Stockfish — no
+  // limiter at all. The reference class: only the time control restrains it.
+  if (eloLabel > 3190) {
+    return { eloLabel, mechanism: 'Unlimited', movetimeMs };
+  }
   if (eloLabel >= 1320) {
     return { eloLabel, mechanism: 'UCI_Elo', uciElo: eloLabel, movetimeMs };
   }
@@ -59,9 +64,10 @@ export class SfOpponent {
     if (this.settings.mechanism === 'UCI_Elo') {
       this.transport.send('setoption name UCI_LimitStrength value true');
       this.transport.send(`setoption name UCI_Elo value ${this.settings.uciElo}`);
-    } else {
+    } else if (this.settings.mechanism === 'SkillLevel') {
       this.transport.send(`setoption name Skill Level value ${this.settings.skillLevel}`);
     }
+    // 'Unlimited': the resets above ARE the configuration — full strength.
     await this.expect('isready', 'readyok');
   }
 

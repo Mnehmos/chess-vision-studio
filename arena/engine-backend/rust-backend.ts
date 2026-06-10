@@ -7,7 +7,10 @@ import { existsSync } from 'node:fs';
 import { RustEngine } from '../gauntlet/rust-engine';
 import type { BackendId, CvsEngineBackend, EvalResult, MoveResult, SearchOpts } from './types';
 
-export const DEFAULT_RUST_EXE = '../chess-vision-studio-rust-engine/target/release/analyze.exe';
+// CVS_RUST_EXE overrides the binary path (e.g. a target-next build while the
+// default exe is locked by running gauntlets).
+export const DEFAULT_RUST_EXE =
+  process.env.CVS_RUST_EXE ?? '../chess-vision-studio-rust-engine/target/release/analyze.exe';
 export const DEFAULT_BASE_WEIGHTS = 'arena/out/value-weights-mixed.json';
 export const DEFAULT_RUNG2_WEIGHTS = 'arena/out/rung2-weights-mixed.json';
 /** R4-gate operating depth: Rust d6 strictly dominates TS d4 (see R4_GATE_REPORT). */

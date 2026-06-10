@@ -69,6 +69,39 @@ export async function runBot(
     }
   }
 
+  // Bot-ladder mode: when idle, challenge an online bot for a RATED game — this
+  // is what builds the public Lichess rating. Paced (cooldown + only-when-idle)
+  // to stay well inside Lichess rate limits. Disable with CVS_CHALLENGE_BOTS=0.
+  const ladder = {
+    enabled: process.env.CVS_CHALLENGE_BOTS !== '0',
+    band: Number(process.env.CVS_CHALLENGE_BAND ?? 600),
+    anchor: Number(process.env.CVS_CHALLENGE_ANCHOR ?? 2000), // target rating center until we have our own
+    cooldownMs: 45_000,
+    lastAttempt: 0,
+  };
+  const maybeChallengeBot = async (): Promise<void> => {
+    if (!ladder.enabled || active.size > 0) return;
+    if (Date.now() - ladder.lastAttempt < ladder.cooldownMs) return;
+    ladder.lastAttempt = Date.now();
+    try {
+      const bots = await client.onlineBots(50);
+      const candidates = bots
+        .filter((b) => b.id.toLowerCase() !== botId)
+        .map((b) => ({ b, rating: b.perfs?.blitz?.rating ?? b.perfs?.rapid?.rating ?? 0 }))
+        .filter((x) => x.rating > 0 && Math.abs(x.rating - ladder.anchor) <= ladder.band);
+      if (candidates.length === 0) {
+        log('bot-ladder: no online bots in band');
+        return;
+      }
+      const pick = candidates[Math.floor(Math.random() * candidates.length)]!;
+      const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: 180, clockIncrementSec: 2 });
+      log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated 3+2 -> ${res.id ?? res.status ?? 'sent'}`);
+    } catch (e) {
+      log(`bot-ladder challenge failed: ${String(e)}`);
+    }
+  };
+  void maybeChallengeBot();
+
   log('listening on /api/stream/event …');
   let restarts = 0;
   for (;;) {
@@ -102,6 +135,7 @@ export async function runBot(
                   log(`harvest ${gameId} failed: ${String(e)}`);
                 }
               }
+              void maybeChallengeBot(); // back on the ladder once idle
             })
             .catch((e) => {
               active.delete(gameId);

@@ -57,6 +57,13 @@ export interface LichessAccount {
   title?: string;
 }
 
+export interface OnlineBot {
+  id: string;
+  username: string;
+  title?: string;
+  perfs?: Record<string, { rating?: number; prov?: boolean; games?: number }>;
+}
+
 export class LichessClient {
   private readonly token: string;
   readonly baseUrl: string;
@@ -136,6 +143,38 @@ export class LichessClient {
     });
     if (!res.ok) throw new Error(`POST /api/challenge/ai -> ${res.status}`);
     return (await res.json()) as { id?: string } & Record<string, unknown>;
+  }
+
+  /**
+   * Challenge a specific user (the bot-ladder path: other bots usually accept).
+   * Rated games here are what build the public Lichess rating.
+   */
+  async challengeUser(
+    username: string,
+    opts: { rated?: boolean; clockLimitSec?: number; clockIncrementSec?: number; color?: 'white' | 'black' | 'random' } = {},
+  ): Promise<{ id?: string; status?: string } & Record<string, unknown>> {
+    const body: Record<string, string> = {
+      rated: String(opts.rated ?? true),
+      'clock.limit': String(opts.clockLimitSec ?? 180),
+      'clock.increment': String(opts.clockIncrementSec ?? 2),
+      color: opts.color ?? 'random',
+    };
+    const res = await this.f(this.baseUrl + `/api/challenge/${encodeURIComponent(username)}`, {
+      method: 'POST',
+      headers: this.authHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+      body: new URLSearchParams(body).toString(),
+    });
+    if (!res.ok) throw new Error(`POST /api/challenge/${username} -> ${res.status}`);
+    return (await res.json()) as { id?: string; status?: string } & Record<string, unknown>;
+  }
+
+  /** Online bot directory (ndjson stream, capped by `nb`). */
+  async onlineBots(nb = 50): Promise<OnlineBot[]> {
+    const res = await this.f(this.baseUrl + `/api/bot/online?nb=${nb}`, { headers: this.authHeaders() });
+    if (!res.ok || !res.body) throw new Error(`GET /api/bot/online -> ${res.status}`);
+    const bots: OnlineBot[] = [];
+    for await (const bot of parseNdjson<OnlineBot>(res.body)) bots.push(bot);
+    return bots;
   }
 
   /**
