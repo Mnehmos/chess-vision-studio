@@ -114,11 +114,15 @@ export async function runBot(
         .map((s) => s.trim().split('+').map(Number) as [number, number])
         .filter(([l, i]) => Number.isFinite(l) && l >= 60 && Number.isFinite(i) && i >= 0);
       const [limit, inc] = tcs[ladder.tcIndex % tcs.length] ?? [180, 2];
+      // Alternate rated/casual: many bots decline rated vs new/provisional
+      // accounts but happily play casual — casual keeps games (and harvest
+      // data) flowing while the rated pool warms up to us.
+      const rated = ladder.tcIndex % 2 === 0;
       ladder.tcIndex += 1;
       try {
-        const res = await client.challengeUser(pick.b.username, { rated: true, clockLimitSec: limit, clockIncrementSec: inc });
+        const res = await client.challengeUser(pick.b.username, { rated, clockLimitSec: limit, clockIncrementSec: inc });
         if (res.id) pendingOutbound.set(res.id, pick.b.username);
-        log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) rated ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`);
+        log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) ${rated ? 'rated' : 'casual'} ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`);
       } catch (e) {
         // 400 = their challenge prefs reject us — same as a decline, remember it.
         if (String(e).includes('400')) declinedRecently.set(pick.b.username, Date.now());
