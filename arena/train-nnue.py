@@ -32,7 +32,7 @@ EPOCHS = arg('--epochs', 12)
 OUT = arg('--out', 'arena/out/nnue-gen1.json')
 K = 256.0
 LAMBDA = 0.6
-HIDDEN = 128
+HIDDEN = arg('--hidden', 128)
 BATCH = 16384
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
