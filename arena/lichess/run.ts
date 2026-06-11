@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { CvsEngine, type PolicyWeights } from '@cvs/engine';
 import { resolveBackendKind } from '../engine-backend';
+import { ponderPicker } from './ponder-picker';
 import { rustPicker } from './rust-picker';
 import { LichessClient, type LichessEvent } from './client';
 import { loadLichessConfig, hasToken, type LichessConfig } from './env';
@@ -45,7 +46,9 @@ export async function runBot(
   if (opts.picker) {
     picker = opts.picker;
   } else if (backendKind === 'rust') {
-    picker = rustPicker();
+    // Opponent-clock ponder cache (gated 2026-06-11): ~89% hit rate, banks
+    // ~3/4 of the clock on agreed hits. CVS_PONDER=0 reverts to plain picks.
+    picker = process.env.CVS_PONDER !== '0' ? ponderPicker(rustPicker()) : rustPicker();
   } else {
     const weights = loadWeights(cfg.weightsPath, log);
     picker = cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });
