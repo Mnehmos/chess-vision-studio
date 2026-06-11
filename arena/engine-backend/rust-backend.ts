@@ -50,7 +50,10 @@ export class RustBackend implements CvsEngineBackend {
   private engineFor(depth: number): RustEngine {
     let e = this.engines.get(depth);
     if (!e) {
-      e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights);
+      // CVS_RUST_NNUE loads a net (e.g. the gen7 champion); unset = classical.
+      const nnue = process.env.CVS_RUST_NNUE;
+      const extra = nnue ? ['--nnue', nnue] : [];
+      e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
       this.engines.set(depth, e);
     }
     return e;
