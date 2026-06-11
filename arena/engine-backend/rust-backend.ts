@@ -53,6 +53,9 @@ export class RustBackend implements CvsEngineBackend {
       // CVS_RUST_NNUE loads a net (e.g. the gen7 champion); unset = classical.
       const nnue = process.env.CVS_RUST_NNUE;
       const extra = nnue ? ['--nnue', nnue] : [];
+      // CVS_RUST_FUTILITY=1 enables futility pruning (accepted-with-note,
+      // 2026-06-11: fixed-N +34, gen7 blunder collapse preserved at depth).
+      if (process.env.CVS_RUST_FUTILITY === '1') extra.push('--futility');
       e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
       this.engines.set(depth, e);
     }
