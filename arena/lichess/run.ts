@@ -176,7 +176,10 @@ export async function runBot(
           pendingOutbound.delete(gameId); // an accepted challenge keeps its id as the game id
           active.add(gameId);
           log(`game start ${gameId}`);
-          void playSession(client, gameId, botId, picker, { maxMoveMs: 4000 })
+          // 12s cap: the budget formula (time/30 + 0.8*inc) governs normal
+          // moves; the old 4s cap silently starved us at 5+3 and slower TCs
+          // (eubos game RqWLhgpt: ~7-8s/move available, never spent >4).
+          void playSession(client, gameId, botId, picker, { maxMoveMs: 12_000 })
             .then(async (res) => {
               active.delete(gameId);
               log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
