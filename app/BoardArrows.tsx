@@ -40,8 +40,10 @@ export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]
   const colors = Array.from(new Set(arrows.map((a) => a.color)));
   return (
     <svg
-      width={SIZE}
-      height={SIZE}
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      preserveAspectRatio="xMidYMid meet"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
     >
       <defs>

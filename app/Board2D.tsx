@@ -53,14 +53,24 @@ export function Board2D({
   const dragOn = draggable && !!onPieceDrop;
 
   return (
-    <div style={{ position: 'relative', width: 'max-content' }}>
+    <div
+      style={{
+        position: 'relative',
+        // Responsive square size: caps at 56px on desktop, shrinks to fit
+        // narrow/phone viewports (single-column layout below 820px). All
+        // square-relative sizing reads from this one variable.
+        ['--cvs-sq' as string]: 'clamp(34px, calc((100vw - 40px) / 8), 56px)',
+        width: 'calc(var(--cvs-sq) * 8)',
+        maxWidth: '100%',
+      }}
+    >
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(8, 56px)',
-          gridTemplateRows: 'repeat(8, 56px)',
+          gridTemplateColumns: 'repeat(8, var(--cvs-sq))',
+          gridTemplateRows: 'repeat(8, var(--cvs-sq))',
           border: '2px solid #333',
-          width: 'max-content',
+          width: 'calc(var(--cvs-sq) * 8)',
           userSelect: 'none',
         }}
       >
@@ -94,7 +104,7 @@ export function Board2D({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 38,
+                fontSize: 'calc(var(--cvs-sq) * 0.68)',
                 cursor: 'pointer',
                 color: piece?.color === 'w' ? '#fff' : '#111',
                 textShadow: piece?.color === 'w' ? '0 0 2px #000' : 'none',
