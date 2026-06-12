@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
 import { computeLedMap, allSquares } from '../engine/led';
@@ -59,6 +60,8 @@ const primaryBtn: React.CSSProperties = {
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 type AppTab = 'board' | 'dataset' | 'play' | 'training';
+type VerboseMove = { san: string; color: 'w' | 'b'; from: string; to: string; promotion?: string };
+const PROMOTION_PIECES = ['q', 'r', 'n', 'b'] as const;
 
 // "Analyze all games" progress. done/total count PLIES (drives the bar);
 // gamesDone/gamesTotal + currentGame give a human-meaningful "Game X/Y".
@@ -90,6 +93,7 @@ export function App() {
   const [tab, setTab] = useState<AppTab>('board');
   const [modeId, setModeId] = useState(MODES[0].id);
   const [selected, setSelected] = useState<Square | undefined>(undefined);
+  const [analysisPromo, setAnalysisPromo] = useState<{ from: Square; to: Square } | null>(null);
   const [showThreats, setShowThreats] = useState(true);
   const [showAllThreats, setShowAllThreats] = useState(false);
   const [cascade, setCascade] = useState(true);
@@ -457,6 +461,105 @@ export function App() {
     setGameIndex(i);
     resetViewState(analysisCacheRef.current.get(gameCacheKey(games[i])) ?? new Map());
   };
+  const returnToBranchSource = () => {
+    if (!currentGame || currentGame.headers.CVSBranch !== 'analysis') return;
+    const parentIndex = Number(currentGame.headers.CVSBranchParentIndex ?? 0);
+    const parent = games[parentIndex];
+    if (!parent) return;
+    const atPly = Number(currentGame.headers.CVSBranchAtPly ?? 0);
+    setGameIndex(parentIndex);
+    resetViewState(analysisCacheRef.current.get(gameCacheKey(parent)) ?? new Map());
+    setView(Math.max(0, Math.min(parent.plies.length, Number.isFinite(atPly) ? atPly : 0)));
+  };
+  const applyAnalysisMove = (from: Square, to: Square, promotion?: string) => {
+    if (!currentGame) return;
+    const before = fen;
+    const chess = new Chess(before);
+    const moveNumber = chess.moveNumber();
+    let moved: VerboseMove | null = null;
+    try {
+      moved = chess.move({ from, to, promotion }) as unknown as VerboseMove;
+    } catch {
+      moved = null;
+    }
+    if (!moved) return;
+
+    const prefix = plies.slice(0, view);
+    const nextPly: PlyRecord = {
+      ply: prefix.length + 1,
+      moveNumber,
+      san: moved.san,
+      color: moved.color,
+      from: moved.from,
+      to: moved.to,
+      fenBefore: before,
+      fenAfter: chess.fen(),
+    };
+    const nextPlies = [...prefix, nextPly];
+    const nextAnalyses = new Map([...analyses].filter(([i]) => i < prefix.length));
+    const canExtendCurrentBranch = currentGame.headers.CVSBranch === 'analysis' && view === plies.length;
+
+    if (canExtendCurrentBranch) {
+      const updated: ParsedGame = { ...currentGame, plies: nextPlies };
+      setGames(games.map((g, i) => (i === gameIndex ? updated : g)));
+      analysisCacheRef.current.set(gameCacheKey(updated), nextAnalyses);
+    } else {
+      const branchIndex = games.length;
+      const origin = view > 0 ? `${plies[view - 1]?.moveNumber}${plies[view - 1]?.color === 'w' ? '.' : '...'} ${plies[view - 1]?.san}` : 'start';
+      const branch: ParsedGame = {
+        index: branchIndex,
+        headers: {
+          ...currentGame.headers,
+          Result: '*',
+          CVSBranch: 'analysis',
+          CVSBranchFrom: currentGame.label,
+          CVSBranchParentIndex: String(gameIndex),
+          CVSBranchAtPly: String(view),
+          CVSBranchOrigin: origin,
+        },
+        initialFen: currentGame.initialFen,
+        plies: nextPlies,
+        label: `#${branchIndex + 1}  branch after ${origin}: ${moved.san}`,
+      };
+      setGames([...games, branch]);
+      setGameIndex(branchIndex);
+      analysisCacheRef.current.set(gameCacheKey(branch), nextAnalyses);
+    }
+
+    setView(nextPlies.length);
+    setAnalyses(nextAnalyses);
+    claimedRef.current = new Set(nextAnalyses.keys());
+    setSelected(followMove ? (moved.to as Square) : undefined);
+    setFocused(null);
+    setAnalysisPromo(null);
+    setCacheVersion((n) => n + 1);
+  };
+  const tryAnalysisMove = (from: Square, to: Square) => {
+    const matches = legalMovesFrom(fen, from).filter((m) => m.to === to);
+    if (!matches.length) return;
+    if (matches.every((m) => m.promotion)) {
+      setAnalysisPromo({ from, to });
+      return;
+    }
+    applyAnalysisMove(from, to, matches[0].promotion);
+  };
+  const onAnalysisSquareClick = (sq: Square) => {
+    if (analysisPromo) return;
+    if (selected) {
+      const legalTargets = legalMovesFrom(fen, selected).map((m) => m.to as Square);
+      if (legalTargets.includes(sq)) {
+        tryAnalysisMove(selected, sq);
+        return;
+      }
+      if (selected === sq) {
+        setSelected(undefined);
+        setFocused(null);
+        return;
+      }
+    }
+    setFocused(null);
+    setSelected(sq);
+  };
   const analyzeAllGames = async () => {
     if (engineState !== 'ready' || datasetJob.running) return;
     const runId = ++datasetRunRef.current;
@@ -633,7 +736,7 @@ export function App() {
           <span style={{ color: '#667085', fontSize: 13 }}>
             2D chess perception — relations · SEE · diff · saliency · validated motifs
           </span>
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <EngineBadge label="Stockfish" state={engineState} />
             <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
             {engineState === 'ready' && analyses.size < plies.length && (
@@ -685,13 +788,46 @@ export function App() {
         {/* Left: board + nav */}
         <div style={{ ...cardStyle, width: '100%', maxWidth: 480, padding: 12 }}>
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
-          <Board2D
-            fen={fen}
-            ledMap={ledMap}
-            selected={selected}
-            onSelect={setSelected}
-            arrows={arrows}
-          />
+          <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
+            <Board2D
+              fen={fen}
+              ledMap={ledMap}
+              selected={selected}
+              onSelect={onAnalysisSquareClick}
+              arrows={arrows}
+              draggable
+              onPieceDrop={(from, to) => tryAnalysisMove(from, to)}
+            />
+            {analysisPromo && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(16,24,40,0.55)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 5,
+                }}
+              >
+                <div style={{ ...cardStyle, padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: '#475467', marginRight: 2 }}>Promote to</span>
+                  {PROMOTION_PIECES.map((piece) => (
+                    <button
+                      key={piece}
+                      onClick={() => applyAnalysisMove(analysisPromo.from, analysisPromo.to, piece)}
+                      style={{ ...primaryBtn, width: 42, padding: '8px 0', textTransform: 'uppercase' }}
+                    >
+                      {piece}
+                    </button>
+                  ))}
+                  <button style={{ ...primaryBtn, background: '#667085' }} onClick={() => setAnalysisPromo(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <Nav view={view} total={plies.length} setView={setView} />
           <button
             onClick={exportAnalysis}
@@ -771,7 +907,15 @@ export function App() {
         {/* Right: LED twin + move list */}
         <div style={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LedPreview ledMap={ledMap} />
-          <MoveHistory plies={plies} view={view} setView={setView} analyses={analyses} />
+          <MoveHistory
+            plies={plies}
+            view={view}
+            setView={setView}
+            analyses={analyses}
+            branchLabel={currentGame?.headers.CVSBranch === 'analysis' ? currentGame.label : undefined}
+            branchSourceLabel={currentGame?.headers.CVSBranch === 'analysis' ? currentGame.headers.CVSBranchFrom : undefined}
+            onBackToBranchSource={currentGame?.headers.CVSBranch === 'analysis' ? returnToBranchSource : undefined}
+          />
         </div>
       </div>
 
@@ -813,6 +957,14 @@ function focusLedMap(ins: InsightCandidate): LedMap {
 function safeGames(pgn: string): ParsedGame[] {
   try {
     return gamesFromPgn(pgn);
+  } catch {
+    return [];
+  }
+}
+
+function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
+  try {
+    return new Chess(fen).moves({ square: sq as never, verbose: true }) as unknown as VerboseMove[];
   } catch {
     return [];
   }
@@ -1044,7 +1196,7 @@ function EngineComparisonPanel({
     <section style={{ ...cardStyle, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
         <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
-        <span style={{ color: '#667085', fontSize: 12 }}>local WIP</span>
+        <span style={{ color: '#667085', fontSize: 12, flexShrink: 0 }}>local WIP</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
         <div style={{ minWidth: 0 }}>
@@ -1377,11 +1529,17 @@ function MoveHistory({
   view,
   setView,
   analyses,
+  branchLabel,
+  branchSourceLabel,
+  onBackToBranchSource,
 }: {
   plies: PlyRecord[];
   view: number;
   setView: (n: number) => void;
   analyses: Map<number, MoveAnalysis>;
+  branchLabel?: string;
+  branchSourceLabel?: string;
+  onBackToBranchSource?: () => void;
 }) {
   const currentRef = useRef<HTMLTableRowElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1424,6 +1582,30 @@ function MoveHistory({
   return (
     <div style={{ minWidth: 200 }}>
       <h4 style={{ margin: '0 0 4px' }}>Move history</h4>
+      {branchLabel && (
+        <div style={{ margin: '0 0 8px', display: 'grid', gap: 6 }}>
+          <div style={{ fontSize: 12, color: '#3b6fd4', fontWeight: 700 }}>{branchLabel}</div>
+          {onBackToBranchSource && (
+            <button
+              onClick={onBackToBranchSource}
+              title={branchSourceLabel ? `Return to ${branchSourceLabel}` : 'Return to the source line'}
+              style={{
+                border: '1px solid #d0d5dd',
+                background: '#fff',
+                color: '#344054',
+                borderRadius: 6,
+                padding: '5px 8px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              Back to source line
+            </button>
+          )}
+        </div>
+      )}
       <div ref={scrollRef} style={{ maxHeight: 360, overflowY: 'auto', fontSize: 13 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <tbody>
