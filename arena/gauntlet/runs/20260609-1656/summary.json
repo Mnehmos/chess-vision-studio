@@ -1,0 +1,90 @@
+{
+  "run": "arena/gauntlet/runs/20260609-1656",
+  "config": {
+    "startedAt": "2026-06-09T23:56:02.409Z",
+    "finishedAt": "2026-06-10T00:16:21.762Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "c82626c",
+    "experimental": false,
+    "dangerExtension": false,
+    "cvsDepth": 5,
+    "cvsMovetimeMs": 500,
+    "cvsDepthCap": 30,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      3000
+    ],
+    "opponentSettings": {
+      "3000": {
+        "eloLabel": 3000,
+        "mechanism": "UCI_Elo",
+        "uciElo": 3000,
+        "movetimeMs": 500
+      }
+    },
+    "gamesPerOpponent": 20,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 500,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 20,
+    "wins": 16,
+    "draws": 4,
+    "losses": 0,
+    "cvsMoves": 935,
+    "failures": 47,
+    "rsiCandidates": 59
+  },
+  "ladder": [
+    {
+      "opponent": "SF-3000",
+      "eloLabel": 3000,
+      "settings": {
+        "eloLabel": 3000,
+        "mechanism": "UCI_Elo",
+        "uciElo": 3000,
+        "movetimeMs": 500
+      },
+      "games": 20,
+      "wins": 16,
+      "draws": 4,
+      "losses": 0,
+      "scorePct": 90,
+      "eloDiff": 382,
+      "estimatedCvsElo": 3382,
+      "avgCpLoss": 0.405,
+      "medianCpLoss": 0.03,
+      "blunderRate": 0.0118,
+      "mateMissed": 2,
+      "illegal": 0,
+      "avgTimePerMoveMs": 474.9
+    }
+  ],
+  "classificationCounts": {
+    "good": 101,
+    "best": 533,
+    "excellent": 164,
+    "inaccuracy": 87,
+    "mistake": 23,
+    "slow_mate": 16,
+    "blunder": 9,
+    "mate_missed": 2
+  },
+  "tagCounts": {
+    "value_miseval": 22,
+    "mate_net_tightening": 16,
+    "search_horizon": 9,
+    "hanging_piece_missed": 10,
+    "tactical_motif_missed": 8,
+    "king_safety_missed": 3,
+    "mate_missed": 2,
+    "quiet_refutation_missed": 7,
+    "passed_pawn_missed": 1,
+    "repetition_shuffle": 12,
+    "endgame_conversion": 12
+  }
+}

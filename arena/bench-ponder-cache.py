@@ -90,6 +90,17 @@ def child_score(key, extra, depth, fen, uci):
     return None if j is None else -j['scoreCp']
 
 
+DANGER_KEYS = ('hanging', 'king_danger', 'king_zone', 'see_losing')
+
+
+def is_danger(fen):
+    s = serve('cvsdump', [], 1)
+    s.stdin.write(f'cvs {fen}\n')
+    s.stdin.flush()
+    j = json.loads(s.stdout.readline())
+    return any(any(k in nm.lower() for k in DANGER_KEYS) for nm in j.get('activeNames', []))
+
+
 def arbiter(fen, lanes):
     """gen7 main + lane candidates + v3 margins, gen7 verify d7."""
     main = best_move('g7d5', GEN7, 5, fen)
@@ -199,18 +210,21 @@ for t, (fen, actual) in enumerate(transitions):
     predicted = [m for _, m in ranked[:TOPK]]
 
     # opponent-clock work -> caches keyed by child fen
-    arb_cache, plain_cache = {}, {}
+    arb_cache, plain_cache, hyb_cache = {}, {}, {}
     for rank, pm in enumerate(predicted, 1):
         cb = chess.Board(fen)
         cb.push(chess.Move.from_uci(pm))
         cfen = cb.fen()
         if cb.is_game_over():
             continue
+        plain_cache[cfen] = best_move('g7d7', GEN7, 7, cfen)
         if rank in LANE_SETS:
             arb_cache[cfen] = arbiter(cfen, LANE_SETS[rank])
+            # hybrid: CVS danger decides WHEN to convene the lane panel
+            hyb_cache[cfen] = arb_cache[cfen] if is_danger(cfen) else plain_cache[cfen]
         else:
             arb_cache[cfen] = best_move('g7d5', GEN7, 5, cfen)
-        plain_cache[cfen] = best_move('g7d7', GEN7, 7, cfen)
+            hyb_cache[cfen] = arb_cache[cfen]
 
     # actual reply
     ab = chess.Board(fen)
@@ -239,13 +253,15 @@ for t, (fen, actual) in enumerate(transitions):
 
     arb_move, arb_rej = with_verify(arb_cache.get(afen)) if hit else (g7_move, False)
     plain_move, plain_rej = with_verify(plain_cache.get(afen)) if hit else (g7_move, False)
+    hyb_move, hyb_rej = with_verify(hyb_cache.get(afen)) if hit else (g7_move, False)
 
     rows.append({
         'hit': hit,
         'g7': cp_loss(afen, oracle_mv, g7_move),
         'plain': cp_loss(afen, oracle_mv, plain_move),
         'arb': cp_loss(afen, oracle_mv, arb_move),
-        'arb_rej': arb_rej, 'plain_rej': plain_rej,
+        'hyb': cp_loss(afen, oracle_mv, hyb_move),
+        'arb_rej': arb_rej, 'plain_rej': plain_rej, 'hyb_rej': hyb_rej,
     })
     if (t + 1) % 10 == 0:
         print(f'{t+1}/{len(transitions)} transitions (hits so far: '
@@ -260,12 +276,13 @@ hits = [r for r in rows if r['hit']]
 print(f'\n# Bot-layer gate ({n} transitions, top-{TOPK} predictor, arbiter {M_SUP}/{M_UNSUP}, verify-reject {VERIFY_REJECT_CP}cp)')
 print(f'cache hit rate: {100*len(hits)/n:.1f}%\n')
 print('%-18s %7s %9s %9s %6s %6s %10s' % ('config', 'avgCP', 'avgCP-hit', 'avgCP-miss', 'bl100', 'bl200', 'verify-rej'))
-for cfg in ('g7', 'plain', 'arb'):
+for cfg in ('g7', 'plain', 'arb', 'hyb'):
     xs = [r[cfg] for r in rows if r[cfg] is not None]
     xh = [r[cfg] for r in hits if r[cfg] is not None]
     xm = [r[cfg] for r in rows if not r['hit'] and r[cfg] is not None]
     rej = sum(1 for r in hits if r.get(cfg + '_rej')) if cfg != 'g7' else 0
-    name = {'g7': 'gen7-alone', 'plain': 'gen7+plain-ponder', 'arb': 'gen7+arb-cache'}[cfg]
+    name = {'g7': 'gen7-alone', 'plain': 'gen7+plain-ponder', 'arb': 'gen7+arb-cache',
+            'hyb': 'gen7+hybrid(dngr)'}[cfg]
     print('%-18s %7.1f %9.1f %9.1f %5.1f%% %5.1f%% %10s' % (
         name, statistics.mean(xs), statistics.mean(xh) if xh else -1,
         statistics.mean(xm) if xm else -1,

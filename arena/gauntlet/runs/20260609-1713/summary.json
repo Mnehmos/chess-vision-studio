@@ -1,0 +1,90 @@
+{
+  "run": "arena/gauntlet/runs/20260609-1713",
+  "config": {
+    "startedAt": "2026-06-10T00:13:12.887Z",
+    "finishedAt": "2026-06-10T00:32:51.678Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "c82626c",
+    "experimental": false,
+    "dangerExtension": false,
+    "cvsDepth": 5,
+    "cvsMovetimeMs": 500,
+    "cvsDepthCap": 30,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      3190
+    ],
+    "opponentSettings": {
+      "3190": {
+        "eloLabel": 3190,
+        "mechanism": "UCI_Elo",
+        "uciElo": 3190,
+        "movetimeMs": 500
+      }
+    },
+    "gamesPerOpponent": 20,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 500,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 20,
+    "wins": 16,
+    "draws": 3,
+    "losses": 1,
+    "cvsMoves": 907,
+    "failures": 61,
+    "rsiCandidates": 64
+  },
+  "ladder": [
+    {
+      "opponent": "SF-3190",
+      "eloLabel": 3190,
+      "settings": {
+        "eloLabel": 3190,
+        "mechanism": "UCI_Elo",
+        "uciElo": 3190,
+        "movetimeMs": 500
+      },
+      "games": 20,
+      "wins": 16,
+      "draws": 3,
+      "losses": 1,
+      "scorePct": 87.5,
+      "eloDiff": 338,
+      "estimatedCvsElo": 3528,
+      "avgCpLoss": 0.701,
+      "medianCpLoss": 0.04,
+      "blunderRate": 0.0154,
+      "mateMissed": 5,
+      "illegal": 0,
+      "avgTimePerMoveMs": 467.4
+    }
+  ],
+  "classificationCounts": {
+    "good": 98,
+    "best": 491,
+    "excellent": 156,
+    "inaccuracy": 97,
+    "mistake": 42,
+    "mate_missed": 5,
+    "slow_mate": 9,
+    "blunder": 9
+  },
+  "tagCounts": {
+    "value_miseval": 35,
+    "search_horizon": 17,
+    "hanging_piece_missed": 19,
+    "tactical_motif_missed": 9,
+    "mate_missed": 5,
+    "passed_pawn_missed": 2,
+    "mate_net_tightening": 9,
+    "quiet_refutation_missed": 11,
+    "king_safety_missed": 2,
+    "repetition_shuffle": 3,
+    "endgame_conversion": 3
+  }
+}

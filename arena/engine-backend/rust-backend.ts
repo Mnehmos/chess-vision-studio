@@ -56,6 +56,14 @@ export class RustBackend implements CvsEngineBackend {
       // CVS_RUST_FUTILITY=1 enables futility pruning (accepted-with-note,
       // 2026-06-11: fixed-N +34, gen7 blunder collapse preserved at depth).
       if (process.env.CVS_RUST_FUTILITY === '1') extra.push('--futility');
+      // CVS_RUST_RFP=1 enables reverse futility pruning (accepted-with-note,
+      // 2026-06-11: standard engine practice; SPRT +68.8 and 100-game 63.5%
+      // screen on record, user ruling: accept with note).
+      if (process.env.CVS_RUST_RFP === '1') extra.push('--rfp');
+      // 2026-06-12 accepted-with-note TT pair (fixed-N +15.6/+17.4; pair
+      // confirmation 56.0% over 100 games, no interaction).
+      if (process.env.CVS_RUST_TTPS === '1') extra.push('--tt-prune-store');
+      if (process.env.CVS_RUST_QTT === '1') extra.push('--qtt');
       e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
       this.engines.set(depth, e);
     }

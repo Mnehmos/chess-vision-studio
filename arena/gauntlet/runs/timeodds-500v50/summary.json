@@ -1,0 +1,88 @@
+{
+  "run": "arena/gauntlet/runs/timeodds-500v50",
+  "config": {
+    "startedAt": "2026-06-10T00:36:03.729Z",
+    "finishedAt": "2026-06-10T00:43:50.114Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "c82626c",
+    "experimental": false,
+    "dangerExtension": false,
+    "cvsDepth": 5,
+    "cvsMovetimeMs": 500,
+    "cvsDepthCap": 30,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      9999
+    ],
+    "opponentSettings": {
+      "9999": {
+        "eloLabel": 9999,
+        "mechanism": "Unlimited",
+        "movetimeMs": 50
+      }
+    },
+    "gamesPerOpponent": 10,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 50,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 10,
+    "wins": 4,
+    "draws": 3,
+    "losses": 3,
+    "cvsMoves": 439,
+    "failures": 29,
+    "rsiCandidates": 32
+  },
+  "ladder": [
+    {
+      "opponent": "SF-9999",
+      "eloLabel": 9999,
+      "settings": {
+        "eloLabel": 9999,
+        "mechanism": "Unlimited",
+        "movetimeMs": 50
+      },
+      "games": 10,
+      "wins": 4,
+      "draws": 3,
+      "losses": 3,
+      "scorePct": 55,
+      "eloDiff": 35,
+      "estimatedCvsElo": 10034,
+      "avgCpLoss": 0.721,
+      "medianCpLoss": 0.03,
+      "blunderRate": 0.0205,
+      "mateMissed": 1,
+      "illegal": 0,
+      "avgTimePerMoveMs": 472.9
+    }
+  ],
+  "classificationCounts": {
+    "good": 56,
+    "best": 234,
+    "excellent": 86,
+    "inaccuracy": 35,
+    "mistake": 16,
+    "blunder": 8,
+    "slow_mate": 3,
+    "mate_missed": 1
+  },
+  "tagCounts": {
+    "search_horizon": 9,
+    "quiet_refutation_missed": 7,
+    "value_miseval": 17,
+    "opening_structure": 3,
+    "tactical_motif_missed": 3,
+    "king_safety_missed": 1,
+    "hanging_piece_missed": 5,
+    "mate_net_tightening": 3,
+    "mate_missed": 1,
+    "repetition_shuffle": 3,
+    "endgame_conversion": 3
+  }
+}

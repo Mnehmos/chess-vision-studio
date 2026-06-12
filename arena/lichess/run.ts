@@ -132,7 +132,11 @@ export async function runBot(
         throw e;
       }
     } catch (e) {
-      if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
+      // Challenge creation is one of Lichess's tightest budgets, and a 429
+      // here can carry account-level penalty (post-storm 2026-06-12: two
+      // 429s through 5-min pauses). Back off a full 30 minutes — incoming
+      // challenges still flow; only outbound hunting pauses.
+      if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 1_800_000;
       log(`bot-ladder challenge failed: ${String(e)}`);
     }
   };
@@ -146,10 +150,14 @@ export async function runBot(
   log('listening on /api/stream/event …');
   let restarts = 0;
   let consecutiveFailures = 0;
+  // Minimum quiet period after any 429 — Lichess requires a FULL MINUTE of
+  // silence; per-event counter resets let the old loop hammer every 1-2s
+  // (observed death-spiral 2026-06-11: stream 429s with a live game stuck).
+  let holdUntil = 0;
   for (;;) {
+    const connectedAt = Date.now();
     try {
       for await (const ev of client.streamEvents<LichessEvent>()) {
-        consecutiveFailures = 0; // any event proves the connection is healthy
         if (ev.type === 'challenge' && ev.challenge) {
           const ch = ev.challenge;
           if ((ch.challenger?.id ?? '').toLowerCase() === botId) continue; // echo of our own challenge
@@ -201,19 +209,27 @@ export async function runBot(
       }
       log('event stream ended; reconnecting');
     } catch (e) {
-      if (String(e).includes('429')) ladder.pausedUntil = Date.now() + 300_000;
+      if (String(e).includes('429')) {
+        ladder.pausedUntil = Date.now() + 300_000;
+        holdUntil = Date.now() + 65_000; // full minute of quiet, per Lichess
+      }
       log(`event stream error: ${String(e)}; reconnecting`);
     }
     if (opts.maxEventStreamRestarts !== undefined && restarts >= opts.maxEventStreamRestarts) return;
     restarts += 1;
+    // Healthy = the stream LIVED a while, not "delivered one event" — the old
+    // per-event reset kept backoff at 1-2s forever during 429 storms.
+    if (Date.now() - connectedAt >= 30_000) consecutiveFailures = 0;
     consecutiveFailures += 1;
     // Exponential backoff with jitter, capped at 60s. Lichess throttles IPs that
     // hammer it during outages — a fixed 1s retry loop is exactly that pattern.
     const base = opts.reconnectDelayMs ?? 1000;
     const backoff = Math.min(60_000, base * 2 ** Math.min(consecutiveFailures - 1, 6));
     const jittered = backoff + Math.floor(Math.random() * (backoff / 4));
-    if (consecutiveFailures > 1) log(`backoff ${Math.round(jittered / 1000)}s (failure #${consecutiveFailures})`);
-    await sleep(jittered);
+    const wait = Math.max(jittered, holdUntil - Date.now());
+    if (consecutiveFailures > 1 || wait > jittered)
+      log(`backoff ${Math.round(wait / 1000)}s (failure #${consecutiveFailures})`);
+    await sleep(wait);
   }
 }
 

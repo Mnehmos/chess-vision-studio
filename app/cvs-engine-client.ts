@@ -1,0 +1,50 @@
+export interface CvsEngineHealth {
+  ok: boolean;
+  available: boolean;
+  exe?: string;
+  depth?: number;
+  flags?: string[];
+  error?: string;
+}
+
+export interface CvsEngineTelemetry {
+  qNodePct?: number;
+  ttHitPct?: number;
+  rfpCutoffPct?: number;
+  futilitySkipPct?: number;
+  firstMoveCutoffPct?: number;
+  avgCutoffMoveIndex?: number;
+  searchedEffectiveBranching?: number;
+}
+
+export interface CvsEngineAnalysis {
+  fen: string;
+  uci: string | null;
+  scoreCp: number;
+  mate: number | null;
+  pv: string[];
+  depth: number;
+  nodes: number;
+  qNodes: number;
+  ttHits: number;
+  timeMs: number;
+  telemetry?: CvsEngineTelemetry;
+  error?: string;
+}
+
+export async function getCvsEngineHealth(): Promise<CvsEngineHealth> {
+  const response = await fetch('/api/cvs-engine/health');
+  if (!response.ok) throw new Error(`CVS Engine health failed (${response.status})`);
+  return (await response.json()) as CvsEngineHealth;
+}
+
+export async function analyzeWithCvsEngine(fen: string, depth?: number): Promise<CvsEngineAnalysis> {
+  const response = await fetch('/api/cvs-engine/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fen, depth }),
+  });
+  const body = (await response.json()) as CvsEngineAnalysis | { error?: string };
+  if (!response.ok) throw new Error(body.error || `CVS Engine analyze failed (${response.status})`);
+  return body as CvsEngineAnalysis;
+}

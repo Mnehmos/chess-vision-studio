@@ -1,0 +1,86 @@
+{
+  "run": "arena/gauntlet/runs/timeodds-500v25",
+  "config": {
+    "startedAt": "2026-06-10T00:27:09.981Z",
+    "finishedAt": "2026-06-10T00:36:02.704Z",
+    "engine": "CVS-Rust (cvs-bitboard-core)",
+    "engineCommit": "c82626c",
+    "experimental": false,
+    "dangerExtension": false,
+    "cvsDepth": 5,
+    "cvsMovetimeMs": 500,
+    "cvsDepthCap": 30,
+    "weights": {
+      "base": "arena/out/value-weights-mixed.json",
+      "rung2": "arena/out/rung2-weights-mixed.json"
+    },
+    "opponents": [
+      9999
+    ],
+    "opponentSettings": {
+      "9999": {
+        "eloLabel": 9999,
+        "mechanism": "Unlimited",
+        "movetimeMs": 25
+      }
+    },
+    "gamesPerOpponent": 10,
+    "openings": "arena/gauntlet/openings/balanced_openings.epd",
+    "movetimeMs": 25,
+    "maxPlies": 200
+  },
+  "totals": {
+    "games": 10,
+    "wins": 3,
+    "draws": 3,
+    "losses": 4,
+    "cvsMoves": 528,
+    "failures": 58,
+    "rsiCandidates": 61
+  },
+  "ladder": [
+    {
+      "opponent": "SF-9999",
+      "eloLabel": 9999,
+      "settings": {
+        "eloLabel": 9999,
+        "mechanism": "Unlimited",
+        "movetimeMs": 25
+      },
+      "games": 10,
+      "wins": 3,
+      "draws": 3,
+      "losses": 4,
+      "scorePct": 45,
+      "eloDiff": -35,
+      "estimatedCvsElo": 9964,
+      "avgCpLoss": 1.474,
+      "medianCpLoss": 0.06,
+      "blunderRate": 0.0455,
+      "mateMissed": 0,
+      "illegal": 0,
+      "avgTimePerMoveMs": 473.5
+    }
+  ],
+  "classificationCounts": {
+    "good": 54,
+    "best": 282,
+    "inaccuracy": 40,
+    "excellent": 100,
+    "mistake": 25,
+    "blunder": 24,
+    "slow_mate": 3
+  },
+  "tagCounts": {
+    "search_horizon": 14,
+    "quiet_refutation_missed": 11,
+    "value_miseval": 41,
+    "tactical_motif_missed": 6,
+    "hanging_piece_missed": 9,
+    "opening_structure": 3,
+    "king_safety_missed": 3,
+    "mate_net_tightening": 3,
+    "repetition_shuffle": 3,
+    "endgame_conversion": 3
+  }
+}

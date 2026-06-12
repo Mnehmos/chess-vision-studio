@@ -2,9 +2,9 @@
 #
 # Net: 768 sparse inputs (12 piece-planes x 64 squares, side-to-move
 # perspective: board mirrored + colors swapped when black to move) ->
-# 128 clipped-ReLU -> 1, output in centipawns (stm POV).
+# HIDDEN clipped-ReLU -> 1, output in centipawns (stm POV).
 #
-# Labels from selfplay JSONL {fen, cp (white POV, depth-5 search), res
+# Labels from JSONL {fen, cp (white POV), res
 # (white result)}: target = LAMBDA * sigmoid(cp/K) + (1-LAMBDA) * result,
 # loss = MSE(sigmoid(pred/K), target). Everything converted to stm POV.
 #
@@ -31,7 +31,7 @@ MAX_ROWS = arg('--rows', 100_000_000)
 EPOCHS = arg('--epochs', 12)
 OUT = arg('--out', 'arena/out/nnue-gen1.json')
 K = 256.0
-LAMBDA = 0.6
+LAMBDA = arg('--lambda', 0.6)  # 1.0 = pure-eval target (result-less corpora)
 HIDDEN = arg('--hidden', 128)
 BATCH = 16384
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -155,7 +155,7 @@ def main():
     w2 = net.out.weight.detach().cpu().numpy()[0]       # (128,)
     b2 = float(net.out.bias.detach().cpu().numpy()[0])
     json.dump({
-        'arch': '768x128cReLU-1', 'hidden': HIDDEN, 'outputScaleCp': 400.0,
+        'arch': f'768x{HIDDEN}cReLU-1', 'hidden': HIDDEN, 'outputScaleCp': 400.0,
         'k': K, 'lambda': LAMBDA, 'rows': int(n), 'epochs': EPOCHS,
         'w1': [[round(float(v), 6) for v in row] for row in w1],
         'b1': [round(float(v), 6) for v in b1],

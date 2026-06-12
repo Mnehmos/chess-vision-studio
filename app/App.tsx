@@ -9,6 +9,12 @@ import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures }
 import { UciEngine } from '../engine/evaluation';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
+import {
+  analyzeWithCvsEngine,
+  getCvsEngineHealth,
+  type CvsEngineAnalysis,
+  type CvsEngineHealth,
+} from './cvs-engine-client';
 import { createEnginePool, defaultPoolSize, type EnginePool } from './engine-pool';
 import { loadAnalysisCache, saveGameAnalysis } from './analysis-store';
 import { MODES, LED_CSS } from './modes';
@@ -91,8 +97,13 @@ export function App() {
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
+  const [cvsEngineHealth, setCvsEngineHealth] = useState<CvsEngineHealth>({ ok: false, available: false });
+  const [cvsEngineAnalysis, setCvsEngineAnalysis] = useState<CvsEngineAnalysis | null>(null);
+  const [cvsEngineBusy, setCvsEngineBusy] = useState(false);
+  const [cvsEngineError, setCvsEngineError] = useState('');
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
+  const cvsEngineRunRef = useRef(0);
   const analysisCacheRef = useRef<Map<string, Map<number, MoveAnalysis>>>(new Map());
   const featureCacheRef = useRef<Map<string, Map<number, CachedFeatureEntry>>>(new Map());
   // analysisCacheRef is a ref (stable identity), so bump this to signal the dataset
@@ -159,6 +170,21 @@ export function App() {
     };
   }, []);
 
+  // Discover the local native CVS Engine served by Vite. The app stays usable
+  // when it is absent; the comparison panel simply reports the missing binary.
+  useEffect(() => {
+    let alive = true;
+    getCvsEngineHealth()
+      .then((health) => alive && setCvsEngineHealth(health))
+      .catch((e) => {
+        if (!alive) return;
+        setCvsEngineHealth({ ok: false, available: false, error: String((e as Error)?.message ?? e) });
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Rehydrate analyses persisted from a previous session (IndexedDB, keyed by the
   // content-based game key) so 23k moves aren't re-ground after a reload.
   useEffect(() => {
@@ -181,6 +207,35 @@ export function App() {
   const plyIndex = view - 1; // index into plies for the move that produced `fen`
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
   const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
+  const cvsEngineFen = view > 0 ? plies[plyIndex]?.fenBefore ?? fen : fen;
+  const cvsEngineContext = view > 0 && moveLabel ? `before ${moveLabel}` : 'current board';
+  const cvsPlayedUci = view > 0 ? `${plies[plyIndex]?.from ?? ''}${plies[plyIndex]?.to ?? ''}` : undefined;
+
+  useEffect(() => {
+    if (tab !== 'board' || !cvsEngineHealth.available) return;
+    const run = ++cvsEngineRunRef.current;
+    setCvsEngineBusy(true);
+    setCvsEngineError('');
+    setCvsEngineAnalysis(null);
+    const timer = window.setTimeout(() => {
+      analyzeWithCvsEngine(cvsEngineFen, cvsEngineHealth.depth)
+        .then((result) => {
+          if (cvsEngineRunRef.current !== run) return;
+          setCvsEngineAnalysis(result);
+        })
+        .catch((e) => {
+          if (cvsEngineRunRef.current !== run) return;
+          setCvsEngineError(String((e as Error)?.message ?? e));
+        })
+        .finally(() => {
+          if (cvsEngineRunRef.current === run) setCvsEngineBusy(false);
+        });
+    }, 150);
+    return () => {
+      window.clearTimeout(timer);
+      if (cvsEngineRunRef.current === run) cvsEngineRunRef.current += 1;
+    };
+  }, [cvsEngineFen, tab, cvsEngineHealth.available, cvsEngineHealth.depth]);
 
   // ── LLM commentary handlers ────────────────────────────────────────────────
   const saveKey = (key: string) => {
@@ -579,7 +634,8 @@ export function App() {
             2D chess perception — relations · SEE · diff · saliency · validated motifs
           </span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-            <EngineBadge state={engineState} />
+            <EngineBadge label="Stockfish" state={engineState} />
+            <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
             {engineState === 'ready' && analyses.size < plies.length && (
               <span style={{ fontSize: 12, color: '#888' }}>analyzing {analyses.size}/{plies.length}…</span>
             )}
@@ -682,6 +738,17 @@ export function App() {
             move={moveLabel}
             focused={focused}
             onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+          />
+          <EngineComparisonPanel
+            stockfishState={engineState}
+            stockfishAnalysis={analysis}
+            move={moveLabel}
+            cvsHealth={cvsEngineHealth}
+            cvsAnalysis={cvsEngineAnalysis}
+            cvsBusy={cvsEngineBusy}
+            cvsError={cvsEngineError}
+            cvsContext={cvsEngineContext}
+            cvsPlayedUci={cvsPlayedUci}
           />
           {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
           <CommentaryPanel
@@ -922,14 +989,136 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function EngineBadge({ state }: { state: 'loading' | 'ready' | 'off' }) {
+function EngineBadge({ label, state }: { label: string; state: 'loading' | 'ready' | 'off' }) {
   const text = state === 'loading' ? 'engine: loading…' : state === 'ready' ? 'engine: ready' : 'engine: off (pure modes only)';
   const bg = state === 'ready' ? '#3fbf5f' : state === 'loading' ? '#e8923b' : '#999';
   return (
-    <span style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
+    <span title={text} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
+      {state === 'loading' ? `${label}: loading` : state === 'ready' ? `${label}: ready` : `${label}: off`}
+    </span>
+  );
+}
+
+function CvsEngineBadge({ health, busy }: { health: CvsEngineHealth; busy: boolean }) {
+  const checking = !health.ok && !health.error;
+  const text = checking
+    ? 'CVS Engine: checking'
+    : health.available
+      ? busy
+        ? 'CVS Engine: analyzing'
+        : 'CVS Engine: ready'
+      : 'CVS Engine: not found';
+  const bg = checking ? '#e8923b' : health.available ? '#3b6fd4' : '#999';
+  return (
+    <span title={health.error} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
       {text}
     </span>
   );
+}
+
+function EngineComparisonPanel({
+  stockfishState,
+  stockfishAnalysis,
+  move,
+  cvsHealth,
+  cvsAnalysis,
+  cvsBusy,
+  cvsError,
+  cvsContext,
+  cvsPlayedUci,
+}: {
+  stockfishState: 'loading' | 'ready' | 'off';
+  stockfishAnalysis: MoveAnalysis | undefined;
+  move: string | undefined;
+  cvsHealth: CvsEngineHealth;
+  cvsAnalysis: CvsEngineAnalysis | null;
+  cvsBusy: boolean;
+  cvsError: string;
+  cvsContext: string;
+  cvsPlayedUci: string | undefined;
+}) {
+  const labelStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: '#667085', fontWeight: 700, textTransform: 'uppercase' };
+  const valueStyle: React.CSSProperties = { margin: 0, fontSize: 14, color: '#344054', lineHeight: 1.45 };
+  return (
+    <section style={{ ...cardStyle, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+        <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
+        <span style={{ color: '#667085', fontSize: 12 }}>local WIP</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={labelStyle}>Stockfish</p>
+          {stockfishState !== 'ready' ? (
+            <p style={valueStyle}>{stockfishState === 'loading' ? 'loading' : 'off'}</p>
+          ) : stockfishAnalysis ? (
+            <>
+              <p style={valueStyle}>
+                {move ?? stockfishAnalysis.move}: {stockfishAnalysis.classification}, loss {stockfishAnalysis.cpLoss.toFixed(2)}
+              </p>
+              <p style={{ ...valueStyle, fontSize: 13 }}>
+                eval {formatEval(stockfishAnalysis.evalAfter)} d{stockfishAnalysis.evalAfter.depth}
+              </p>
+              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+            </>
+          ) : (
+            <p style={valueStyle}>waiting for a played move</p>
+          )}
+        </div>
+        <div style={{ minWidth: 0, borderLeft: '1px solid #eaecf0', paddingLeft: 14 }}>
+          <p style={labelStyle}>CVS Engine</p>
+          <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{cvsContext}</p>
+          {!cvsHealth.available ? (
+            <p style={valueStyle}>{cvsHealth.error || 'local engine unavailable'}</p>
+          ) : cvsError ? (
+            <p style={{ ...valueStyle, color: '#b42318' }}>{cvsError}</p>
+          ) : cvsAnalysis ? (
+            <>
+              <p style={valueStyle}>
+                {cvsPlayedUci ? `played ${cvsPlayedUci}, ` : ''}best {cvsAnalysis.uci ?? 'none'} {formatCvsAgreement(cvsPlayedUci, cvsAnalysis.uci)}{' '}
+                {cvsBusy ? '(updating)' : ''}
+              </p>
+              <p style={{ ...valueStyle, fontSize: 13 }}>
+                eval {formatCvsEval(cvsAnalysis)} d{cvsAnalysis.depth} in {cvsAnalysis.timeMs}ms
+              </p>
+              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>
+                {formatNodes(cvsAnalysis.nodes)} nodes, q {formatNodes(cvsAnalysis.qNodes)}, tt {cvsAnalysis.ttHits}
+              </p>
+              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+            </>
+          ) : (
+            <p style={valueStyle}>{cvsBusy ? `analyzing ${cvsContext}` : 'ready'}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function formatEval(evalInfo: MoveAnalysis['evalAfter']): string {
+  if (typeof evalInfo.mate === 'number') return `M${evalInfo.mate}`;
+  if (typeof evalInfo.cp === 'number') return formatCp(evalInfo.cp);
+  return evalInfo.status === 'terminal' ? 'terminal' : 'unavailable';
+}
+
+function formatCvsEval(result: CvsEngineAnalysis): string {
+  if (typeof result.mate === 'number') return `M${result.mate}`;
+  return formatCp(result.scoreCp);
+}
+
+function formatCvsAgreement(playedUci: string | undefined, bestUci: string | null): string {
+  if (!playedUci || !bestUci) return '';
+  return playedUci === bestUci ? '(agrees)' : '(prefers different move)';
+}
+
+function formatCp(cp: number): string {
+  const pawns = cp / 100;
+  return `${pawns >= 0 ? '+' : ''}${pawns.toFixed(2)}`;
+}
+
+function formatNodes(nodes: number): string {
+  if (nodes >= 1_000_000) return `${(nodes / 1_000_000).toFixed(1)}M`;
+  if (nodes >= 1_000) return `${(nodes / 1_000).toFixed(1)}k`;
+  return String(nodes);
 }
 
 function ModeBar({

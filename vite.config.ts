@@ -3,6 +3,7 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { existsSync, readFileSync } from 'node:fs';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { createInterface, type Interface } from 'node:readline';
 
 /**
  * Dev-server OpenAI proxy. The key stays in .env (plain OPENAI_API_KEY, server-side)
@@ -49,6 +50,202 @@ function openaiProxy(env: Record<string, string>): Plugin {
             json(res, 502, { error: { message: String((e as Error)?.message ?? e) } });
           }
         });
+      });
+    },
+  };
+}
+
+interface CvsEngineAnalyzeRequest {
+  fen?: string;
+  depth?: number;
+  movetimeMs?: number;
+}
+
+interface CvsEnginePending {
+  resolve: (line: string) => void;
+  reject: (error: Error) => void;
+  timer: NodeJS.Timeout;
+}
+
+interface CvsEngineProcess {
+  child: ChildProcessWithoutNullStreams;
+  rl: Interface;
+  depth: number;
+  argsKey: string;
+  queue: CvsEnginePending[];
+  stderr: string[];
+}
+
+function cvsEngineProxy(env: Record<string, string>): Plugin {
+  let current: CvsEngineProcess | null = null;
+
+  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(body));
+  };
+
+  const dispose = () => {
+    const proc = current;
+    current = null;
+    if (!proc) return;
+    for (const pending of proc.queue.splice(0)) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('CVS Engine process stopped'));
+    }
+    try {
+      proc.child.stdin.write('quit\n');
+      proc.child.kill();
+      proc.rl.close();
+    } catch {
+      // Already gone.
+    }
+  };
+
+  const configFor = (requestedDepth?: number) => {
+    const analyzeBin = process.platform === 'win32' ? 'analyze.exe' : 'analyze';
+    const exe = env.CVS_RUST_EXE?.trim() || `../chess-vision-studio-rust-engine/target/release/${analyzeBin}`;
+    const depthRaw = Number(requestedDepth ?? env.CVS_RUST_DEPTH ?? 6);
+    const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(30, Math.round(depthRaw))) : 6;
+    const args = ['--serve', '--depth', String(depth)];
+    const missing: string[] = [];
+    const flags: string[] = [];
+
+    const addFileArg = (flag: string, path: string | undefined, label: string, required: boolean) => {
+      const clean = path?.trim();
+      if (!clean) return;
+      if (!existsSync(clean)) {
+        if (required) missing.push(`${label}: ${clean}`);
+        return;
+      }
+      args.push(flag, clean);
+    };
+
+    addFileArg('--base', env.CVS_RUST_BASE || 'arena/out/value-weights-mixed.json', 'base weights', !!env.CVS_RUST_BASE);
+    addFileArg('--rung2', env.CVS_RUST_RUNG2 || 'arena/out/rung2-weights-mixed.json', 'rung2 weights', !!env.CVS_RUST_RUNG2);
+    addFileArg('--nnue', env.CVS_RUST_NNUE, 'nnue', !!env.CVS_RUST_NNUE);
+    addFileArg('--helper-nnue', env.CVS_RUST_HELPER_NNUE, 'helper nnue', !!env.CVS_RUST_HELPER_NNUE);
+
+    const addFlag = (envKey: string, flag: string, defaultOn = false) => {
+      const value = env[envKey];
+      if ((defaultOn && value !== '0') || (!defaultOn && value === '1')) {
+        args.push(flag);
+        flags.push(flag);
+      }
+    };
+    addFlag('CVS_RUST_FUTILITY', '--futility', true);
+    addFlag('CVS_RUST_RFP', '--rfp');
+    addFlag('CVS_RUST_LMP', '--lmp');
+    addFlag('CVS_RUST_SEEPRUNE', '--seeprune');
+    addFlag('CVS_RUST_DELTA', '--delta');
+    addFlag('CVS_RUST_COUNTERMOVE', '--countermove');
+    addFlag('CVS_RUST_CONTHIST', '--conthist');
+    addFlag('CVS_RUST_TTPS', '--tt-prune-store');
+    addFlag('CVS_RUST_QTT', '--qtt');
+    addFlag('CVS_RUST_TT2', '--tt2');
+    addFlag('CVS_RUST_IMPROVING', '--improving');
+    addFlag('CVS_RUST_RULE50', '--rule50');
+
+    return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags };
+  };
+
+  const spawnEngine = (requestedDepth?: number): CvsEngineProcess => {
+    const cfg = configFor(requestedDepth);
+    if (current && current.depth === cfg.depth && current.argsKey === cfg.argsKey && !current.child.killed) return current;
+    dispose();
+    const child = spawn(cfg.exe, cfg.args, { cwd: process.cwd(), stdio: 'pipe' });
+    const rl = createInterface({ input: child.stdout });
+    const proc: CvsEngineProcess = { child, rl, depth: cfg.depth, argsKey: cfg.argsKey, queue: [], stderr: [] };
+    rl.on('line', (line) => {
+      const next = proc.queue.shift();
+      if (!next) return;
+      clearTimeout(next.timer);
+      next.resolve(line);
+    });
+    child.stderr.on('data', (data) => {
+      proc.stderr = [...proc.stderr, ...String(data).split(/\r?\n/).filter(Boolean)].slice(-20);
+    });
+    child.on('error', (error) => {
+      for (const pending of proc.queue.splice(0)) {
+        clearTimeout(pending.timer);
+        pending.reject(error);
+      }
+    });
+    child.on('close', (code) => {
+      if (current === proc) current = null;
+      const suffix = proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : '';
+      for (const pending of proc.queue.splice(0)) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error(`CVS Engine exited with code ${code}${suffix}`));
+      }
+    });
+    current = proc;
+    return proc;
+  };
+
+  const requestEngine = (proc: CvsEngineProcess, line: string): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const ix = proc.queue.findIndex((p) => p.resolve === resolve);
+        if (ix >= 0) proc.queue.splice(ix, 1);
+        reject(new Error('CVS Engine request timed out'));
+      }, 20_000);
+      proc.queue.push({ resolve, reject, timer });
+      proc.child.stdin.write(`${line}\n`);
+    });
+
+  return {
+    name: 'cvs-engine-proxy',
+    configureServer(server) {
+      server.httpServer?.on('close', dispose);
+      server.middlewares.use('/api/cvs-engine/health', (req, res) => {
+        if (req.method !== 'GET') return json(res, 405, { error: 'GET only' });
+        const cfg = configFor();
+        if (!existsSync(cfg.exe)) {
+          return json(res, 200, {
+            ok: true,
+            available: false,
+            exe: cfg.exe,
+            depth: cfg.depth,
+            flags: cfg.flags,
+            error: 'CVS Engine binary not found. Build chess-vision-studio-rust-engine with cargo build --release.',
+          });
+        }
+        if (cfg.missing.length) {
+          return json(res, 200, {
+            ok: true,
+            available: false,
+            exe: cfg.exe,
+            depth: cfg.depth,
+            flags: cfg.flags,
+            error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
+          });
+        }
+        return json(res, 200, { ok: true, available: true, exe: cfg.exe, depth: cfg.depth, flags: cfg.flags });
+      });
+
+      server.middlewares.use('/api/cvs-engine/analyze', (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+        readJsonBody<CvsEngineAnalyzeRequest>(req)
+          .then(async (body) => {
+            const fen = body.fen?.trim();
+            if (!fen) return json(res, 400, { error: 'fen is required' });
+            const cfg = configFor(body.depth);
+            if (!existsSync(cfg.exe)) return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
+            if (cfg.missing.length) return json(res, 503, { error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}` });
+            const proc = spawnEngine(cfg.depth);
+            const line = body.movetimeMs ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}` : fen;
+            const out = await requestEngine(proc, line);
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(out);
+            } catch {
+              return json(res, 502, { error: 'CVS Engine returned non-JSON output', output: out });
+            }
+            if (typeof parsed === 'object' && parsed && 'error' in parsed) return json(res, 422, parsed);
+            return json(res, 200, parsed);
+          })
+          .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
       });
     },
   };
@@ -377,7 +574,7 @@ function readJsonBody<T>(req: import('http').IncomingMessage): Promise<T> {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ''); // '' = load ALL vars, incl. non-VITE_
   return {
-    plugins: [react(), openaiProxy(env), trainingSupervisor()],
+    plugins: [react(), openaiProxy(env), cvsEngineProxy(env), trainingSupervisor()],
     server: {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',

@@ -1,0 +1,26 @@
+{
+  "startedAt": "2026-06-09T23:36:13.446Z",
+  "finishedAt": "2026-06-09T23:49:19.299Z",
+  "engine": "CVS-Rust (cvs-bitboard-core)",
+  "engineCommit": "5dc5fe7",
+  "cvsDepth": 5,
+  "weights": {
+    "base": "arena/out/value-weights-mixed.json",
+    "rung2": "arena/out/rung2-weights-mixed.json"
+  },
+  "opponents": [
+    2600
+  ],
+  "opponentSettings": {
+    "2600": {
+      "eloLabel": 2600,
+      "mechanism": "UCI_Elo",
+      "uciElo": 2600,
+      "movetimeMs": 80
+    }
+  },
+  "gamesPerOpponent": 20,
+  "openings": "arena/gauntlet/openings/balanced_openings.epd",
+  "movetimeMs": 80,
+  "maxPlies": 200
+}
