@@ -142,6 +142,9 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
     addFlag('CVS_RUST_CONTHIST', '--conthist');
     addFlag('CVS_RUST_TTPS', '--tt-prune-store');
     addFlag('CVS_RUST_QTT', '--qtt');
+    addFlag('CVS_RUST_HISTMALUS', '--histmalus');
+    addFlag('CVS_RUST_HISTLMR', '--histlmr');
+    addFlag('CVS_RUST_CAPHIST', '--caphist');
     addFlag('CVS_RUST_TT2', '--tt2');
     addFlag('CVS_RUST_IMPROVING', '--improving');
     addFlag('CVS_RUST_RULE50', '--rule50');
