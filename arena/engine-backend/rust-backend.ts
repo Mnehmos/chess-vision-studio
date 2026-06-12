@@ -64,6 +64,10 @@ export class RustBackend implements CvsEngineBackend {
       // confirmation 56.0% over 100 games, no interaction).
       if (process.env.CVS_RUST_TTPS === '1') extra.push('--tt-prune-store');
       if (process.env.CVS_RUST_QTT === '1') extra.push('--qtt');
+      // 2026-06-12 history rework (accepted with note, fixed-N 53.2%/400):
+      // maluses+gravity substrate + history-informed LMR. -23% nodes, +3 depth.
+      if (process.env.CVS_RUST_HISTMALUS === '1') extra.push('--histmalus');
+      if (process.env.CVS_RUST_HISTLMR === '1') extra.push('--histlmr');
       e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
       this.engines.set(depth, e);
     }
