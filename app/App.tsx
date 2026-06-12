@@ -203,7 +203,7 @@ export function App() {
     };
   }, []);
 
-  const fen = view === 0 ? plies[0]?.fenBefore ?? START_FEN : plies[view - 1].fenAfter;
+  const fen = view === 0 ? currentGame?.initialFen ?? plies[0]?.fenBefore ?? START_FEN : plies[view - 1].fenAfter;
   const plyIndex = view - 1; // index into plies for the move that produced `fen`
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
   const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
@@ -627,7 +627,7 @@ export function App() {
         @media (max-width:1180px){.cvs-workspace{grid-template-columns:480px minmax(0,1fr)}}
         @media (max-width:820px){.cvs-workspace{grid-template-columns:1fr}}
       `}</style>
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 24px 56px' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px clamp(10px, 3vw, 24px) 56px', overflowX: 'hidden' }}>
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.01em' }}>Chess Vision Studio</h1>
           <span style={{ color: '#667085', fontSize: 13 }}>
@@ -769,7 +769,7 @@ export function App() {
         </div>
 
         {/* Right: LED twin + move list */}
-        <div style={{ width: '100%', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <LedPreview ledMap={ledMap} />
           <MoveHistory plies={plies} view={view} setView={setView} analyses={analyses} />
         </div>
@@ -820,8 +820,8 @@ function safeGames(pgn: string): ParsedGame[] {
 
 function gameCacheKey(game: ParsedGame | undefined): string {
   if (!game) return 'no-game';
-  const first = game.plies[0]?.fenBefore ?? '';
-  const last = game.plies[game.plies.length - 1]?.fenAfter ?? '';
+  const first = game.plies[0]?.fenBefore ?? game.initialFen ?? '';
+  const last = game.plies[game.plies.length - 1]?.fenAfter ?? game.initialFen ?? '';
   return [
     game.headers.White ?? '?',
     game.headers.Black ?? '?',
@@ -889,6 +889,7 @@ function SourceBar({
   const [open, setOpen] = useState(false);
   const multi = games.length > 1;
   const jobPct = datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0;
+  const loadedLabel = multi ? `${games.length} games loaded` : games[gameIndex]?.label ?? 'Sample game';
   return (
     <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -896,10 +897,10 @@ function SourceBar({
           ⬆ Import PGN
         </button>
         <div style={{ fontSize: 13, color: '#475467' }}>
-          <strong style={{ color: '#101828' }}>{multi ? `${games.length} games loaded` : 'Sample game'}</strong>
+          <strong style={{ color: '#101828' }}>{loadedLabel}</strong>
           <span style={{ color: '#98a2b3' }}> · paste your Chess.com / Lichess export to analyze your own games</span>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {multi && tab === 'board' && (
             <select
               value={gameIndex}
@@ -1131,7 +1132,7 @@ function ModeBar({
   engineReady: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8, maxWidth: 460 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8, maxWidth: 'min(460px, 100%)' }}>
       {MODES.map((m) => {
         const disabled = m.needsAnalysis && !engineReady;
         return (
@@ -1160,7 +1161,7 @@ function ModeBar({
 
 function Nav({ view, total, setView }: { view: number; total: number; setView: (n: number) => void }) {
   return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <button onClick={() => setView(0)} disabled={view === 0}>
         ⏮
       </button>
@@ -1208,7 +1209,7 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
       ]
     : [];
   return (
-    <div style={{ width: 456, marginTop: 6 }} title="Share of the 64 squares each side's pieces attack (contested = both).">
+    <div style={{ width: 'min(456px, 100%)', marginTop: 6 }} title="Share of the 64 squares each side's pieces attack (contested = both).">
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666', marginBottom: 2 }}>
         <span>Board control</span>
         {c && <span>center {c.centerWhite}–{c.centerBlack}</span>}
@@ -1222,7 +1223,7 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
       </div>
       {c && (
         <div
-          style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2 }}
+          style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2, flexWrap: 'wrap' }}
           title={`Total reach (overlaps on contested): White ${c.whitePct}%, Black ${c.blackPct}%`}
         >
           <span style={{ color: '#3b6fd4' }}>White {c.exclusiveWhitePct}%</span>
@@ -1244,7 +1245,7 @@ function MiniBadges({ features }: { features?: PlyFeatures }) {
         gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))',
         gap: 6,
         marginTop: 8,
-        width: 456,
+        width: 'min(456px, 100%)',
         minHeight: 54,
       }}
     >
@@ -1338,7 +1339,7 @@ function MoveStrip({
         whiteSpace: 'nowrap',
         marginTop: 8,
         padding: '6px 4px',
-        maxWidth: 8 * 56,
+        maxWidth: 'min(448px, 100%)',
         background: '#f3f1ea',
         borderRadius: 6,
         fontSize: 13,
