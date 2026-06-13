@@ -1,9 +1,20 @@
-// Game review — aggregates the cached per-ply analyses into accuracy, mistakes
-// (separated by ownership), and a what-happened timeline. The scope toggle lets
-// the review build move-by-move as you step, or show the whole game at once.
+// Tutor-first game review. The default view turns engine output into a small
+// number of decisions and practice positions; the complete diagnostics remain
+// available in the Data view.
 import { useMemo, useState, type ReactNode } from 'react';
-import { computeAnalytics, type AnalyzedEntry, type SideStats, type WorstMove } from '../engine/analytics';
-import { computePatternProfile, type FeatureEntry, type PatternProfile } from '../engine/features';
+import {
+  computeAnalytics,
+  type AnalyzedEntry,
+  type SideStats,
+  type WorstMove,
+} from '../engine/analytics';
+import {
+  computePatternProfile,
+  type FeatureEntry,
+  type PatternProfile,
+  type PatternType,
+  type Phase,
+} from '../engine/features';
 import type { Classification, MoveAnalysis } from '../engine/types';
 
 const CLASS_COLOR: Record<Classification, string> = {
@@ -15,13 +26,20 @@ const CLASS_COLOR: Record<Classification, string> = {
   blunder: '#e23b3b',
   unclassified: '#9aa',
 };
-// 'unclassified' is intentionally omitted from the quality bar — it is "unknown", not a grade.
-const CLASS_ORDER: Classification[] = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'];
-
-// Team colors mirror the board visual grammar: White = blue, Black = red.
+const CLASS_ORDER: Classification[] = [
+  'best',
+  'excellent',
+  'good',
+  'inaccuracy',
+  'mistake',
+  'blunder',
+];
 const TEAM = { w: 'var(--accent)', b: '#d43b3b' } as const;
+const SIDE_NAME = { w: 'White', b: 'Black' } as const;
 
 type Scope = 'game' | 'step';
+type ReviewView = 'coach' | 'moments' | 'data';
+type Side = 'w' | 'b';
 
 export function AnalyticsPanel({
   entries,
@@ -31,111 +49,808 @@ export function AnalyticsPanel({
 }: {
   entries: AnalyzedEntry[];
   features?: FeatureEntry[];
-  view: number; // current ply (half-moves shown)
+  view: number;
   onJump: (ply: number) => void;
 }) {
   const [scope, setScope] = useState<Scope>('game');
+  const [reviewView, setReviewView] = useState<ReviewView>('coach');
+  const [focusOverride, setFocusOverride] = useState<Side | null>(null);
 
-  // In step mode the review is built only from what's been played up to `view`.
   const scoped = useMemo(
-    () => (scope === 'step' ? entries.filter((e) => e.ply <= view) : entries),
+    () => (scope === 'step' ? entries.filter((entry) => entry.ply <= view) : entries),
     [entries, scope, view],
   );
-  const analytics = useMemo(() => computeAnalytics(scoped), [scoped]);
   const scopedFeatures = useMemo(
-    () => (scope === 'step' ? (features ?? []).filter((e) => e.ply <= view) : features ?? []),
+    () =>
+      scope === 'step' ? (features ?? []).filter((entry) => entry.ply <= view) : (features ?? []),
     [features, scope, view],
   );
-  // Provenance matters: attribute every pattern/motif/phase-loss to the side whose
-  // move it was, so White's and Black's habits are read separately (like the mistakes).
-  const patternsW = useMemo(() => computePatternProfile(scopedFeatures.filter((e) => e.color === 'w')), [scopedFeatures]);
-  const patternsB = useMemo(() => computePatternProfile(scopedFeatures.filter((e) => e.color === 'b')), [scopedFeatures]);
+  const analytics = useMemo(() => computeAnalytics(scoped), [scoped]);
+  const patternsW = useMemo(
+    () => computePatternProfile(scopedFeatures.filter((entry) => entry.color === 'w')),
+    [scopedFeatures],
+  );
+  const patternsB = useMemo(
+    () => computePatternProfile(scopedFeatures.filter((entry) => entry.color === 'b')),
+    [scopedFeatures],
+  );
   const timeline = useMemo(() => buildTimeline(scoped), [scoped]);
 
+  const suggestedFocus: Side = analytics.black.accuracy < analytics.white.accuracy ? 'b' : 'w';
+  const focus = focusOverride ?? suggestedFocus;
+  const focusStats = focus === 'w' ? analytics.white : analytics.black;
+  const opponentStats = focus === 'w' ? analytics.black : analytics.white;
+  const focusProfile = focus === 'w' ? patternsW : patternsB;
+  const focusFeatures = useMemo(
+    () => scopedFeatures.filter((entry) => entry.color === focus),
+    [scopedFeatures, focus],
+  );
+  const focusEntries = useMemo(
+    () => scoped.filter((entry) => entry.color === focus),
+    [scoped, focus],
+  );
+  const critical = useMemo(() => teachingMoments(focusEntries), [focusEntries]);
+  const brief = useMemo(
+    () => buildCoachBrief(focus, focusStats, focusProfile, critical),
+    [focus, focusStats, focusProfile, critical],
+  );
+
   return (
-    <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10 }}>
-        <h3 style={{ margin: 0 }}>Game review</h3>
-        <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-          <ScopeButton active={scope === 'game'} onClick={() => setScope('game')}>
-            Whole game
-          </ScopeButton>
-          <ScopeButton active={scope === 'step'} onClick={() => setScope('step')}>
-            Up to current move
-          </ScopeButton>
+    <section
+      style={{
+        marginTop: 24,
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        background: 'var(--card)',
+        padding: '16px clamp(12px, 2vw, 20px) 20px',
+      }}
+    >
+      <style>{`
+        .cvs-review-tabs{display:flex;gap:6px;flex-wrap:wrap}
+        .cvs-review-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+        .cvs-review-summary{grid-column:span 3}
+        .cvs-review-brief{grid-column:span 7}
+        .cvs-review-plan{grid-column:span 5}
+        .cvs-review-moment{grid-column:span 4}
+        .cvs-review-half{grid-column:span 6}
+        .cvs-review-third{grid-column:span 4}
+        .cvs-review-full{grid-column:1/-1}
+        @media(max-width:980px){
+          .cvs-review-summary{grid-column:span 6}
+          .cvs-review-brief,.cvs-review-plan,.cvs-review-half,.cvs-review-third{grid-column:1/-1}
+          .cvs-review-moment{grid-column:span 6}
+        }
+        @media(max-width:620px){
+          .cvs-review-summary,.cvs-review-moment{grid-column:1/-1}
+        }
+      `}</style>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: 20 }}>Game review</h3>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+            Diagnose, practice, then inspect the engine data.
+          </div>
         </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <SegmentedControl>
+            <SegmentButton active={focus === 'w'} onClick={() => setFocusOverride('w')}>
+              White
+            </SegmentButton>
+            <SegmentButton active={focus === 'b'} onClick={() => setFocusOverride('b')}>
+              Black
+            </SegmentButton>
+          </SegmentedControl>
+          <SegmentedControl>
+            <SegmentButton active={scope === 'game'} onClick={() => setScope('game')}>
+              Whole game
+            </SegmentButton>
+            <SegmentButton active={scope === 'step'} onClick={() => setScope('step')}>
+              To current
+            </SegmentButton>
+          </SegmentedControl>
+        </div>
+      </div>
+
+      <div
+        className="cvs-review-tabs"
+        style={{ marginTop: 14, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}
+      >
+        <ViewButton active={reviewView === 'coach'} onClick={() => setReviewView('coach')}>
+          Coach
+        </ViewButton>
+        <ViewButton active={reviewView === 'moments'} onClick={() => setReviewView('moments')}>
+          Critical moments
+        </ViewButton>
+        <ViewButton active={reviewView === 'data'} onClick={() => setReviewView('data')}>
+          All data
+        </ViewButton>
         {scope === 'step' && (
-          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-            through move {Math.ceil(view / 2) || 0} · {scoped.length} plies analyzed
+          <span style={{ alignSelf: 'center', color: 'var(--muted)', fontSize: 12, marginLeft: 4 }}>
+            through move {Math.ceil(view / 2) || 0}
           </span>
         )}
       </div>
 
       {scoped.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+        <div style={{ color: 'var(--muted)', fontSize: 13, padding: '18px 0 4px' }}>
           Step forward to build the review move by move.
         </div>
+      ) : reviewView === 'coach' ? (
+        <CoachView
+          focus={focus}
+          stats={focusStats}
+          opponentStats={opponentStats}
+          profile={focusProfile}
+          features={focusFeatures}
+          critical={critical}
+          brief={brief}
+          onJump={onJump}
+        />
+      ) : reviewView === 'moments' ? (
+        <MomentsView focus={focus} entries={focusEntries} onJump={onJump} />
       ) : (
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <SideCard title="White" color={TEAM.w} s={analytics.white} />
-          <SideCard title="Black" color={TEAM.b} s={analytics.black} />
+        <DataView
+          analytics={analytics}
+          patternsW={patternsW}
+          patternsB={patternsB}
+          timeline={timeline}
+          onJump={onJump}
+        />
+      )}
+    </section>
+  );
+}
 
-          {/* Mistakes separated by ownership — each side owns its own list. */}
-          <MistakeColumn title="White's mistakes" color={TEAM.w} moves={analytics.worstByColor.w} onJump={onJump} />
-          <MistakeColumn title="Black's mistakes" color={TEAM.b} moves={analytics.worstByColor.b} onJump={onJump} />
+function CoachView({
+  focus,
+  stats,
+  opponentStats,
+  profile,
+  features,
+  critical,
+  brief,
+  onJump,
+}: {
+  focus: Side;
+  stats: SideStats;
+  opponentStats: SideStats;
+  profile: PatternProfile;
+  features: FeatureEntry[];
+  critical: AnalyzedEntry[];
+  brief: CoachBrief;
+  onJump: (ply: number) => void;
+}) {
+  const solidMoves = stats.byClass.best + stats.byClass.excellent;
+  return (
+    <div className="cvs-review-grid" style={{ marginTop: 14 }}>
+      <SummaryTile
+        label={`${SIDE_NAME[focus]} accuracy`}
+        value={`${stats.accuracy.toFixed(0)}%`}
+        tone={accColor(stats.accuracy)}
+      />
+      <SummaryTile label="Average loss" value={`${stats.avgCpLoss.toFixed(2)} pawns`} />
+      <SummaryTile
+        label="Reliable moves"
+        value={`${solidMoves} of ${stats.moves}`}
+        tone="var(--good)"
+      />
+      <SummaryTile
+        label="Practice positions"
+        value={String(critical.length)}
+        tone={critical.length ? 'var(--warn)' : 'var(--good)'}
+      />
 
-          <PatternsSplit w={patternsW} b={patternsB} />
-          <MotifsSplit w={patternsW} b={patternsB} />
-          <PhaseSplit w={patternsW} b={patternsB} />
+      <PanelCard className="cvs-review-brief">
+        <Eyebrow>Coach brief</Eyebrow>
+        <h4 style={{ margin: '6px 0 8px', fontSize: 18, lineHeight: 1.25 }}>{brief.headline}</h4>
+        <p style={{ margin: 0, color: 'var(--text-soft)', lineHeight: 1.55, fontSize: 14 }}>
+          {brief.diagnosis}
+        </p>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+            gap: 10,
+            marginTop: 14,
+          }}
+        >
+          <BriefNote label="Keep doing" text={brief.strength} color="var(--good)" />
+          <BriefNote label="New habit" text={brief.habit} color="var(--accent-light)" />
+          <BriefNote
+            label="Game context"
+            text={`${SIDE_NAME[focus]} ${stats.accuracy.toFixed(0)}%, ${SIDE_NAME[focus === 'w' ? 'b' : 'w']} ${opponentStats.accuracy.toFixed(0)}%.`}
+            color="var(--muted)"
+          />
+        </div>
+      </PanelCard>
 
-          {/* What happened — chronological, tied to the move history. */}
-          <div style={{ minWidth: 280, flex: 1 }}>
-            <h4 style={{ margin: '0 0 4px' }}>What happened</h4>
-            {analytics.matesFound > 0 && (
-              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
-                Forced mates in play: {analytics.matesFound}
+      <PanelCard className="cvs-review-plan">
+        <Eyebrow>Next training session</Eyebrow>
+        <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+          {brief.steps.map((step, index) => (
+            <div
+              key={step.title}
+              style={{ display: 'grid', gridTemplateColumns: '28px 1fr', gap: 9 }}
+            >
+              <span
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 7,
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: 'var(--track)',
+                  color: 'var(--accent-light)',
+                  fontWeight: 700,
+                  fontSize: 12,
+                }}
+              >
+                {index + 1}
+              </span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{step.title}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>
+                  {step.detail}
+                </div>
               </div>
-            )}
-            {timeline.length === 0 ? (
-              <div style={{ color: 'var(--muted)', fontSize: 13 }}>Nothing notable yet — a quiet stretch.</div>
-            ) : (
-              <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: 13 }}>
-                {timeline.map((ev) => (
-                  <li
-                    key={ev.ply}
-                    onClick={() => onJump(ev.ply)}
-                    style={{
-                      cursor: 'pointer',
-                      display: 'flex',
-                      gap: 8,
-                      padding: '3px 0',
-                      borderLeft: `3px solid ${TEAM[ev.color]}`,
-                      paddingLeft: 8,
-                      marginBottom: 2,
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, minWidth: 64, color: 'var(--text-soft)' }}>{ev.move}</span>
-                    <span style={{ color: ev.tone }}>{ev.text}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            </div>
+          ))}
+        </div>
+      </PanelCard>
+
+      <div
+        className="cvs-review-full"
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginTop: 2,
+        }}
+      >
+        <div>
+          <h4 style={{ margin: 0 }}>Start with these positions</h4>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+            Calculate first. Reveal the played move only afterward.
           </div>
         </div>
+      </div>
+      {critical.length ? (
+        critical
+          .slice(0, 3)
+          .map((entry) => <MomentCard key={entry.ply} entry={entry} onJump={onJump} />)
+      ) : (
+        <PanelCard className="cvs-review-full">
+          <div style={{ color: 'var(--good)', fontWeight: 700 }}>
+            No major practice position found.
+          </div>
+          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+            Use the Data view to inspect smaller positional losses and recurring patterns.
+          </div>
+        </PanelCard>
+      )}
+
+      {profile.topPatterns.length > 0 && (
+        <PanelCard className="cvs-review-full">
+          <RecurringThemes profile={profile} features={features} onJump={onJump} />
+        </PanelCard>
       )}
     </div>
   );
 }
 
-function ScopeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function RecurringThemes({
+  profile,
+  features,
+  onJump,
+}: {
+  profile: PatternProfile;
+  features: FeatureEntry[];
+  onJump: (ply: number) => void;
+}) {
+  const themeTypes = profile.topPatterns.map((pattern) => pattern.type);
+  const [selected, setSelected] = useState<PatternType>(themeTypes[0]);
+  const activeType = themeTypes.includes(selected) ? selected : themeTypes[0];
+  const activeTheme = profile.topPatterns.find((pattern) => pattern.type === activeType)!;
+  const occurrences = features.flatMap((entry) =>
+    entry.features.patterns
+      .filter((event) => event.type === activeType)
+      .map((event) => ({
+        ply: entry.ply,
+        move: entry.analysis.move,
+        classification: entry.analysis.classification,
+        cpLoss: entry.analysis.cpLoss,
+        event,
+      })),
+  );
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <Eyebrow>Recurring themes</Eyebrow>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+            Select a theme to inspect every detected occurrence.
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="group"
+        aria-label="Recurring themes"
+        style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 11 }}
+      >
+        {profile.topPatterns.map((pattern) => {
+          const active = pattern.type === activeType;
+          return (
+            <button
+              key={pattern.type}
+              aria-pressed={active}
+              onClick={() => setSelected(pattern.type)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '6px 8px 6px 10px',
+                borderRadius: 999,
+                border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active ? 'rgba(184,115,51,.18)' : 'var(--card)',
+                color: active ? 'var(--accent-light)' : 'var(--text-soft)',
+                fontSize: 12,
+                fontWeight: active ? 700 : 500,
+              }}
+            >
+              {pattern.title}
+              <span
+                style={{
+                  minWidth: 20,
+                  padding: '1px 5px',
+                  borderRadius: 999,
+                  background: active ? 'var(--accent)' : 'var(--track)',
+                  color: active ? '#fff' : 'var(--muted)',
+                  fontSize: 10,
+                  textAlign: 'center',
+                }}
+              >
+                {pattern.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: '1px solid var(--border)',
+        }}
+      >
+        <div style={{ fontWeight: 800 }}>{activeTheme.title}</div>
+        <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+          {activeTheme.detail}
+        </div>
+      </div>
+
+      <ol style={{ margin: '10px 0 0', paddingLeft: 28 }}>
+        {occurrences.map((occurrence, index) => (
+          <li
+            key={`${occurrence.ply}-${occurrence.event.type}-${index}`}
+            style={{ padding: '7px 0 8px 3px', borderBottom: '1px solid var(--border)' }}
+          >
+            <button
+              onClick={() => onJump(occurrence.ply)}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(76px,auto) 1fr auto',
+                gap: 10,
+                alignItems: 'baseline',
+                width: '100%',
+                padding: 0,
+                border: 0,
+                background: 'transparent',
+                textAlign: 'left',
+                color: 'var(--text)',
+              }}
+            >
+              <strong>{occurrence.move}</strong>
+              <span style={{ color: 'var(--text-soft)', fontSize: 12 }}>
+                {occurrence.event.label}
+                {occurrence.event.squares.length ? ` (${occurrence.event.squares.join(', ')})` : ''}
+              </span>
+              <span
+                style={{
+                  color: CLASS_COLOR[occurrence.classification],
+                  fontSize: 11,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {occurrence.classification} -{occurrence.cpLoss.toFixed(1)}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function MomentsView({
+  focus,
+  entries,
+  onJump,
+}: {
+  focus: Side;
+  entries: AnalyzedEntry[];
+  onJump: (ply: number) => void;
+}) {
+  const moments = teachingMoments(entries, 12);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ marginBottom: 12 }}>
+        <h4 style={{ margin: 0 }}>{SIDE_NAME[focus]}'s critical moments</h4>
+        <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+          Ordered by evaluation loss. Use each as a calculation exercise from the position before
+          the move.
+        </p>
+      </div>
+      <div className="cvs-review-grid">
+        {moments.length ? (
+          moments.map((entry) => <MomentCard key={entry.ply} entry={entry} onJump={onJump} />)
+        ) : (
+          <PanelCard className="cvs-review-full">
+            No adverse moments were detected for this side.
+          </PanelCard>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MomentCard({ entry, onJump }: { entry: AnalyzedEntry; onJump: (ply: number) => void }) {
+  const analysis = entry.analysis;
+  return (
+    <PanelCard className="cvs-review-moment">
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 10,
+          alignItems: 'flex-start',
+        }}
+      >
+        <div>
+          <Eyebrow>Move {analysis.move}</Eyebrow>
+          <div
+            style={{
+              marginTop: 5,
+              fontWeight: 800,
+              color: CLASS_COLOR[analysis.classification],
+              textTransform: 'capitalize',
+            }}
+          >
+            {analysis.classification}
+          </div>
+        </div>
+        <span
+          style={{
+            color: CLASS_COLOR[analysis.classification],
+            background: 'var(--track)',
+            borderRadius: 999,
+            padding: '4px 8px',
+            fontSize: 12,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {analysis.mateProof
+            ? `mate in ${analysis.mateProof.mateInMoves}`
+            : `-${analysis.cpLoss.toFixed(1)}`}
+        </span>
+      </div>
+      <p
+        style={{
+          margin: '10px 0 12px',
+          minHeight: 54,
+          color: 'var(--text-soft)',
+          fontSize: 13,
+          lineHeight: 1.45,
+        }}
+      >
+        {analysis.topExplanation || 'Find a stronger candidate move in this position.'}
+      </p>
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+        <button onClick={() => onJump(Math.max(0, entry.ply - 1))} style={primaryAction}>
+          Try from here
+        </button>
+        <button onClick={() => onJump(entry.ply)} style={secondaryAction}>
+          Show played move
+        </button>
+      </div>
+    </PanelCard>
+  );
+}
+
+function DataView({
+  analytics,
+  patternsW,
+  patternsB,
+  timeline,
+  onJump,
+}: {
+  analytics: ReturnType<typeof computeAnalytics>;
+  patternsW: PatternProfile;
+  patternsB: PatternProfile;
+  timeline: TimelineEvent[];
+  onJump: (ply: number) => void;
+}) {
+  return (
+    <div className="cvs-review-grid" style={{ marginTop: 14 }}>
+      <PanelCard className="cvs-review-half">
+        <SideCard title="White" color={TEAM.w} s={analytics.white} />
+      </PanelCard>
+      <PanelCard className="cvs-review-half">
+        <SideCard title="Black" color={TEAM.b} s={analytics.black} />
+      </PanelCard>
+      <PanelCard className="cvs-review-half">
+        <MistakeColumn
+          title="White's mistakes"
+          color={TEAM.w}
+          moves={analytics.worstByColor.w}
+          onJump={onJump}
+        />
+      </PanelCard>
+      <PanelCard className="cvs-review-half">
+        <MistakeColumn
+          title="Black's mistakes"
+          color={TEAM.b}
+          moves={analytics.worstByColor.b}
+          onJump={onJump}
+        />
+      </PanelCard>
+      <PanelCard className="cvs-review-third">
+        <PatternsSplit w={patternsW} b={patternsB} />
+      </PanelCard>
+      <PanelCard className="cvs-review-third">
+        <MotifsSplit w={patternsW} b={patternsB} />
+      </PanelCard>
+      <PanelCard className="cvs-review-third">
+        <PhaseSplit w={patternsW} b={patternsB} />
+      </PanelCard>
+      <PanelCard className="cvs-review-full">
+        <Timeline events={timeline} matesFound={analytics.matesFound} onJump={onJump} />
+      </PanelCard>
+    </div>
+  );
+}
+
+interface CoachBrief {
+  headline: string;
+  diagnosis: string;
+  habit: string;
+  strength: string;
+  steps: { title: string; detail: string }[];
+}
+
+const HABIT_BY_PATTERN: Record<PatternType, string> = {
+  loose_piece_habit: 'Before choosing a plan, inventory every attacked and undefended piece.',
+  only_defender_moved: 'Before moving a defender, ask what becomes loose after it leaves.',
+  missed_forcing_move:
+    'Run a forcing-move scan: checks, captures, and direct threats for both sides.',
+  king_safety_collapse:
+    'Count attackers, defenders, and safe king squares before pawn moves near the king.',
+  bad_capture: 'Calculate the full capture and recapture sequence before committing.',
+  walked_into_motif:
+    'After each candidate move, scan the opponent for forks, pins, skewers, and discovered attacks.',
+  missed_free_material: 'Check for hanging material before starting a strategic plan.',
+  pawn_structure_damage:
+    'Name the square, file, or king shelter a pawn move gives up before playing it.',
+};
+
+function buildCoachBrief(
+  side: Side,
+  stats: SideStats,
+  profile: PatternProfile,
+  critical: AnalyzedEntry[],
+): CoachBrief {
+  const topPattern = profile.topPatterns[0];
+  const weakestPhase = phaseByLoss(profile, 'worst');
+  const strongestPhase = phaseByLoss(profile, 'best');
+  const reliable = stats.byClass.best + stats.byClass.excellent;
+  const sideName = SIDE_NAME[side];
+  const headline = topPattern
+    ? `${sideName}'s priority: ${topPattern.title.toLowerCase()}`
+    : critical.length
+      ? `${sideName}'s priority: improve decisions at turning points`
+      : `${sideName} played a stable game`;
+  const diagnosis = topPattern
+    ? `${topPattern.detail} ${weakestPhase ? `The highest average loss came in the ${weakestPhase} (${profile.phase[weakestPhase].avgCpLoss.toFixed(1)} pawns per move).` : ''}`
+    : critical.length
+      ? `${critical.length} position${critical.length === 1 ? '' : 's'} caused most of the evaluation loss. Recalculate those positions before studying more opening theory.`
+      : 'No repeated error pattern was strong enough to dominate the review. Preserve the decision process that produced this consistency.';
+  const habit = topPattern
+    ? HABIT_BY_PATTERN[topPattern.type]
+    : "Before every move, compare at least two candidates and check the opponent's forcing reply.";
+  const strength = strongestPhase
+    ? `${reliable} best or excellent moves; the ${strongestPhase} was the most stable phase.`
+    : `${reliable} of ${stats.moves} moves were best or excellent.`;
+  return {
+    headline,
+    diagnosis,
+    habit,
+    strength,
+    steps: [
+      {
+        title: 'Recalculate the turning points',
+        detail: `Use "Try from here" on the ${Math.min(3, critical.length)} highest-loss position${critical.length === 1 ? '' : 's'}. Write down two candidates before revealing the move.`,
+      },
+      {
+        title: 'Drill one decision habit',
+        detail: habit,
+      },
+      {
+        title: 'Replay the game actively',
+        detail: `Replay ${weakestPhase ? `the ${weakestPhase}` : 'the game'} without engine lines and pause whenever the position changes tactically. Explain the opponent's threat aloud.`,
+      },
+    ],
+  };
+}
+
+function teachingMoments(entries: AnalyzedEntry[], limit = 4): AnalyzedEntry[] {
+  const ranked = [...entries]
+    .filter((entry) => entry.analysis.classification !== 'unclassified')
+    .sort((a, b) => b.analysis.cpLoss - a.analysis.cpLoss);
+  const adverse = ranked.filter((entry) => entry.analysis.cpLoss >= 0.8);
+  return (adverse.length ? adverse : ranked.filter((entry) => entry.analysis.cpLoss > 0)).slice(
+    0,
+    limit,
+  );
+}
+
+function phaseByLoss(profile: PatternProfile, order: 'best' | 'worst'): Phase | null {
+  const phases = (Object.entries(profile.phase) as [Phase, { moves: number; avgCpLoss: number }][])
+    .filter(([, data]) => data.moves > 0)
+    .sort((a, b) => a[1].avgCpLoss - b[1].avgCpLoss);
+  if (!phases.length) return null;
+  return order === 'best' ? phases[0][0] : phases[phases.length - 1][0];
+}
+
+function SummaryTile({
+  label,
+  value,
+  tone = 'var(--text)',
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div
+      className="cvs-review-summary"
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 9,
+        background: 'var(--card2)',
+        padding: '10px 12px',
+      }}
+    >
+      <div
+        style={{
+          color: 'var(--muted)',
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '.08em',
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ color: tone, fontSize: 20, fontWeight: 800, marginTop: 3 }}>{value}</div>
+    </div>
+  );
+}
+
+function PanelCard({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <div
+      className={className}
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 9,
+        background: 'var(--card2)',
+        padding: 12,
+        minWidth: 0,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function BriefNote({ label, text, color }: { label: string; text: string; color: string }) {
+  return (
+    <div style={{ borderLeft: `3px solid ${color}`, paddingLeft: 9 }}>
+      <div
+        style={{
+          color,
+          fontSize: 11,
+          fontWeight: 800,
+          textTransform: 'uppercase',
+          letterSpacing: '.06em',
+        }}
+      >
+        {label}
+      </div>
+      <div style={{ color: 'var(--text-soft)', fontSize: 12, lineHeight: 1.45, marginTop: 3 }}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        color: 'var(--muted)',
+        fontSize: 11,
+        fontWeight: 800,
+        textTransform: 'uppercase',
+        letterSpacing: '.09em',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SegmentedControl({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        border: '1px solid var(--border)',
+        borderRadius: 7,
+        overflow: 'hidden',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SegmentButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       style={{
-        border: 'none',
-        padding: '4px 10px',
+        border: 0,
+        borderRadius: 0,
+        padding: '5px 10px',
         fontSize: 12,
-        cursor: 'pointer',
         background: active ? 'var(--accent)' : 'var(--card2)',
         color: active ? '#fff' : 'var(--text-soft)',
       }}
@@ -145,31 +860,88 @@ function ScopeButton({ active, onClick, children }: { active: boolean; onClick: 
   );
 }
 
+function ViewButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '7px 11px',
+        fontSize: 13,
+        fontWeight: active ? 700 : 500,
+        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+        background: active ? 'rgba(184,115,51,.18)' : 'transparent',
+        color: active ? 'var(--accent-light)' : 'var(--text-soft)',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+const primaryAction: React.CSSProperties = {
+  border: '1px solid var(--accent)',
+  background: 'var(--accent)',
+  color: '#fff',
+  padding: '6px 9px',
+  fontSize: 12,
+  fontWeight: 700,
+};
+const secondaryAction: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  background: 'transparent',
+  color: 'var(--text-soft)',
+  padding: '6px 9px',
+  fontSize: 12,
+};
+
 function SideCard({ title, color, s }: { title: string; color: string; s: SideStats }) {
   const total = s.moves || 1;
   return (
-    <div style={{ minWidth: 220 }}>
+    <div>
       <h4 style={{ margin: '0 0 4px' }}>
-        <span style={{ color }}>{title}</span> —{' '}
-        <span style={{ color: accColor(s.accuracy) }}>{s.accuracy.toFixed(0)}% accuracy</span>
+        <span style={{ color }}>{title}</span>{' '}
+        <span style={{ color: accColor(s.accuracy) }}>{s.accuracy.toFixed(0)}%</span>
       </h4>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
-        {s.moves} moves · avg loss {s.avgCpLoss.toFixed(2)}
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 7 }}>
+        {s.moves} moves, average loss {s.avgCpLoss.toFixed(2)}
       </div>
-      <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
-        {CLASS_ORDER.map((c) => {
-          const w = (s.byClass[c] / total) * 100;
-          return w > 0 ? (
-            <div key={c} title={`${c}: ${s.byClass[c]}`} style={{ width: `${w}%`, background: CLASS_COLOR[c] }} />
+      <div
+        style={{
+          display: 'flex',
+          height: 12,
+          borderRadius: 3,
+          overflow: 'hidden',
+          marginBottom: 6,
+          background: 'var(--track)',
+        }}
+      >
+        {CLASS_ORDER.map((classification) => {
+          const width = (s.byClass[classification] / total) * 100;
+          return width > 0 ? (
+            <div
+              key={classification}
+              title={`${classification}: ${s.byClass[classification]}`}
+              style={{ width: `${width}%`, background: CLASS_COLOR[classification] }}
+            />
           ) : null;
         })}
       </div>
-      <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {CLASS_ORDER.filter((c) => s.byClass[c] > 0).map((c) => (
-          <span key={c} style={{ color: CLASS_COLOR[c] }}>
-            {s.byClass[c]} {c}
-          </span>
-        ))}
+      <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {CLASS_ORDER.filter((classification) => s.byClass[classification] > 0).map(
+          (classification) => (
+            <span key={classification} style={{ color: CLASS_COLOR[classification] }}>
+              {s.byClass[classification]} {classification}
+            </span>
+          ),
+        )}
       </div>
     </div>
   );
@@ -187,19 +959,30 @@ function MistakeColumn({
   onJump: (ply: number) => void;
 }) {
   return (
-    <div style={{ minWidth: 200 }}>
-      <h4 style={{ margin: '0 0 4px', color }}>{title}</h4>
+    <div>
+      <h4 style={{ margin: '0 0 7px', color }}>{title}</h4>
       {moves.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No mistakes ≥ 1 pawn.</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No mistakes of at least one pawn.</div>
       ) : (
         <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-          {moves.map((m) => (
-            <li key={m.ply} style={{ marginBottom: 2 }}>
-              <span onClick={() => onJump(m.ply)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>
-                {m.move}
-              </span>{' '}
-              <span style={{ color: CLASS_COLOR[m.classification] }}>
-                {m.classification} (−{m.cpLoss.toFixed(1)})
+          {moves.map((move) => (
+            <li key={move.ply} style={{ marginBottom: 4 }}>
+              <button
+                onClick={() => onJump(move.ply)}
+                style={{
+                  border: 0,
+                  padding: 0,
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  textDecoration: 'underline',
+                  fontSize: 13,
+                }}
+              >
+                {move.move}
+              </button>{' '}
+              <span style={{ color: CLASS_COLOR[move.classification] }}>
+                {move.classification} (
+                {move.mateIn ? `mate in ${move.mateIn}` : `-${move.cpLoss.toFixed(1)}`})
               </span>
             </li>
           ))}
@@ -209,11 +992,21 @@ function MistakeColumn({
   );
 }
 
-// ── split-by-side analytics (provenance) ─────────────────────────────────────
 function SideLabel({ color, text, mt }: { color: string; text: string; mt?: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color, marginTop: mt ?? 0, marginBottom: 3 }}>
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        fontSize: 12,
+        fontWeight: 700,
+        color,
+        marginTop: mt ?? 0,
+        marginBottom: 4,
+      }}
+    >
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
       {text}
     </div>
   );
@@ -221,25 +1014,27 @@ function SideLabel({ color, text, mt }: { color: string; text: string; mt?: numb
 
 function PatternsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
-    <div style={{ minWidth: 280, maxWidth: 380, flex: '1 1 300px' }}>
-      <h4 style={{ margin: '0 0 6px' }}>Patterns</h4>
+    <div>
+      <h4 style={{ margin: '0 0 7px' }}>Patterns</h4>
       <SideLabel color={TEAM.w} text="White" />
-      <PatternGrid patterns={w} />
+      <PatternList profile={w} />
       <SideLabel color={TEAM.b} text="Black" mt={10} />
-      <PatternGrid patterns={b} />
+      <PatternList profile={b} />
     </div>
   );
 }
 
-function PatternGrid({ patterns }: { patterns: PatternProfile }) {
-  if (patterns.topPatterns.length === 0) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>none</div>;
+function PatternList({ profile }: { profile: PatternProfile }) {
+  if (!profile.topPatterns.length)
+    return <div style={{ color: 'var(--muted)', fontSize: 12 }}>None detected</div>;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(132px, 1fr))', gap: 6 }}>
-      {patterns.topPatterns.map((p) => (
-        <div key={p.type} style={{ border: '1px solid #e4e4e4', borderRadius: 4, padding: '6px 8px', minHeight: 50, background: 'var(--card2)' }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.count}x</div>
-          <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.detail}</div>
+    <div style={{ display: 'grid', gap: 5 }}>
+      {profile.topPatterns.map((pattern) => (
+        <div key={pattern.type} style={{ fontSize: 12 }}>
+          <strong>
+            {pattern.count}x {pattern.title}
+          </strong>
+          <div style={{ color: 'var(--muted)', marginTop: 1 }}>{pattern.detail}</div>
         </div>
       ))}
     </div>
@@ -248,12 +1043,8 @@ function PatternGrid({ patterns }: { patterns: PatternProfile }) {
 
 function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
-    <div style={{ minWidth: 220, flex: '1 1 240px' }}>
-      <h4 style={{ margin: '0 0 6px' }}>
-        Motifs <span style={{ fontSize: 11, fontWeight: 400, color: '#3fbf5f' }}>created</span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}> / </span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: '#e2603b' }}>suffered</span>
-      </h4>
+    <div>
+      <h4 style={{ margin: '0 0 7px' }}>Motifs created / suffered</h4>
       <SideLabel color={TEAM.w} text="White" />
       <MotifBars patterns={w} />
       <SideLabel color={TEAM.b} text="Black" mt={10} />
@@ -264,17 +1055,35 @@ function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
 
 function MotifBars({ patterns }: { patterns: PatternProfile }) {
   const rows = motifRows(patterns).slice(0, 6);
-  if (rows.length === 0) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>none</div>;
+  if (!rows.length) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>None detected</div>;
   return (
-    <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
-      {rows.map((r) => (
-        <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 32px', gap: 6, alignItems: 'center' }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-          <div style={{ display: 'flex', height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: `${r.createdPct}%`, background: '#3fbf5f' }} />
-            <div style={{ width: `${r.sufferedPct}%`, background: '#e2603b' }} />
+    <div style={{ display: 'grid', gap: 5, fontSize: 12 }}>
+      {rows.map((row) => (
+        <div
+          key={row.name}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '86px 1fr 28px',
+            gap: 6,
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {row.name}
+          </span>
+          <div
+            style={{
+              display: 'flex',
+              height: 8,
+              background: 'var(--track)',
+              borderRadius: 3,
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ width: `${row.createdPct}%`, background: '#3fbf5f' }} />
+            <div style={{ width: `${row.sufferedPct}%`, background: '#e2603b' }} />
           </div>
-          <span style={{ color: 'var(--muted)', textAlign: 'right' }}>{r.total}</span>
+          <span style={{ textAlign: 'right', color: 'var(--muted)' }}>{row.total}</span>
         </div>
       ))}
     </div>
@@ -283,8 +1092,8 @@ function MotifBars({ patterns }: { patterns: PatternProfile }) {
 
 function PhaseSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
-    <div style={{ minWidth: 210, flex: '1 1 220px' }}>
-      <h4 style={{ margin: '0 0 6px' }}>Phase loss (avg cp)</h4>
+    <div>
+      <h4 style={{ margin: '0 0 7px' }}>Phase loss (average pawns)</h4>
       <SideLabel color={TEAM.w} text="White" />
       <PhaseBars patterns={w} />
       <SideLabel color={TEAM.b} text="Black" mt={10} />
@@ -300,12 +1109,32 @@ function PhaseBars({ patterns }: { patterns: PatternProfile }) {
         const row = patterns.phase[phase];
         const width = Math.min(100, row.avgCpLoss * 35);
         return (
-          <div key={phase} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 44px', gap: 6, alignItems: 'center', fontSize: 12, marginBottom: 4 }}>
+          <div
+            key={phase}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '82px 1fr 38px',
+              gap: 6,
+              alignItems: 'center',
+              fontSize: 12,
+              marginBottom: 5,
+            }}
+          >
             <span>{phase}</span>
-            <div style={{ height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${width}%`, height: '100%', background: row.avgCpLoss >= 1 ? '#e2603b' : 'var(--accent-light)' }} />
+            <div
+              style={{ height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}
+            >
+              <div
+                style={{
+                  width: `${width}%`,
+                  height: '100%',
+                  background: row.avgCpLoss >= 1 ? '#e2603b' : 'var(--accent-light)',
+                }}
+              />
             </div>
-            <span style={{ color: 'var(--muted)', textAlign: 'right' }}>{row.avgCpLoss.toFixed(1)}</span>
+            <span style={{ color: 'var(--muted)', textAlign: 'right' }}>
+              {row.avgCpLoss.toFixed(1)}
+            </span>
           </div>
         );
       })}
@@ -313,8 +1142,65 @@ function PhaseBars({ patterns }: { patterns: PatternProfile }) {
   );
 }
 
+function Timeline({
+  events,
+  matesFound,
+  onJump,
+}: {
+  events: TimelineEvent[];
+  matesFound: number;
+  onJump: (ply: number) => void;
+}) {
+  return (
+    <div>
+      <h4 style={{ margin: '0 0 4px' }}>Game timeline</h4>
+      {matesFound > 0 && (
+        <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 6 }}>
+          Forced mates in play: {matesFound}
+        </div>
+      )}
+      {!events.length ? (
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Nothing notable yet.</div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))',
+            gap: 5,
+          }}
+        >
+          {events.map((event) => (
+            <button
+              key={event.ply}
+              onClick={() => onJump(event.ply)}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '70px 1fr',
+                gap: 8,
+                textAlign: 'left',
+                padding: '7px 9px',
+                border: '1px solid var(--border)',
+                borderLeft: `3px solid ${TEAM[event.color]}`,
+                background: 'var(--card)',
+                color: 'var(--text)',
+                fontSize: 12,
+              }}
+            >
+              <strong>{event.move}</strong>
+              <span style={{ color: event.tone }}>{event.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function motifRows(patterns: PatternProfile) {
-  const names = new Set([...Object.keys(patterns.motifCreated), ...Object.keys(patterns.motifSuffered)]);
+  const names = new Set([
+    ...Object.keys(patterns.motifCreated),
+    ...Object.keys(patterns.motifSuffered),
+  ]);
   return [...names]
     .map((name) => {
       const created = patterns.motifCreated[name as keyof typeof patterns.motifCreated] ?? 0;
@@ -332,47 +1218,42 @@ function motifRows(patterns: PatternProfile) {
 
 interface TimelineEvent {
   ply: number;
-  color: 'w' | 'b';
+  color: Side;
   move: string;
   text: string;
   tone: string;
 }
 
 function buildTimeline(entries: AnalyzedEntry[]): TimelineEvent[] {
-  const out: TimelineEvent[] = [];
-  for (const e of entries) {
-    const text = whatHappened(e.analysis);
-    if (!text) continue;
-    out.push({
-      ply: e.ply,
-      color: e.color,
-      move: e.analysis.move,
-      text,
-      tone: CLASS_COLOR[e.analysis.classification] ?? 'var(--text-soft)',
-    });
-  }
-  return out;
+  return entries.flatMap((entry) => {
+    const text = whatHappened(entry.analysis);
+    return text
+      ? [
+          {
+            ply: entry.ply,
+            color: entry.color,
+            move: entry.analysis.move,
+            text,
+            tone: CLASS_COLOR[entry.analysis.classification] ?? 'var(--text-soft)',
+          },
+        ]
+      : [];
+  });
 }
 
-/** A short plain-language note for the timeline, or null if the move was unremarkable. */
-function whatHappened(a: MoveAnalysis): string | null {
-  if (a.mateProof) {
-    const side = a.mateProof.matingSide === 'white' ? 'White' : 'Black';
-    return `forced mate in ${a.mateProof.mateInMoves} for ${side}`;
-  }
-  const notable = a.classification === 'inaccuracy' || a.classification === 'mistake' || a.classification === 'blunder';
-  const top = a.rankedInsights[0];
-  if (notable) {
-    return a.topExplanation || `${a.classification} (−${a.cpLoss.toFixed(1)})`;
-  }
-  // Strong moves only surface if they carried a salient motif.
-  if (top && top.saliency >= 0.5) return a.topExplanation || top.type.replace(/_/g, ' ');
-  return null;
+function whatHappened(analysis: MoveAnalysis): string | null {
+  if (analysis.mateProof)
+    return `forced mate in ${analysis.mateProof.mateInMoves} for ${analysis.mateProof.matingSide}`;
+  const notable = ['inaccuracy', 'mistake', 'blunder'].includes(analysis.classification);
+  if (notable)
+    return analysis.topExplanation || `${analysis.classification} (-${analysis.cpLoss.toFixed(1)})`;
+  const top = analysis.rankedInsights[0];
+  return top && top.saliency >= 0.5 ? analysis.topExplanation || top.type.replace(/_/g, ' ') : null;
 }
 
-function accColor(acc: number): string {
-  if (acc >= 85) return 'var(--good)';
-  if (acc >= 70) return 'var(--accent-light)';
-  if (acc >= 55) return '#e8923b';
+function accColor(accuracy: number): string {
+  if (accuracy >= 85) return 'var(--good)';
+  if (accuracy >= 70) return 'var(--accent-light)';
+  if (accuracy >= 55) return '#e8923b';
   return '#e23b3b';
 }

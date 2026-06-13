@@ -25,6 +25,7 @@ export interface WorstMove {
   move: string;
   cpLoss: number;
   classification: Classification;
+  mateIn?: number;
 }
 
 export interface GameAnalytics {
@@ -61,6 +62,7 @@ export function computeAnalytics(entries: AnalyzedEntry[]): GameAnalytics {
   const black = emptySide();
   const headlineCounts: Record<string, number> = {};
   const sumCp = { w: 0, b: 0 };
+  const cpSamples = { w: 0, b: 0 };
   const sumAcc = { w: 0, b: 0 };
   let matesFound = 0;
 
@@ -69,11 +71,24 @@ export function computeAnalytics(entries: AnalyzedEntry[]): GameAnalytics {
     side.moves += 1;
     side.byClass[e.analysis.classification] += 1;
     const cp = e.analysis.cpLoss;
+    // Mate scores use a large sentinel to preserve ordering, not a pawn value.
+    // Keep the move in accuracy/classification, but do not call that sentinel
+    // an average pawn loss.
+    const pawnScaled =
+      typeof e.analysis.evalBefore.mate !== 'number' &&
+      typeof e.analysis.evalAfter.mate !== 'number' &&
+      !e.analysis.mateProof;
     if (e.color === 'w') {
-      sumCp.w += cp;
+      if (pawnScaled) {
+        sumCp.w += cp;
+        cpSamples.w += 1;
+      }
       sumAcc.w += moveAccuracy(cp);
     } else {
-      sumCp.b += cp;
+      if (pawnScaled) {
+        sumCp.b += cp;
+        cpSamples.b += 1;
+      }
       sumAcc.b += moveAccuracy(cp);
     }
     const top = e.analysis.rankedInsights[0];
@@ -81,8 +96,8 @@ export function computeAnalytics(entries: AnalyzedEntry[]): GameAnalytics {
     if (e.analysis.mateProof) matesFound += 1;
   }
 
-  white.avgCpLoss = white.moves ? sumCp.w / white.moves : 0;
-  black.avgCpLoss = black.moves ? sumCp.b / black.moves : 0;
+  white.avgCpLoss = cpSamples.w ? sumCp.w / cpSamples.w : 0;
+  black.avgCpLoss = cpSamples.b ? sumCp.b / cpSamples.b : 0;
   white.accuracy = white.moves ? sumAcc.w / white.moves : 0;
   black.accuracy = black.moves ? sumAcc.b / black.moves : 0;
 
@@ -93,6 +108,7 @@ export function computeAnalytics(entries: AnalyzedEntry[]): GameAnalytics {
       move: e.analysis.move,
       cpLoss: e.analysis.cpLoss,
       classification: e.analysis.classification,
+      mateIn: e.analysis.mateProof?.mateInMoves,
     }))
     .filter((m) => m.cpLoss >= 1) // only real mistakes
     .sort((a, b) => b.cpLoss - a.cpLoss);
