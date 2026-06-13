@@ -1,6 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import type { TeachingEvent } from '../types';
-import { buildTeachingProfile, classifyPhase, type TeachingSample } from '../profile';
+import allowedForkFixture from '../../../fixtures/teaching-facts/v1/allowed-fork.json';
+import pawnFixture from '../../../fixtures/teaching-facts/v1/pawn-structure-damage.json';
+import type { MoveAnalysis } from '../../types';
+import type { TeachingEvent, TeachingFactBundleV1 } from '../types';
+import {
+  buildDatasetTeachingProfile,
+  buildTeachingProfile,
+  classifyPhase,
+  collectTeachingSamples,
+  type PlyTeachingInput,
+  type TeachingSample,
+} from '../profile';
+
+function moveAnalysis(over: Partial<MoveAnalysis>): MoveAnalysis {
+  return {
+    positionBefore: '',
+    positionAfter: '',
+    move: 'e4',
+    classification: 'blunder',
+    evalBefore: { cp: 0, depth: 14, pv: [] },
+    evalAfter: { cp: 0, depth: 14, pv: [] },
+    cpLoss: 5,
+    rankedInsights: [],
+    topExplanation: '',
+    ...over,
+  } as unknown as MoveAnalysis;
+}
 
 function ev(overrides: Partial<TeachingEvent> = {}): TeachingEvent {
   return {
@@ -95,5 +120,47 @@ describe('classifyPhase', () => {
   });
   it('is endgame when material is light regardless of ply', () => {
     expect(classifyPhase(8, 'k7/8/8/8/8/8/8/K6R w - - 0 1')).toBe('endgame');
+  });
+});
+
+describe('collectTeachingSamples + buildDatasetTeachingProfile', () => {
+  const fork = allowedForkFixture as unknown as TeachingFactBundleV1;
+  const pawn = pawnFixture as unknown as TeachingFactBundleV1;
+  const inputs: PlyTeachingInput[] = [
+    {
+      gameKey: 'g1',
+      ply: 30,
+      fenBefore: fork.fenBefore,
+      analysis: moveAnalysis({ move: 'e4', evalBefore: { cp: 0, depth: 14, pv: ['Kh1'] } }),
+      facts: fork,
+    },
+    {
+      gameKey: 'g1',
+      ply: 32,
+      fenBefore: pawn.fenBefore,
+      analysis: moveAnalysis({
+        move: 'bxc4',
+        classification: 'mistake',
+        evalBefore: { cp: 0, depth: 14, pv: ['c3'] },
+      }),
+      facts: pawn,
+    },
+  ];
+
+  it('collects phase-tagged samples from analyzed plies', () => {
+    const samples = collectTeachingSamples(inputs);
+    expect(samples.length).toBe(2);
+    expect(samples.every((s) => s.gameKey === 'g1')).toBe(true);
+    expect(samples.some((s) => s.event.topicId === 'allowed_fork')).toBe(true);
+    expect(samples.some((s) => s.event.topicId === 'pawn_structure_damage')).toBe(true);
+  });
+
+  it('aggregates the dataset into a profile', () => {
+    const profile = buildDatasetTeachingProfile(inputs);
+    expect(profile.total).toBe(2);
+    expect(profile.byTopic.allowed_fork?.count).toBe(1);
+    expect(profile.byTopic.pawn_structure_damage?.count).toBe(1);
+    // both fixtures have light material → endgame
+    expect(profile.byPhase.endgame).toBe(2);
   });
 });

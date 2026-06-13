@@ -1,4 +1,6 @@
-import type { TeachingEvent, TeachingFamily, TeachingTopicId } from './types';
+import type { MoveAnalysis } from '../types';
+import { compileTeachingEvents } from './compile';
+import type { TeachingEvent, TeachingFactBundleV1, TeachingFamily, TeachingTopicId } from './types';
 
 // Aggregate committed teaching events across a PGN dataset into a player profile:
 // which topics recur, how severe, in which phase, with linkable examples. Pure —
@@ -175,4 +177,34 @@ function heavyMaterial(fen: string): number {
     total += weight[ch.toLowerCase()] ?? 0;
   }
   return total;
+}
+
+// One analyzed ply paired with its Rust fact bundle — the unit a dataset-wide pass
+// produces (fetching facts per ply via the bridge is the caller's job).
+export interface PlyTeachingInput {
+  gameKey: string;
+  ply: number;
+  fenBefore: string;
+  analysis: MoveAnalysis;
+  facts: TeachingFactBundleV1;
+}
+
+// Compile every ply's events and flatten into phase-tagged samples. The bridge
+// fetch is the caller's; this glue is pure so it stays testable. A ply whose facts
+// fail to compile (schema mismatch) is skipped, never counted as "no mistake".
+export function collectTeachingSamples(inputs: PlyTeachingInput[]): TeachingSample[] {
+  const samples: TeachingSample[] = [];
+  for (const input of inputs) {
+    const result = compileTeachingEvents({ analysis: input.analysis, facts: input.facts });
+    if (!result.computed) continue;
+    const phase = classifyPhase(input.ply, input.fenBefore);
+    for (const event of result.events) {
+      samples.push({ event, gameKey: input.gameKey, ply: input.ply, phase });
+    }
+  }
+  return samples;
+}
+
+export function buildDatasetTeachingProfile(inputs: PlyTeachingInput[]): TeachingProfile {
+  return buildTeachingProfile(collectTeachingSamples(inputs));
 }
