@@ -47,7 +47,7 @@ export function CommentaryPanel({
 }) {
   const [keyDraft, setKeyDraft] = useState('');
   return (
-    <div style={{ marginTop: 16, border: '1px solid #e0e0e0', borderRadius: 8, padding: 12, maxWidth: 360 }}>
+    <div style={{ marginTop: 16, border: '1px solid var(--border)', background: 'var(--card)', borderRadius: 10, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <h4 style={{ margin: 0 }}>Coach commentary</h4>
         <span style={{ fontSize: 11, color: 'var(--muted)' }}>{model}</span>
@@ -59,7 +59,7 @@ export function CommentaryPanel({
             Set <code>OPENAI_API_KEY</code> in <code>.env</code> (stays server-side, never sent
             to the browser), then restart the dev server. Or paste a key below for this browser.
           </div>
-          <div style={{ fontSize: 11, color: '#c08515', background: '#fff7e6', border: '1px solid #f0d8a8', borderRadius: 4, padding: '4px 6px', marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: 'var(--warn)', background: 'rgba(232,146,59,0.12)', border: '1px solid rgba(232,146,59,0.4)', borderRadius: 4, padding: '4px 6px', marginBottom: 6 }}>
             Already set <code>OPENAI_API_KEY</code> in <code>.env</code> but see this? The dev
             server reads <code>.env</code> only at startup — <strong>restart it</strong> and reload.
           </div>

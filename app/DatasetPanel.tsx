@@ -160,16 +160,32 @@ export function DatasetPanel({
 
           {ds.hero && <HeroRecord ds={ds} />}
 
-          <h4 style={{ margin: '16px 0 4px' }}>Results across all games</h4>
-          <StackedBar
-            height={16}
-            segments={[
-              { value: ds.byResult.whiteWins, color: W_RES, label: 'White wins' },
-              { value: ds.byResult.draws, color: D_RES, label: 'Draws' },
-              { value: ds.byResult.blackWins, color: B_RES, label: 'Black wins' },
-            ]}
-          />
-          <Legend items={[['White wins', W_RES], ['Draws', D_RES], ['Black wins', B_RES]]} />
+          <h4 style={{ margin: '16px 0 4px' }}>{ds.hero ? 'Your results across all games' : 'Results across all games'}</h4>
+          {ds.hero && ds.heroRecord ? (
+            <>
+              <StackedBar
+                height={16}
+                segments={[
+                  { value: ds.heroRecord.wins, color: WIN, label: 'Your wins' },
+                  { value: ds.heroRecord.draws, color: DRAW, label: 'Draws' },
+                  { value: ds.heroRecord.losses, color: LOSS, label: 'Your losses' },
+                ]}
+              />
+              <Legend items={[['Your wins', WIN], ['Draws', DRAW], ['Your losses', LOSS]]} />
+            </>
+          ) : (
+            <>
+              <StackedBar
+                height={16}
+                segments={[
+                  { value: ds.byResult.whiteWins, color: W_RES, label: 'White wins' },
+                  { value: ds.byResult.draws, color: D_RES, label: 'Draws' },
+                  { value: ds.byResult.blackWins, color: B_RES, label: 'Black wins' },
+                ]}
+              />
+              <Legend items={[['White wins', W_RES], ['Draws', D_RES], ['Black wins', B_RES]]} />
+            </>
+          )}
 
           {ds.hero && (
             <>

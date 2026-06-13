@@ -609,6 +609,54 @@ export function App() {
     };
 
     let gamesDone = 0;
+    // Native rust path: the champion analyzes a position in tens of ms, so even
+    // a few serialized streams beat the browser-Stockfish worker pool. Falls
+    // back to the browser pool automatically when the bridge is down.
+    if (cvsEngineHealth.available) {
+      const mkCvsEngine = () =>
+        ({
+          evaluate: async ({ fen, depth }: { fen: string; depth?: number; timeoutMs?: number }) => {
+            try {
+              const r = await analyzeWithCvsEngine(fen, Math.min(depth ?? 6, cvsEngineHealth.depth ?? 6));
+              if (r.error) return { depth: depth ?? 0, pv: [], status: 'unavailable' as const, reason: 'engine_error' as const };
+              const chess = new Chess(fen);
+              const sanPv: string[] = [];
+              for (const u of r.pv ?? []) {
+                try {
+                  const m = chess.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u.slice(4) || undefined });
+                  if (!m) break;
+                  sanPv.push(m.san);
+                } catch {
+                  break;
+                }
+              }
+              return r.mate != null
+                ? { mate: r.mate, depth: r.depth, pv: sanPv }
+                : { cp: r.scoreCp, depth: r.depth, pv: sanPv };
+            } catch {
+              return { depth: depth ?? 0, pv: [], status: 'unavailable' as const, reason: 'engine_error' as const };
+            }
+          },
+        }) as unknown as UciEngine;
+      const STREAMS = 3; // server serializes; a few in-flight keep the pipe full
+      setDatasetJob((prev) => ({ ...prev, currentGame: 'CVS engine (native) working…' }));
+      let done = 0;
+      let next = 0;
+      const worker = async () => {
+        const eng = mkCvsEngine();
+        while (datasetRunRef.current === runId && next < tasks.length) {
+          const task = tasks[next++];
+          await analyzeTask(eng, task);
+          onProgress(++done);
+        }
+      };
+      await Promise.all(Array.from({ length: STREAMS }, worker));
+      if (datasetRunRef.current === runId) {
+        setDatasetJob((prev) => ({ ...prev, running: false, gamesDone: prev.gamesTotal, currentGame: '' }));
+        setCacheVersion((n) => n + 1);
+      }
+      return;
+    }
     // A pool of independent engines turns this from serial (one worker) into parallel
     // (≈cores) throughput — the only way 20k+ positions finish in reasonable time.
     const pool = await createEnginePool(defaultPoolSize());
@@ -636,6 +684,13 @@ export function App() {
       setCacheVersion((n) => n + 1);
     }
   };
+
+  // ── CVS-engine dataset adapter ────────────────────────────────────────────
+  // "Analyze all games" historically ran on the browser-Stockfish worker pool.
+  // The native rust champion is far faster per position, so when the bridge is
+  // healthy we drive the same analyzeMoveLive pipeline through it: only
+  // .evaluate() is consumed, so a tiny adapter suffices. UCI pv → SAN here.
+  // ──────────────────────────────────────────────────────────────────────────
 
   // Per-ply analyzed entries (the panel scopes + aggregates these itself).
   const entries = useMemo(() => {
