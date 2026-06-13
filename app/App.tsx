@@ -752,6 +752,9 @@ export function App() {
   };
   const onAnalysisSquareClick = (sq: Square) => {
     if (analysisPromo) return;
+    // Clicking the board returns to normal inspection: drop any latched teaching
+    // overlay so selection/threat arrows + mode LED show again.
+    setTeachingFocus(null);
     if (selected) {
       const legalTargets = legalMovesFrom(fen, selected).map((m) => m.to as Square);
       if (legalTargets.includes(sq)) {
@@ -1300,17 +1303,6 @@ export function App() {
                   focused={focused}
                   onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
                 />
-                <EngineComparisonPanel
-                  stockfishState={engineState}
-                  stockfishAnalysis={analysis}
-                  move={moveLabel}
-                  cvsHealth={cvsEngineHealth}
-                  cvsAnalysis={cvsEngineAnalysis}
-                  cvsBusy={cvsEngineBusy}
-                  cvsError={cvsEngineError}
-                  cvsContext={cvsEngineContext}
-                  cvsPlayedUci={cvsPlayedUci}
-                />
                 <TeachingPanel
                   analysis={teachingAnalysis}
                   busy={teachingFactsBusy}
@@ -1322,6 +1314,17 @@ export function App() {
                 {teachingPuzzle && (
                   <TeachingPuzzle puzzle={teachingPuzzle} onClose={() => setPuzzleEvent(null)} />
                 )}
+                <EngineComparisonPanel
+                  stockfishState={engineState}
+                  stockfishAnalysis={analysis}
+                  move={moveLabel}
+                  cvsHealth={cvsEngineHealth}
+                  cvsAnalysis={cvsEngineAnalysis}
+                  cvsBusy={cvsEngineBusy}
+                  cvsError={cvsEngineError}
+                  cvsContext={cvsEngineContext}
+                  cvsPlayedUci={cvsPlayedUci}
+                />
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}
                   facts={teachingFacts}

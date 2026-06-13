@@ -95,6 +95,9 @@ function legalMode(ctx: LedContext): LedMap {
     if (motifFirsts.has(m.san)) color = 'purple'; // a tactical candidate
     map.squares[m.to] = color;
   }
+  // Mark the ORIGIN — the piece about to move — distinctly (blue), so both the
+  // board and the LED twin show where it sits, not just where it can go.
+  map.squares[ctx.selectedSquare] = 'blue';
   return map;
 }
 

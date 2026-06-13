@@ -117,11 +117,12 @@ export function Board2D({
                 <span
                   style={{
                     position: 'absolute',
-                    width: piece ? '85%' : '34%',
-                    height: piece ? '85%' : '34%',
+                    width: piece ? '92%' : '42%',
+                    height: piece ? '92%' : '42%',
                     borderRadius: '50%',
-                    border: piece ? '3px solid rgba(184,115,51,0.85)' : 'none',
-                    background: piece ? 'transparent' : 'rgba(184,115,51,0.55)',
+                    border: piece ? '4px solid rgba(216,138,63,0.95)' : 'none',
+                    background: piece ? 'transparent' : 'rgba(216,138,63,0.85)',
+                    boxShadow: '0 0 7px 1px rgba(216,138,63,0.7)',
                     pointerEvents: 'none',
                   }}
                 />
