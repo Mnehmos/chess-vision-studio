@@ -37,7 +37,7 @@ import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
 import { EngineComparisonPanel } from './EngineComparisonPanel';
 import { MateCard } from './MateCard';
-import { AnalyticsPanel } from './AnalyticsPanel';
+import { AnalyticsPanel, type TeachingThemesJob } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
 import { PlayMode } from './PlayMode';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
@@ -52,6 +52,12 @@ import type {
 } from '../engine/teaching/types';
 import { compileTeachingEvents } from '../engine/teaching/compile';
 import { buildTeachingPuzzle } from '../engine/teaching/puzzle';
+import {
+  buildTeachingProfile,
+  classifyPhase,
+  type TeachingProfile,
+  type TeachingSample,
+} from '../engine/teaching/profile';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
 import { TeachingPanel } from './TeachingPanel';
 import { TeachingPuzzle } from './TeachingPuzzle';
@@ -139,6 +145,13 @@ export function App() {
   const [teachingFactsError, setTeachingFactsError] = useState('');
   const [teachingFocus, setTeachingFocus] = useState<TeachingEvent | null>(null);
   const [puzzleEvent, setPuzzleEvent] = useState<TeachingEvent | null>(null);
+  const [teachingThemes, setTeachingThemes] = useState<TeachingProfile | null>(null);
+  const [teachingThemesJob, setTeachingThemesJob] = useState<TeachingThemesJob>({
+    running: false,
+    done: 0,
+    total: 0,
+  });
+  const teachingThemesRunRef = useRef(0);
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const cvsEngineRunRef = useRef(0);
@@ -567,6 +580,62 @@ export function App() {
     () => (puzzleEvent && teachingFacts ? buildTeachingPuzzle(puzzleEvent, teachingFacts) : null),
     [puzzleEvent, teachingFacts],
   );
+
+  // Teaching themes are per-game; drop them (and cancel any running pass) on switch.
+  useEffect(() => {
+    teachingThemesRunRef.current += 1;
+    setTeachingThemes(null);
+    setTeachingThemesJob({ running: false, done: 0, total: 0 });
+  }, [currentGameKey]);
+
+  // On-demand dataset teaching pass: fetch Rust facts for every analyzed ply of the
+  // current game, compile committed events, and aggregate into a teaching profile.
+  // Bridge-bound, so it is gated behind a button and concurrency-capped.
+  const runTeachingThemes = async () => {
+    if (teachingThemesJob.running || !cvsEngineHealth.available) return;
+    const runId = ++teachingThemesRunRef.current;
+    const gameKey = currentGameKey;
+    const tasks: { ply: number; record: PlyRecord; analysis: MoveAnalysis }[] = [];
+    plies.forEach((p, i) => {
+      const a = analyses.get(i);
+      if (a) tasks.push({ ply: p.ply, record: p, analysis: a });
+    });
+    if (tasks.length === 0) return;
+    setTeachingThemesJob({ running: true, done: 0, total: tasks.length });
+    const samples: TeachingSample[] = [];
+    let done = 0;
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < tasks.length) {
+        const t = tasks[cursor++];
+        if (!t || teachingThemesRunRef.current !== runId) return;
+        const request = factsRequestForPly(t.record, t.analysis);
+        if (request) {
+          try {
+            const facts = await getTeachingFacts(request);
+            const compiled = compileTeachingEvents({ analysis: t.analysis, facts });
+            if (compiled.computed) {
+              const phase = classifyPhase(t.ply, t.record.fenBefore);
+              for (const event of compiled.events) {
+                samples.push({ event, gameKey, ply: t.ply, phase });
+              }
+            }
+          } catch {
+            // Skip a ply whose facts request fails — never count it as "no mistake".
+          }
+        }
+        done += 1;
+        if (teachingThemesRunRef.current === runId) {
+          setTeachingThemesJob((job) => ({ ...job, done }));
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: 4 }, () => worker()));
+    if (teachingThemesRunRef.current === runId) {
+      setTeachingThemes(buildTeachingProfile(samples));
+      setTeachingThemesJob((job) => ({ ...job, running: false }));
+    }
+  };
 
   // LED: a focused teaching event or insight overrides the mode overlay.
   const ledMap = useMemo(() => {
@@ -1386,6 +1455,9 @@ export function App() {
                 features={featureEntries}
                 view={view}
                 onJump={(ply) => setView(ply)}
+                teachingProfile={teachingThemes}
+                teachingThemesJob={teachingThemesJob}
+                onComputeThemes={cvsEngineHealth.available ? runTeachingThemes : undefined}
               />
             )}
           </>
@@ -1471,6 +1543,33 @@ function safePlyUci(ply: PlyRecord | undefined): string | undefined {
     return plyRecordToUci(ply);
   } catch {
     return undefined;
+  }
+}
+
+// Build a teaching-facts request for one analyzed ply (mirrors the per-ply Analyze
+// effect). Returns null when the Stockfish line can't be fully replayed to UCI.
+function factsRequestForPly(
+  ply: PlyRecord,
+  analysis: MoveAnalysis,
+): TeachingFactsRequestV1 | null {
+  try {
+    const playedMoveUci = plyRecordToUci(ply);
+    const bestLine = sanLineToUci(ply.fenBefore, analysis.evalBefore.pv);
+    if (analysis.evalBefore.pv.length && bestLine.length !== analysis.evalBefore.pv.length) {
+      return null;
+    }
+    const refLine = sanLineToUci(ply.fenAfter, analysis.evalAfter.pv);
+    return {
+      schemaVersion: 1,
+      fenBefore: ply.fenBefore,
+      playedMoveUci,
+      bestMoveUci: bestLine[0],
+      refutationUci: refLine[0],
+      principalVariationUci: bestLine.length ? bestLine : undefined,
+      options: { includeMotifOpportunities: true, includeCounterfactual: true },
+    };
+  } catch {
+    return null;
   }
 }
 

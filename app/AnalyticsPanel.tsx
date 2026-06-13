@@ -16,6 +16,15 @@ import {
   type Phase,
 } from '../engine/features';
 import type { Classification, MoveAnalysis } from '../engine/types';
+import type { TeachingProfile } from '../engine/teaching/profile';
+import type { TeachingTopicId } from '../engine/teaching/types';
+import { TOPIC_REGISTRY } from '../engine/teaching/registry';
+
+export interface TeachingThemesJob {
+  running: boolean;
+  done: number;
+  total: number;
+}
 
 const CLASS_COLOR: Record<Classification, string> = {
   best: 'var(--good)',
@@ -46,11 +55,17 @@ export function AnalyticsPanel({
   features,
   view,
   onJump,
+  teachingProfile,
+  teachingThemesJob,
+  onComputeThemes,
 }: {
   entries: AnalyzedEntry[];
   features?: FeatureEntry[];
   view: number;
   onJump: (ply: number) => void;
+  teachingProfile?: TeachingProfile | null;
+  teachingThemesJob?: TeachingThemesJob;
+  onComputeThemes?: () => void;
 }) {
   const [scope, setScope] = useState<Scope>('game');
   const [reviewView, setReviewView] = useState<ReviewView>('coach');
@@ -124,6 +139,15 @@ export function AnalyticsPanel({
           .cvs-review-summary,.cvs-review-moment{grid-column:1/-1}
         }
       `}</style>
+
+      {onComputeThemes && (
+        <TeachingThemes
+          profile={teachingProfile ?? null}
+          job={teachingThemesJob}
+          onCompute={onComputeThemes}
+          onJump={onJump}
+        />
+      )}
 
       <div
         style={{
@@ -1256,4 +1280,166 @@ function accColor(accuracy: number): string {
   if (accuracy >= 70) return 'var(--accent-light)';
   if (accuracy >= 55) return '#e8923b';
   return '#e23b3b';
+}
+
+// Recurring themes from the validated teaching topics (engine facts), not the
+// legacy generic patterns. Computed on demand because it fetches Rust facts per
+// ply via the bridge.
+function TeachingThemes({
+  profile,
+  job,
+  onCompute,
+  onJump,
+}: {
+  profile: TeachingProfile | null;
+  job?: TeachingThemesJob;
+  onCompute: () => void;
+  onJump: (ply: number) => void;
+}) {
+  const topics = profile
+    ? (Object.keys(profile.byTopic) as TeachingTopicId[])
+        .filter((t) => (profile.byTopic[t]?.count ?? 0) > 0)
+        .sort((a, b) => (profile.byTopic[b]?.count ?? 0) - (profile.byTopic[a]?.count ?? 0))
+    : [];
+  const [selected, setSelected] = useState<TeachingTopicId | null>(null);
+  const active = selected && topics.includes(selected) ? selected : (topics[0] ?? null);
+  const stats = active ? profile?.byTopic[active] : undefined;
+  const running = job?.running ?? false;
+
+  return (
+    <PanelCard className="cvs-review-full">
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <Eyebrow>Teaching themes</Eyebrow>
+          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+            Validated teaching topics across this game, from the engine facts.
+          </div>
+        </div>
+        <button
+          onClick={onCompute}
+          disabled={running}
+          style={{
+            border: '1px solid var(--accent)',
+            background: running ? 'var(--card)' : 'rgba(184,115,51,.18)',
+            color: 'var(--accent-light)',
+            borderRadius: 8,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: running ? 'default' : 'pointer',
+          }}
+        >
+          {running
+            ? `Analyzing… ${job?.done ?? 0}/${job?.total ?? 0}`
+            : profile
+              ? 'Recompute'
+              : 'Analyze teaching themes'}
+        </button>
+      </div>
+
+      {!profile && !running && (
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 10 }}>
+          Surface validated topics (allowed forks, missed material, pins, failed defenses, pawn
+          damage) for every move in this game.
+        </div>
+      )}
+
+      {profile && topics.length === 0 && !running && (
+        <div style={{ color: 'var(--good)', fontSize: 13, marginTop: 10 }}>
+          No teaching topics detected in this game.
+        </div>
+      )}
+
+      {profile && topics.length > 0 && (
+        <>
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 11 }}>
+            {topics.map((t) => {
+              const isActive = t === active;
+              return (
+                <button
+                  key={t}
+                  aria-pressed={isActive}
+                  onClick={() => setSelected(t)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: '6px 8px 6px 10px',
+                    borderRadius: 999,
+                    border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                    background: isActive ? 'rgba(184,115,51,.18)' : 'var(--card)',
+                    color: isActive ? 'var(--accent-light)' : 'var(--text-soft)',
+                    fontSize: 12,
+                    fontWeight: isActive ? 700 : 500,
+                  }}
+                >
+                  {TOPIC_REGISTRY[t].displayName}
+                  <span
+                    style={{
+                      minWidth: 20,
+                      padding: '1px 5px',
+                      borderRadius: 999,
+                      background: isActive ? 'var(--accent)' : 'var(--track)',
+                      color: isActive ? '#fff' : 'var(--muted)',
+                      fontSize: 10,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {profile.byTopic[t]?.count ?? 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {active && stats && (
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 800 }}>{TOPIC_REGISTRY[active].displayName}</div>
+              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+                {stats.count}× · avg loss {stats.avgCpLoss.toFixed(1)} · phases {stats.byPhase.opening}
+                /{stats.byPhase.middlegame}/{stats.byPhase.endgame}
+                {stats.topSquares.length ? ` · common squares ${stats.topSquares.join(', ')}` : ''}
+              </div>
+              <ol style={{ margin: '10px 0 0', paddingLeft: 22 }}>
+                {stats.examples.map((ex, i) => (
+                  <li
+                    key={`${ex.ply}-${i}`}
+                    style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}
+                  >
+                    <button
+                      onClick={() => onJump(ex.ply)}
+                      style={{
+                        border: 0,
+                        background: 'transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        padding: 0,
+                        color: 'var(--text)',
+                        fontSize: 13,
+                      }}
+                    >
+                      {ex.headline}
+                      {ex.squares.length ? (
+                        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: 11 }}>
+                          {' '}
+                          {ex.squares.join(',')}
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </>
+      )}
+    </PanelCard>
+  );
 }
