@@ -38,10 +38,19 @@ export interface CoachTurn {
   status: 'analyzing' | 'done';
 }
 
+// Format a short list of pieces straight from fact refs: "the knight on d6",
+// "the bishop on g3 and knight on f3".
+function namePieces(refs: { pieceType: string; square: string }[]): string {
+  const names = refs.map((r) => `${r.pieceType} on ${r.square}`);
+  if (names.length <= 1) return names[0] ? `the ${names[0]}` : '';
+  return `the ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 // Surface a hanging piece the move left behind, straight from the facts (the same
-// SEE-losing data the Square Facts panel shows). Skipped when the compiler already
-// committed a hanging/defense topic, so it's a pure fallback for the gap where a
-// move leaves material hanging but matched no named pattern.
+// SEE-losing data the Square Facts panel shows): name the piece, how much it costs,
+// and who attacks it. Skipped when the compiler already committed a hanging/defense
+// topic, so it's a pure fallback for the gap where a move leaves material hanging
+// but matched no named pattern.
 export function hangingNote(facts: TeachingFactBundleV1, teaching: TeachingAnalysis | null): string | undefined {
   if (
     teaching?.computed &&
@@ -55,8 +64,10 @@ export function hangingNote(facts: TeachingFactBundleV1, teaching: TeachingAnaly
   );
   if (!hung) return undefined;
   const loss = hung.see.status === 'computed' ? hung.see.value.scoreCp : undefined;
-  const amount = typeof loss === 'number' && loss !== 0 ? ` (~${Math.abs(loss / 100).toFixed(0)} pawns)` : '';
-  return `Leaves the ${hung.pieceType} on ${hung.square} hanging${amount} — the opponent can win it.`;
+  const pawns = typeof loss === 'number' ? Math.round(Math.abs(loss) / 100) : 0;
+  const amount = pawns > 0 ? ` (~${pawns} pawn${pawns === 1 ? '' : 's'})` : '';
+  const by = hung.attackers.length ? ` — attacked by ${namePieces(hung.attackers)}` : '';
+  return `Leaves the ${hung.pieceType} on ${hung.square} hanging${amount}${by}. The opponent can win it.`;
 }
 
 // Position eval after a move, normalized to White's perspective so the number doesn't
