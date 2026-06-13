@@ -44,8 +44,15 @@ import { CommentaryPanel, type CommentaryJob, type Handshake } from './Commentar
 import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
 import { plyRecordToUci, sanLineToUci } from '../engine/adapters/uci-line';
-import type { TeachingFactBundleV1, TeachingFactsRequestV1 } from '../engine/teaching/types';
+import type {
+  TeachingAnalysis,
+  TeachingEvent,
+  TeachingFactBundleV1,
+  TeachingFactsRequestV1,
+} from '../engine/teaching/types';
+import { compileTeachingEvents } from '../engine/teaching/compile';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
+import { TeachingPanel } from './TeachingPanel';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
@@ -128,6 +135,7 @@ export function App() {
   const [teachingFacts, setTeachingFacts] = useState<TeachingFactBundleV1 | null>(null);
   const [teachingFactsBusy, setTeachingFactsBusy] = useState(false);
   const [teachingFactsError, setTeachingFactsError] = useState('');
+  const [teachingFocus, setTeachingFocus] = useState<TeachingEvent | null>(null);
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const cvsEngineRunRef = useRef(0);
@@ -536,17 +544,26 @@ export function App() {
   // On move advance, snap the inspection to the piece that JUST MOVED ("follow
   // move"), so BOTH the arrows and the active mode (e.g. Legal Move) broadcast the
   // move that just happened. A manual click overrides until the next advance.
-  // Also clear any focused insight when the ply changes.
+  // Also clear any focused insight / teaching event when the ply changes.
   useEffect(() => {
     setFocused(null);
+    setTeachingFocus(null);
     if (followMove) setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
   }, [view, plies, followMove]);
 
-  // LED: a focused insight overrides the mode overlay to spotlight just that motif.
+  // Compile Rust facts + the Stockfish grade into committed teaching events.
+  const teachingAnalysis = useMemo<TeachingAnalysis | null>(
+    () =>
+      teachingFacts && analysis ? compileTeachingEvents({ analysis, facts: teachingFacts }) : null,
+    [teachingFacts, analysis],
+  );
+
+  // LED: a focused teaching event or insight overrides the mode overlay.
   const ledMap = useMemo(() => {
+    if (teachingFocus) return teachingLedMap(teachingFocus);
     if (focused) return focusLedMap(focused);
     return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
-  }, [modeId, fen, selected, analysis, focused]);
+  }, [modeId, fen, selected, analysis, focused, teachingFocus]);
 
   // Annotation arrows:
   //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
@@ -554,6 +571,9 @@ export function App() {
   //   • threat lines — the top refutation's call-and-response sequence, or ALL of
   //     them, each numbered and colored by the moving side
   const arrows = useMemo<Arrow[]>(() => {
+    // TEACHING FOCUS: a clicked teaching event draws its played move, punishment,
+    // and correction and suppresses everything else.
+    if (teachingFocus) return teachingArrows(teachingFocus);
     // FOCUS MODE: a clicked insight spotlights only its own line; everything else
     // is suppressed so the user sees exactly that one tactic.
     if (focused) return lineArrows(fen, focused, false);
@@ -590,6 +610,7 @@ export function App() {
     showAllThreats,
     cascade,
     focused,
+    teachingFocus,
     followMove,
     view,
     plies,
@@ -1280,6 +1301,13 @@ export function App() {
                   cvsContext={cvsEngineContext}
                   cvsPlayedUci={cvsPlayedUci}
                 />
+                <TeachingPanel
+                  analysis={teachingAnalysis}
+                  busy={teachingFactsBusy}
+                  error={teachingFactsError}
+                  focusedId={teachingFocus?.id ?? null}
+                  onShow={setTeachingFocus}
+                />
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}
                   facts={teachingFacts}
@@ -1368,6 +1396,30 @@ function withRepetitionWarning(
     rankedInsights: [warning, ...a.rankedInsights],
     topExplanation: warning.evidence[0],
   };
+}
+
+// Board overlay for a focused teaching event: the played move (slate), the
+// opponent's punishment (red), and the correction (green, dashed).
+function teachingArrows(event: TeachingEvent): Arrow[] {
+  const out: Arrow[] = [];
+  const arrow = (uci: string, color: string, extra?: Partial<Arrow>): void => {
+    if (uci.length < 4) return;
+    out.push({ from: uci.slice(0, 2) as Square, to: uci.slice(2, 4) as Square, color, ...extra });
+  };
+  arrow(event.playedMove, ARROW.move, { move: true });
+  if (event.punishment) arrow(event.punishment.move, ARROW.attack, { label: '!' });
+  if (event.correction) arrow(event.correction.move, ARROW.defend, { dashed: true });
+  return out;
+}
+
+// LED overlay for a focused teaching event: its squares lit orange, the acting
+// pieces (e.g. the forking/pinning piece) purple.
+function teachingLedMap(event: TeachingEvent): LedMap {
+  const squares: Record<string, LedColor> = {};
+  for (const sq of allSquares()) squares[sq] = 'off';
+  for (const sq of event.squares) squares[sq] = 'orange';
+  for (const actor of event.actors) squares[actor.square] = 'purple';
+  return { mode: 'focus', squares };
 }
 
 function focusLedMap(ins: InsightCandidate): LedMap {
