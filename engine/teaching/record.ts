@@ -56,6 +56,23 @@ export interface TeachingRecordInput {
   facts: TeachingFactBundleV1;
 }
 
+// The version tuple that makes a cached record valid: teaching schema, facts
+// registry, compiler, and the Stockfish label depth it was computed at. Persist it
+// with the record so a validator/registry/depth change invalidates stale topics.
+export function recordSignature(provenance: TeachingRecordV1['provenance']): string {
+  return `t${provenance.teachingSchemaVersion}.r${provenance.factsRegistryVersion}.c${provenance.compilerVersion}.d${provenance.sfDepth ?? 'x'}`;
+}
+
+// Is a cached record still produced by the current app-side topic logic? Bump
+// TEACHING_COMPILER_VERSION (or the schema) whenever detectors/attribution change
+// and every stale record is recomputed rather than reused.
+export function isRecordFresh(record: TeachingRecordV1): boolean {
+  return (
+    record.provenance.teachingSchemaVersion === TEACHING_EVENTS_SCHEMA_VERSION &&
+    record.provenance.compilerVersion === TEACHING_COMPILER_VERSION
+  );
+}
+
 // Build the full training row from one analyzed ply + its Rust fact bundle. Pure:
 // the bridge fetch is the caller's job; this only compiles, generates, and packs.
 export function buildTeachingRecord(input: TeachingRecordInput): TeachingRecordV1 {

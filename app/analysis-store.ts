@@ -3,16 +3,27 @@
 // wrapper, zero deps. If IndexedDB is unavailable (SSR/tests/privacy mode) every op
 // fails soft: load resolves to an empty Map, save/clear resolve void — never throws.
 import type { MoveAnalysis } from '../engine/types';
+import { isRecordFresh, type TeachingRecordV1 } from '../engine/teaching/record';
 
 export type AnalysisCache = Map<string, Map<number, MoveAnalysis>>; // gameKey -> (plyIndex -> analysis)
+export type TeachingCache = Map<string, Map<number, TeachingRecordV1>>; // gameKey -> (plyIndex -> record)
 
 const DB_NAME = 'chess-vision-studio';
-const DB_VERSION = 1;
+// v2 adds the `teaching` store: per-ply teaching corpus records, the durable
+// local training-data store. Stale records (validator/registry/compiler change)
+// are filtered on load via isRecordFresh, not on write.
+const DB_VERSION = 2;
 const STORE = 'analyses';
+const STORE_TEACHING = 'teaching';
 
 interface StoredRecord {
   key: string;
   plies: Array<[number, MoveAnalysis]>;
+}
+
+interface StoredTeachingRecord {
+  key: string;
+  records: Array<[number, TeachingRecordV1]>;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -29,6 +40,9 @@ function openDb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
+      if (!db.objectStoreNames.contains(STORE_TEACHING)) {
+        db.createObjectStore(STORE_TEACHING, { keyPath: 'key' });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
@@ -79,5 +93,40 @@ export async function clearAnalysisCache(): Promise<void> {
     await reqToPromise(tx.objectStore(STORE).clear());
   } catch {
     // Fail soft.
+  }
+}
+
+// Load persisted teaching records, dropping any produced by an older compiler/
+// schema (isRecordFresh) so stale topics never survive a validator change.
+export async function loadTeachingCache(): Promise<TeachingCache> {
+  const cache: TeachingCache = new Map();
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_TEACHING, 'readonly');
+    const records = await reqToPromise(
+      tx.objectStore(STORE_TEACHING).getAll() as IDBRequest<StoredTeachingRecord[]>,
+    );
+    for (const rec of records) {
+      const fresh = rec.records.filter(([, r]) => isRecordFresh(r));
+      if (fresh.length) cache.set(rec.key, new Map(fresh));
+    }
+  } catch {
+    // Fail soft — return whatever we have.
+  }
+  return cache;
+}
+
+export async function saveGameTeaching(
+  key: string,
+  records: Map<number, TeachingRecordV1>,
+): Promise<void> {
+  if (records.size === 0) return;
+  try {
+    const db = await openDb();
+    const tx = db.transaction(STORE_TEACHING, 'readwrite');
+    const record: StoredTeachingRecord = { key, records: [...records.entries()] };
+    await reqToPromise(tx.objectStore(STORE_TEACHING).put(record));
+  } catch {
+    // Fail soft — persistence is an optimization, not a requirement.
   }
 }

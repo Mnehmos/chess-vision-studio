@@ -28,7 +28,12 @@ import {
   type CvsEngineHealth,
 } from './cvs-engine-client';
 import { createEnginePool, defaultPoolSize, type EnginePool } from './engine-pool';
-import { loadAnalysisCache, saveGameAnalysis } from './analysis-store';
+import {
+  loadAnalysisCache,
+  loadTeachingCache,
+  saveGameAnalysis,
+  saveGameTeaching,
+} from './analysis-store';
 import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
@@ -59,7 +64,7 @@ import {
   type TeachingProfile,
   type TeachingSample,
 } from '../engine/teaching/profile';
-import { buildTeachingRecord, type TeachingRecordV1 } from '../engine/teaching/record';
+import { buildTeachingRecord, isRecordFresh, type TeachingRecordV1 } from '../engine/teaching/record';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
 import { TeachingPanel } from './TeachingPanel';
 import { TeachingPuzzle } from './TeachingPuzzle';
@@ -291,6 +296,14 @@ export function App() {
       setCacheVersion((n) => n + 1);
       const cur = analysisCacheRef.current.get(currentGameKeyRef.current);
       if (cur && cur.size) setAnalyses(new Map(cur));
+    });
+    // Rehydrate the durable teaching corpus so re-review is instant (stale records
+    // are dropped on load by isRecordFresh).
+    loadTeachingCache().then((loaded) => {
+      if (!alive) return;
+      for (const [k, v] of loaded) {
+        if (!teachingRecordCacheRef.current.has(k)) teachingRecordCacheRef.current.set(k, v);
+      }
     });
     return () => {
       alive = false;
@@ -633,7 +646,10 @@ export function App() {
     const tasks: { ply: number; record: PlyRecord; analysis: MoveAnalysis }[] = [];
     recordPlies.forEach((p, i) => {
       const a = analysesMap.get(i);
-      if (a && !cache.has(i)) tasks.push({ ply: i, record: p, analysis: a });
+      // Recompute when uncached OR when the cached record is stale (older compiler/
+      // schema) — the versioned cache never serves stale topics.
+      const cached = cache.get(i);
+      if (a && !(cached && isRecordFresh(cached))) tasks.push({ ply: i, record: p, analysis: a });
     });
     let done = 0;
     let cursor = 0;
@@ -664,6 +680,8 @@ export function App() {
       }
     };
     await Promise.all(Array.from({ length: 4 }, () => worker()));
+    // Persist the freshly computed records (durable local corpus + instant re-review).
+    if (tasks.length > 0 && runRef.current === runId) void saveGameTeaching(gameKey, cache);
     return cache;
   };
 
