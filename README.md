@@ -112,6 +112,14 @@ git clone https://github.com/Mnehmos/chess-vision-studio.git
 git clone https://github.com/Mnehmos/chess-vision-studio-rust-engine.git
 ```
 
+> **Known WIP gap — the `@cvs/engine` dependency.** The app also imports a local
+> TypeScript package, `@cvs/engine`, via `file:../chess-vision-studio-engine`. That
+> package is not published to npm yet, so a *clean* public `npm install` will not
+> fully resolve until it is published or vendored into this repo. This is a rough
+> edge of the WIP launch; the full local workspace builds with all three sibling
+> folders present. (`@cvs/engine` powers the trainer/arena scripts and the CVS
+> policy/value/search experiments.)
+
 Build the native CVS Engine:
 
 ```bash
@@ -140,8 +148,14 @@ knobs are the engine bridge path and the coach key:
 ```text
 CVS_RUST_EXE=../chess-vision-studio-rust-engine/target/release/analyze.exe
 CVS_SF_EXE=                 # native Stockfish; bundled avx2 build is used if unset
-OPENAI_API_KEY=             # enables the optional coach narrator
+OPENAI_API_KEY=             # optional coach; read server-side, never bundled
 ```
+
+The coach reads `OPENAI_API_KEY` **server-side** through the Vite dev server, so the
+key is never bundled into the browser or committed — this is the recommended setup. A
+browser-side fallback (pasting a key into the in-app panel, stored in `localStorage`)
+exists for quick local experiments only; it is **development-only** and not
+recommended for anything you care about.
 
 Restart `npm run dev` after editing `.env`. On macOS/Linux the engine path drops the
 `.exe` suffix.
