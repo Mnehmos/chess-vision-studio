@@ -18,6 +18,21 @@ function blankLed(): LedMap {
   return { mode: 'puzzle', squares };
 }
 
+// Apply a UCI move to a FEN and return the resulting FEN (null if illegal).
+function applyUci(fen: string, uci: string): string | null {
+  try {
+    const chess = new Chess(fen);
+    const move = chess.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci.slice(4) || undefined,
+    });
+    return move ? chess.fen() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Interactive two-stage lesson. The solver drags the solution move on a real
 // board (same Board2D + onPieceDrop the analysis view uses); a correct move
 // advances the stage. Grading is the pure isPuzzleSolution.
@@ -25,7 +40,11 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
   const [stageIndex, setStageIndex] = useState(0);
   const [status, setStatus] = useState<'solving' | 'wrong' | 'solved'>('solving');
   const [selected, setSelected] = useState<Square | undefined>(undefined);
-  const ledMap = useMemo(blankLed, []);
+  // The position AFTER the solved move, so the board shows the completed move
+  // instead of snapping the piece back.
+  const [resultFen, setResultFen] = useState<string | null>(null);
+  const [moved, setMoved] = useState<{ from: Square; to: Square } | null>(null);
+  const blank = useMemo(blankLed, []);
   const stage = puzzle.stages[stageIndex];
 
   const legalDots = useMemo(() => {
@@ -52,6 +71,12 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
 
   const onDrop = (from: Square, to: Square) => {
     if (isPuzzleSolution(stage, `${from}${to}`)) {
+      // Complete the move: apply the canonical solution and show the new position.
+      const after = applyUci(stage.fen, stage.solutionUci);
+      const fromSq = stage.solutionUci.slice(0, 2) as Square;
+      const toSq = stage.solutionUci.slice(2, 4) as Square;
+      setResultFen(after ?? null);
+      setMoved({ from: fromSq, to: toSq });
       setStatus('solved');
       setSelected(undefined);
     } else {
@@ -59,6 +84,24 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
     }
   };
 
+  const goNext = () => {
+    setStageIndex((i) => i + 1);
+    setStatus('solving');
+    setSelected(undefined);
+    setResultFen(null);
+    setMoved(null);
+  };
+
+  // Once solved, light the completed move (origin blue, destination green); else the
+  // blank board so legal dots read cleanly.
+  const ledMap =
+    status === 'solved' && moved
+      ? {
+          mode: 'puzzle',
+          squares: { ...blank.squares, [moved.from]: 'blue' as const, [moved.to]: 'green' as const },
+        }
+      : blank;
+  const boardFen = status === 'solved' && resultFen ? resultFen : stage.fen;
   const lastStage = stageIndex + 1 >= puzzle.stages.length;
 
   return (
@@ -66,13 +109,13 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
       <Header title={`Puzzle · stage ${stageIndex + 1}/${puzzle.stages.length}`} onClose={onClose} />
       <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>{stage.prompt}</div>
       <Board2D
-        fen={stage.fen}
+        fen={boardFen}
         ledMap={ledMap}
-        selected={selected}
-        legalDots={legalDots}
+        selected={status === 'solved' ? undefined : selected}
+        legalDots={status === 'solved' ? undefined : legalDots}
         onSelect={(sq) => setSelected((cur) => (cur === sq ? undefined : sq))}
         orientation={stage.sideToMove}
-        draggable
+        draggable={status !== 'solved'}
         onPieceDrop={onDrop}
       />
       <div style={{ marginTop: 8, fontSize: 13, minHeight: 22, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -82,13 +125,7 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
           (lastStage ? (
             <span style={{ color: 'var(--muted)' }}>Lesson complete.</span>
           ) : (
-            <button
-              onClick={() => {
-                setStageIndex((i) => i + 1);
-                setStatus('solving');
-              }}
-              style={btn}
-            >
+            <button onClick={goNext} style={btn}>
               Next →
             </button>
           ))}
