@@ -45,6 +45,7 @@ import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
 import { plyRecordToUci, sanLineToUci } from '../engine/adapters/uci-line';
 import type {
+  PositionFacts,
   TeachingAnalysis,
   TeachingEvent,
   TeachingFactBundleV1,
@@ -574,6 +575,23 @@ export function App() {
       teachingFacts && analysis ? compileTeachingEvents({ analysis, facts: teachingFacts }) : null,
     [teachingFacts, analysis],
   );
+
+  // The engine PositionFacts matching the board right now — Square facts reads the
+  // inspected piece's attackers/defenders/SEE from here (matched by piece placement).
+  const engineSquareFacts = useMemo<PositionFacts | null>(() => {
+    if (!teachingFacts) return null;
+    const place = (f: string) => f.split(' ')[0];
+    const cur = place(fen);
+    if (place(teachingFacts.played.fenAfter) === cur) return teachingFacts.played.position;
+    if (place(teachingFacts.fenBefore) === cur) return teachingFacts.before;
+    if (teachingFacts.best && place(teachingFacts.best.fenAfter) === cur) {
+      return teachingFacts.best.position;
+    }
+    if (teachingFacts.refutation && place(teachingFacts.refutation.fenAfter) === cur) {
+      return teachingFacts.refutation.position;
+    }
+    return null;
+  }, [teachingFacts, fen]);
 
   // A two-stage practice puzzle for the event the user chose to drill.
   const teachingPuzzle = useMemo(
@@ -1371,6 +1389,7 @@ export function App() {
                   move={moveLabel}
                   focused={focused}
                   onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+                  enginePosition={engineSquareFacts}
                 />
                 <TeachingPanel
                   analysis={teachingAnalysis}
