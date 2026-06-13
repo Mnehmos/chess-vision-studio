@@ -299,6 +299,206 @@ interface TrainingStatus {
   logs: string[];
 }
 
+interface SfResult {
+  fen: string;
+  bestmove: string;
+  scoreCp: number;
+  mate: number | null;
+  pv: string[];
+  depth: number;
+}
+
+interface SfPending {
+  fen: string;
+  depth: number;
+  resolve: (r: SfResult) => void;
+  reject: (e: Error) => void;
+  timer: NodeJS.Timeout;
+  best: { depth: number; scoreCp: number; mate: number | null; pv: string[] } | null;
+}
+
+interface SfProcess {
+  child: ChildProcessWithoutNullStreams;
+  rl: Interface;
+  ready: boolean;
+  busy: boolean;
+  queue: SfPending[];
+  current: SfPending | null;
+  stderr: string[];
+}
+
+// Native Stockfish, the leakage-free reference oracle, as a pooled UCI
+// subprocess (mirrors cvsEngineProxy). Same model as the rust engine: the
+// server hides the protocol, the client does one POST. Requires a native
+// Stockfish binary (CVS_SF_EXE); defaults to the bundled avx2 build. Kept at
+// one Threads=1 process by default so it never fights the depth-20 labeling.
+function stockfishProxy(env: Record<string, string>): Plugin {
+  const LF = String.fromCharCode(10);
+  let pool: SfProcess[] = [];
+  let poolKey = '';
+  const POOL_SIZE = Math.max(1, Math.min(4, Number(env.CVS_SF_POOL ?? 1) || 1));
+
+  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(body));
+  };
+
+  const sfConfig = () => {
+    const exe = env.CVS_SF_EXE?.trim() || 'F:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe';
+    const depthRaw = Number(env.CVS_SF_DEPTH ?? 12);
+    const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(24, Math.round(depthRaw))) : 12;
+    return { exe, depth };
+  };
+
+  const send = (proc: SfProcess, ...cmds: string[]) => {
+    for (const c of cmds) proc.child.stdin.write(c + LF);
+  };
+
+  const pump = (proc: SfProcess) => {
+    if (!proc.ready || proc.busy || proc.queue.length === 0) return;
+    const req = proc.queue.shift() as SfPending;
+    proc.current = req;
+    proc.busy = true;
+    send(proc, `position fen ${req.fen}`, `go depth ${req.depth}`);
+  };
+
+  const finish = (proc: SfProcess, bestmove: string) => {
+    const req = proc.current;
+    proc.current = null;
+    proc.busy = false;
+    if (req) {
+      clearTimeout(req.timer);
+      const b = req.best;
+      req.resolve({ fen: req.fen, bestmove, scoreCp: b?.scoreCp ?? 0, mate: b?.mate ?? null, pv: b?.pv ?? [], depth: b?.depth ?? 0 });
+    }
+    pump(proc);
+  };
+
+  const createSf = (cfg: ReturnType<typeof sfConfig>): SfProcess => {
+    const child = spawn(cfg.exe, [], { cwd: process.cwd(), stdio: 'pipe' });
+    const rl = createInterface({ input: child.stdout });
+    const proc: SfProcess = { child, rl, ready: false, busy: false, queue: [], current: null, stderr: [] };
+    rl.on('line', (line) => {
+      if (line.includes('uciok')) {
+        send(proc, 'setoption name Threads value 1', 'setoption name Hash value 64', 'isready');
+        return;
+      }
+      if (line.includes('readyok')) {
+        proc.ready = true;
+        pump(proc);
+        return;
+      }
+      if (proc.current && line.startsWith('info ') && line.includes(' score ') && line.includes(' pv ')) {
+        const t = line.split(/\s+/);
+        const di = t.indexOf('depth');
+        const si = t.indexOf('score');
+        const pi = t.indexOf('pv');
+        let scoreCp = 0;
+        let mate: number | null = null;
+        if (si >= 0 && t[si + 1] === 'cp') scoreCp = Number(t[si + 2]);
+        else if (si >= 0 && t[si + 1] === 'mate') mate = Number(t[si + 2]);
+        proc.current.best = { depth: di >= 0 ? Number(t[di + 1]) : 0, scoreCp, mate, pv: pi >= 0 ? t.slice(pi + 1) : [] };
+        return;
+      }
+      if (line.startsWith('bestmove')) finish(proc, line.split(/\s+/)[1] ?? '(none)');
+    });
+    child.stderr.on('data', (d) => {
+      proc.stderr = [...proc.stderr, ...String(d).split(LF).map((s) => s.trim()).filter(Boolean)].slice(-20);
+    });
+    const fail = (err: Error) => {
+      pool = pool.filter((p) => p !== proc);
+      const pendings = proc.current ? [proc.current, ...proc.queue] : proc.queue;
+      proc.current = null;
+      proc.queue = [];
+      for (const q of pendings) {
+        clearTimeout(q.timer);
+        q.reject(err);
+      }
+    };
+    child.on('error', (e) => fail(e));
+    child.on('close', (code) => fail(new Error(`Stockfish exited (${code})${proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : ''}`)));
+    send(proc, 'uci');
+    return proc;
+  };
+
+  const dispose = () => {
+    const procs = pool;
+    pool = [];
+    for (const proc of procs) {
+      const pendings = proc.current ? [proc.current, ...proc.queue] : proc.queue;
+      for (const q of pendings) {
+        clearTimeout(q.timer);
+        q.reject(new Error('Stockfish stopped'));
+      }
+      try {
+        send(proc, 'quit');
+        proc.child.kill();
+        proc.rl.close();
+      } catch {
+        // Already gone.
+      }
+    }
+  };
+
+  const acquireSf = (cfg: ReturnType<typeof sfConfig>): SfProcess => {
+    const key = `${cfg.exe}:${cfg.depth}`;
+    if (key !== poolKey) {
+      dispose();
+      poolKey = key;
+    }
+    pool = pool.filter((p) => !p.child.killed);
+    if (pool.length < POOL_SIZE) pool.push(createSf(cfg));
+    return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
+  };
+
+  const request = (proc: SfProcess, fen: string, depth: number): Promise<SfResult> =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const ix = proc.queue.findIndex((p) => p.resolve === resolve);
+        if (ix >= 0) proc.queue.splice(ix, 1);
+        reject(new Error('Stockfish request timed out'));
+      }, 30_000);
+      proc.queue.push({ fen, depth, resolve, reject, timer, best: null });
+      pump(proc);
+    });
+
+  return {
+    name: 'stockfish-proxy',
+    configureServer(server) {
+      server.httpServer?.on('close', dispose);
+      server.middlewares.use('/api/stockfish/health', (req, res) => {
+        if (req.method !== 'GET') return json(res, 405, { error: 'GET only' });
+        const cfg = sfConfig();
+        if (!existsSync(cfg.exe)) {
+          return json(res, 200, {
+            ok: true,
+            available: false,
+            exe: cfg.exe,
+            depth: cfg.depth,
+            error: 'Native Stockfish not found. Set CVS_SF_EXE to a Stockfish .exe (download from stockfishchess.org).',
+          });
+        }
+        return json(res, 200, { ok: true, available: true, exe: cfg.exe, depth: cfg.depth });
+      });
+      server.middlewares.use('/api/stockfish/analyze', (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+        readJsonBody<{ fen?: string; depth?: number }>(req)
+          .then(async (body) => {
+            const fen = body.fen?.trim();
+            if (!fen) return json(res, 400, { error: 'fen is required' });
+            const cfg = sfConfig();
+            if (!existsSync(cfg.exe)) return json(res, 503, { error: 'Native Stockfish not found', exe: cfg.exe });
+            const depth = body.depth ? Math.max(1, Math.min(24, Math.round(body.depth))) : cfg.depth;
+            const out = await request(acquireSf(cfg), fen, depth);
+            return json(res, 200, out);
+          })
+          .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
+      });
+    },
+  };
+}
+
 function trainingSupervisor(): Plugin {
   const clients = new Set<import('http').ServerResponse>();
   let current:
@@ -594,7 +794,7 @@ function readJsonBody<T>(req: import('http').IncomingMessage): Promise<T> {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ''); // '' = load ALL vars, incl. non-VITE_
   return {
-    plugins: [react(), openaiProxy(env), cvsEngineProxy(env), trainingSupervisor()],
+    plugins: [react(), openaiProxy(env), cvsEngineProxy(env), stockfishProxy(env), trainingSupervisor()],
     server: {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',

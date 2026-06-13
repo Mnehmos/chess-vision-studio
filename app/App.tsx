@@ -8,6 +8,7 @@ import { repetitionConversionWarning } from '../engine/repetition';
 import type { AnalyzedEntry } from '../engine/analytics';
 import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures } from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
+import { getStockfishHealth, makeNativeStockfishEngine, type StockfishHealth } from './stockfish-client';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import {
@@ -100,6 +101,7 @@ export function App() {
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
+  const [sfNative, setSfNative] = useState(false); // true = native Stockfish subprocess, false = WASM fallback
   const [cvsEngineHealth, setCvsEngineHealth] = useState<CvsEngineHealth>({ ok: false, available: false });
   const [cvsEngineAnalysis, setCvsEngineAnalysis] = useState<CvsEngineAnalysis | null>(null);
   const [cvsEngineBusy, setCvsEngineBusy] = useState(false);
@@ -158,14 +160,31 @@ export function App() {
     setCommentary(new Map(commentaryCacheRef.current.get(currentGameKey) ?? new Map()));
   }, [currentGameKey]);
 
-  // Boot Stockfish (best-effort). Pure modes work regardless.
+  // Boot the reference oracle. Native Stockfish subprocess when a binary is
+  // configured (fast, full-SIMD); WASM Stockfish worker as automatic fallback;
+  // pure modes work regardless.
   useEffect(() => {
     let alive = true;
-    tryCreateEngine().then((e) => {
+    (async () => {
+      let health: StockfishHealth | null = null;
+      try {
+        health = await getStockfishHealth();
+      } catch {
+        // proxy unreachable (e.g. static preview) — fall through to WASM.
+      }
+      if (!alive) return;
+      if (health?.available) {
+        engineRef.current = makeNativeStockfishEngine(health.depth);
+        setSfNative(true);
+        setEngineState('ready');
+        return;
+      }
+      const e = await tryCreateEngine();
       if (!alive) return;
       engineRef.current = e;
+      setSfNative(false);
       setEngineState(e ? 'ready' : 'off');
-    });
+    })();
     return () => {
       alive = false;
       engineRef.current?.dispose();
@@ -839,7 +858,7 @@ export function App() {
             </TabButton>
           </nav>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <EngineBadge label="Stockfish" state={engineState} />
+            <EngineBadge label={sfNative ? 'Stockfish · native' : 'Stockfish'} state={engineState} />
             <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
             {engineState === 'ready' && analyses.size < plies.length && (
               <span style={{ fontSize: 12, color: 'var(--muted)' }}>analyzing {analyses.size}/{plies.length}…</span>
