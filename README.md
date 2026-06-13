@@ -10,6 +10,13 @@ matter.
 This is a public WIP launch. It is meant to be cloned, installed, and run on
 your machine. There is no hosted account system yet.
 
+## Teaching Facts Protocol
+
+The development server exposes `POST /api/cvs-engine/facts`, backed by the Rust
+engine's versioned `TeachingFactBundleV1` protocol. Analyze mode currently renders
+the raw response in a temporary developer panel while the contract stabilizes.
+See [docs/TEACHING_FACTS_PROTOCOL.md](docs/TEACHING_FACTS_PROTOCOL.md).
+
 ## What You Get
 
 - A 2D board that lights up legal moves, threats, defenses, hanging pieces,

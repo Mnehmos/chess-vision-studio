@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createInterface, type Interface } from 'node:readline';
 import { cpus } from 'node:os';
+import type { TeachingFactsRequestV1 } from './engine/teaching/types';
 
 /**
  * Dev-server OpenAI proxy. The key stays in .env (plain OPENAI_API_KEY, server-side)
@@ -32,7 +33,10 @@ function openaiProxy(env: Record<string, string>): Plugin {
         if (req.method !== 'POST') return json(res, 405, { error: { message: 'POST only' } });
         if (!key)
           return json(res, 500, {
-            error: { message: 'OPENAI_API_KEY is not set in .env (server-side). Add it and restart the dev server.' },
+            error: {
+              message:
+                'OPENAI_API_KEY is not set in .env (server-side). Add it and restart the dev server.',
+            },
           });
         let body = '';
         req.on('data', (c) => (body += c));
@@ -73,6 +77,7 @@ interface CvsEngineProcess {
   rl: Interface;
   depth: number;
   argsKey: string;
+  poolKey: string;
   queue: CvsEnginePending[];
   stderr: string[];
 }
@@ -81,8 +86,7 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
   // The rust engine is a serial stdin->stdout subprocess (one FEN at a time).
   // A least-loaded POOL of them parallelizes bulk analysis across cores while
   // staying 100% rust. Light use stays at one process; bulk fans out.
-  let pool: CvsEngineProcess[] = [];
-  let poolKey = '';
+  const pools = new Map<string, CvsEngineProcess[]>();
   const POOL_SIZE = Math.max(2, Math.min(8, (cpus().length || 4) - 2));
 
   const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
@@ -92,8 +96,8 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
   };
 
   const dispose = () => {
-    const procs = pool;
-    pool = [];
+    const procs = [...pools.values()].flat();
+    pools.clear();
     for (const proc of procs) {
       for (const pending of proc.queue.splice(0)) {
         clearTimeout(pending.timer);
@@ -109,16 +113,27 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
     }
   };
 
-  const configFor = (requestedDepth?: number) => {
+  const configFor = (
+    requestedDepth?: number,
+    options: { exe?: string; factsOnly?: boolean } = {},
+  ) => {
     const analyzeBin = process.platform === 'win32' ? 'analyze.exe' : 'analyze';
-    const exe = env.CVS_RUST_EXE?.trim() || `../chess-vision-studio-rust-engine/target/release/${analyzeBin}`;
-    const depthRaw = Number(requestedDepth ?? env.CVS_RUST_DEPTH ?? 6);
+    const exe =
+      options.exe?.trim() ||
+      env.CVS_RUST_EXE?.trim() ||
+      `../chess-vision-studio-rust-engine/target/release/${analyzeBin}`;
+    const depthRaw = Number(requestedDepth ?? (options.factsOnly ? 1 : (env.CVS_RUST_DEPTH ?? 6)));
     const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(30, Math.round(depthRaw))) : 6;
     const args = ['--serve', '--depth', String(depth)];
     const missing: string[] = [];
     const flags: string[] = [];
 
-    const addFileArg = (flag: string, path: string | undefined, label: string, required: boolean) => {
+    const addFileArg = (
+      flag: string,
+      path: string | undefined,
+      label: string,
+      required: boolean,
+    ) => {
       const clean = path?.trim();
       if (!clean) return;
       if (!existsSync(clean)) {
@@ -128,10 +143,27 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
       args.push(flag, clean);
     };
 
-    addFileArg('--base', env.CVS_RUST_BASE || 'arena/out/value-weights-mixed.json', 'base weights', !!env.CVS_RUST_BASE);
-    addFileArg('--rung2', env.CVS_RUST_RUNG2 || 'arena/out/rung2-weights-mixed.json', 'rung2 weights', !!env.CVS_RUST_RUNG2);
-    addFileArg('--nnue', env.CVS_RUST_NNUE, 'nnue', !!env.CVS_RUST_NNUE);
-    addFileArg('--helper-nnue', env.CVS_RUST_HELPER_NNUE, 'helper nnue', !!env.CVS_RUST_HELPER_NNUE);
+    if (!options.factsOnly) {
+      addFileArg(
+        '--base',
+        env.CVS_RUST_BASE || 'arena/out/value-weights-mixed.json',
+        'base weights',
+        !!env.CVS_RUST_BASE,
+      );
+      addFileArg(
+        '--rung2',
+        env.CVS_RUST_RUNG2 || 'arena/out/rung2-weights-mixed.json',
+        'rung2 weights',
+        !!env.CVS_RUST_RUNG2,
+      );
+      addFileArg('--nnue', env.CVS_RUST_NNUE, 'nnue', !!env.CVS_RUST_NNUE);
+      addFileArg(
+        '--helper-nnue',
+        env.CVS_RUST_HELPER_NNUE,
+        'helper nnue',
+        !!env.CVS_RUST_HELPER_NNUE,
+      );
+    }
 
     const addFlag = (envKey: string, flag: string, defaultOn = false) => {
       const value = env[envKey];
@@ -140,29 +172,39 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
         flags.push(flag);
       }
     };
-    addFlag('CVS_RUST_FUTILITY', '--futility', true);
-    addFlag('CVS_RUST_RFP', '--rfp');
-    addFlag('CVS_RUST_LMP', '--lmp');
-    addFlag('CVS_RUST_SEEPRUNE', '--seeprune');
-    addFlag('CVS_RUST_DELTA', '--delta');
-    addFlag('CVS_RUST_COUNTERMOVE', '--countermove');
-    addFlag('CVS_RUST_CONTHIST', '--conthist');
-    addFlag('CVS_RUST_TTPS', '--tt-prune-store');
-    addFlag('CVS_RUST_QTT', '--qtt');
-    addFlag('CVS_RUST_HISTMALUS', '--histmalus');
-    addFlag('CVS_RUST_HISTLMR', '--histlmr');
-    addFlag('CVS_RUST_CAPHIST', '--caphist');
-    addFlag('CVS_RUST_TT2', '--tt2');
-    addFlag('CVS_RUST_IMPROVING', '--improving');
-    addFlag('CVS_RUST_RULE50', '--rule50');
+    if (!options.factsOnly) {
+      addFlag('CVS_RUST_FUTILITY', '--futility', true);
+      addFlag('CVS_RUST_RFP', '--rfp');
+      addFlag('CVS_RUST_LMP', '--lmp');
+      addFlag('CVS_RUST_SEEPRUNE', '--seeprune');
+      addFlag('CVS_RUST_DELTA', '--delta');
+      addFlag('CVS_RUST_COUNTERMOVE', '--countermove');
+      addFlag('CVS_RUST_CONTHIST', '--conthist');
+      addFlag('CVS_RUST_TTPS', '--tt-prune-store');
+      addFlag('CVS_RUST_QTT', '--qtt');
+      addFlag('CVS_RUST_HISTMALUS', '--histmalus');
+      addFlag('CVS_RUST_HISTLMR', '--histlmr');
+      addFlag('CVS_RUST_CAPHIST', '--caphist');
+      addFlag('CVS_RUST_TT2', '--tt2');
+      addFlag('CVS_RUST_IMPROVING', '--improving');
+      addFlag('CVS_RUST_RULE50', '--rule50');
+    }
 
     return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags };
   };
 
-  const createProc = (cfg: ReturnType<typeof configFor>): CvsEngineProcess => {
+  const createProc = (cfg: ReturnType<typeof configFor>, poolKey: string): CvsEngineProcess => {
     const child = spawn(cfg.exe, cfg.args, { cwd: process.cwd(), stdio: 'pipe' });
     const rl = createInterface({ input: child.stdout });
-    const proc: CvsEngineProcess = { child, rl, depth: cfg.depth, argsKey: cfg.argsKey, queue: [], stderr: [] };
+    const proc: CvsEngineProcess = {
+      child,
+      rl,
+      depth: cfg.depth,
+      argsKey: cfg.argsKey,
+      poolKey,
+      queue: [],
+      stderr: [],
+    };
     rl.on('line', (line) => {
       const next = proc.queue.shift();
       if (!next) return;
@@ -179,7 +221,10 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
       }
     });
     child.on('close', (code) => {
-      pool = pool.filter((p) => p !== proc);
+      pools.set(
+        proc.poolKey,
+        (pools.get(proc.poolKey) ?? []).filter((candidate) => candidate !== proc),
+      );
       const suffix = proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : '';
       for (const pending of proc.queue.splice(0)) {
         clearTimeout(pending.timer);
@@ -189,18 +234,17 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
     return proc;
   };
 
-  // Live process for this config, dispatched to the shortest queue. Grows one
-  // process per call up to POOL_SIZE; a depth/flag change rebuilds the pool.
-  const acquireEngine = (requestedDepth?: number): CvsEngineProcess => {
-    const cfg = configFor(requestedDepth);
-    const key = `${cfg.depth}:${cfg.argsKey}`;
-    if (key !== poolKey) {
-      dispose();
-      poolKey = key;
-    }
-    pool = pool.filter((p) => !p.child.killed);
-    if (pool.length < POOL_SIZE) pool.push(createProc(cfg));
-    return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
+  // Each executable/config gets its own least-loaded pool. This lets the app
+  // keep a pinned comparison binary while facts use the current protocol binary.
+  const acquireEngine = (cfg: ReturnType<typeof configFor>): CvsEngineProcess => {
+    const key = `${cfg.exe}:${cfg.argsKey}`;
+    const pool = (pools.get(key) ?? []).filter((proc) => !proc.child.killed);
+    if (pool.length < POOL_SIZE) pool.push(createProc(cfg, key));
+    pools.set(key, pool);
+    return pool.reduce(
+      (best, proc) => (proc.queue.length < best.queue.length ? proc : best),
+      pool[0],
+    );
   };
 
   const requestEngine = (proc: CvsEngineProcess, line: string): Promise<string> =>
@@ -228,7 +272,8 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
             exe: cfg.exe,
             depth: cfg.depth,
             flags: cfg.flags,
-            error: 'CVS Engine binary not found. Build chess-vision-studio-rust-engine with cargo build --release.',
+            error:
+              'CVS Engine binary not found. Build chess-vision-studio-rust-engine with cargo build --release.',
           });
         }
         if (cfg.missing.length) {
@@ -241,7 +286,13 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
             error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
           });
         }
-        return json(res, 200, { ok: true, available: true, exe: cfg.exe, depth: cfg.depth, flags: cfg.flags });
+        return json(res, 200, {
+          ok: true,
+          available: true,
+          exe: cfg.exe,
+          depth: cfg.depth,
+          flags: cfg.flags,
+        });
       });
 
       server.middlewares.use('/api/cvs-engine/analyze', (req, res) => {
@@ -251,10 +302,16 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
             const fen = body.fen?.trim();
             if (!fen) return json(res, 400, { error: 'fen is required' });
             const cfg = configFor(body.depth);
-            if (!existsSync(cfg.exe)) return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
-            if (cfg.missing.length) return json(res, 503, { error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}` });
-            const proc = acquireEngine(cfg.depth);
-            const line = body.movetimeMs ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}` : fen;
+            if (!existsSync(cfg.exe))
+              return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
+            if (cfg.missing.length)
+              return json(res, 503, {
+                error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
+              });
+            const proc = acquireEngine(cfg);
+            const line = body.movetimeMs
+              ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}`
+              : fen;
             const out = await requestEngine(proc, line);
             let parsed: unknown;
             try {
@@ -262,7 +319,49 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
             } catch {
               return json(res, 502, { error: 'CVS Engine returned non-JSON output', output: out });
             }
-            if (typeof parsed === 'object' && parsed && 'error' in parsed) return json(res, 422, parsed);
+            if (typeof parsed === 'object' && parsed && 'error' in parsed)
+              return json(res, 422, parsed);
+            return json(res, 200, parsed);
+          })
+          .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
+      });
+
+      server.middlewares.use('/api/cvs-engine/facts', (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+        readJsonBody<TeachingFactsRequestV1>(req)
+          .then(async (body) => {
+            if (body.schemaVersion !== 1) {
+              return json(res, 400, {
+                error: `Unsupported teaching facts schemaVersion ${body.schemaVersion}`,
+              });
+            }
+            if (!body.fenBefore?.trim() || !body.playedMoveUci?.trim()) {
+              return json(res, 400, { error: 'fenBefore and playedMoveUci are required' });
+            }
+            const analyzeBin = process.platform === 'win32' ? 'analyze.exe' : 'analyze';
+            const factsExe =
+              env.CVS_RUST_FACTS_EXE?.trim() ||
+              `../chess-vision-studio-rust-engine/target/release/${analyzeBin}`;
+            const cfg = configFor(1, { exe: factsExe, factsOnly: true });
+            if (!existsSync(cfg.exe))
+              return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
+            if (cfg.missing.length) {
+              return json(res, 503, {
+                error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
+              });
+            }
+            const out = await requestEngine(
+              acquireEngine(cfg),
+              JSON.stringify({ ...body, cmd: 'facts' }),
+            );
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(out);
+            } catch {
+              return json(res, 502, { error: 'CVS Engine returned non-JSON output', output: out });
+            }
+            if (typeof parsed === 'object' && parsed && 'error' in parsed)
+              return json(res, 422, parsed);
             return json(res, 200, parsed);
           })
           .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
@@ -294,7 +393,12 @@ interface TrainingStatus {
   endedAt: string | null;
   config: Required<TrainingStartConfig>;
   import: { seen: number; imported: number; skipped: number; rows: number; limit: number };
-  train: { trainRows: number; holdoutRows: number; baselineTop1: number | null; tunedTop1: number | null };
+  train: {
+    trainRows: number;
+    holdoutRows: number;
+    baselineTop1: number | null;
+    tunedTop1: number | null;
+  };
   error: string;
   logs: string[];
 }
@@ -346,7 +450,8 @@ function stockfishProxy(env: Record<string, string>): Plugin {
   };
 
   const sfConfig = () => {
-    const exe = env.CVS_SF_EXE?.trim() || 'F:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe';
+    const exe =
+      env.CVS_SF_EXE?.trim() || 'F:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe';
     const depthRaw = Number(env.CVS_SF_DEPTH ?? 12);
     const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(30, Math.round(depthRaw))) : 12;
     // Default 1 thread: matches CVS rust's single-threaded search for a fair
@@ -366,7 +471,11 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     const req = proc.queue.shift() as SfPending;
     proc.current = req;
     proc.busy = true;
-    send(proc, `position fen ${req.fen}`, req.movetimeMs ? `go movetime ${req.movetimeMs}` : `go depth ${req.depth}`);
+    send(
+      proc,
+      `position fen ${req.fen}`,
+      req.movetimeMs ? `go movetime ${req.movetimeMs}` : `go depth ${req.depth}`,
+    );
   };
 
   const finish = (proc: SfProcess, bestmove: string) => {
@@ -376,7 +485,14 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     if (req) {
       clearTimeout(req.timer);
       const b = req.best;
-      req.resolve({ fen: req.fen, bestmove, scoreCp: b?.scoreCp ?? 0, mate: b?.mate ?? null, pv: b?.pv ?? [], depth: b?.depth ?? 0 });
+      req.resolve({
+        fen: req.fen,
+        bestmove,
+        scoreCp: b?.scoreCp ?? 0,
+        mate: b?.mate ?? null,
+        pv: b?.pv ?? [],
+        depth: b?.depth ?? 0,
+      });
     }
     pump(proc);
   };
@@ -384,10 +500,23 @@ function stockfishProxy(env: Record<string, string>): Plugin {
   const createSf = (cfg: ReturnType<typeof sfConfig>): SfProcess => {
     const child = spawn(cfg.exe, [], { cwd: process.cwd(), stdio: 'pipe' });
     const rl = createInterface({ input: child.stdout });
-    const proc: SfProcess = { child, rl, ready: false, busy: false, queue: [], current: null, stderr: [] };
+    const proc: SfProcess = {
+      child,
+      rl,
+      ready: false,
+      busy: false,
+      queue: [],
+      current: null,
+      stderr: [],
+    };
     rl.on('line', (line) => {
       if (line.includes('uciok')) {
-        send(proc, `setoption name Threads value ${cfg.threads}`, `setoption name Hash value ${cfg.hash}`, 'isready');
+        send(
+          proc,
+          `setoption name Threads value ${cfg.threads}`,
+          `setoption name Hash value ${cfg.hash}`,
+          'isready',
+        );
         return;
       }
       if (line.includes('readyok')) {
@@ -395,7 +524,12 @@ function stockfishProxy(env: Record<string, string>): Plugin {
         pump(proc);
         return;
       }
-      if (proc.current && line.startsWith('info ') && line.includes(' score ') && line.includes(' pv ')) {
+      if (
+        proc.current &&
+        line.startsWith('info ') &&
+        line.includes(' score ') &&
+        line.includes(' pv ')
+      ) {
         const t = line.split(/\s+/);
         const di = t.indexOf('depth');
         const si = t.indexOf('score');
@@ -404,13 +538,24 @@ function stockfishProxy(env: Record<string, string>): Plugin {
         let mate: number | null = null;
         if (si >= 0 && t[si + 1] === 'cp') scoreCp = Number(t[si + 2]);
         else if (si >= 0 && t[si + 1] === 'mate') mate = Number(t[si + 2]);
-        proc.current.best = { depth: di >= 0 ? Number(t[di + 1]) : 0, scoreCp, mate, pv: pi >= 0 ? t.slice(pi + 1) : [] };
+        proc.current.best = {
+          depth: di >= 0 ? Number(t[di + 1]) : 0,
+          scoreCp,
+          mate,
+          pv: pi >= 0 ? t.slice(pi + 1) : [],
+        };
         return;
       }
       if (line.startsWith('bestmove')) finish(proc, line.split(/\s+/)[1] ?? '(none)');
     });
     child.stderr.on('data', (d) => {
-      proc.stderr = [...proc.stderr, ...String(d).split(LF).map((s) => s.trim()).filter(Boolean)].slice(-20);
+      proc.stderr = [
+        ...proc.stderr,
+        ...String(d)
+          .split(LF)
+          .map((s) => s.trim())
+          .filter(Boolean),
+      ].slice(-20);
     });
     const fail = (err: Error) => {
       pool = pool.filter((p) => p !== proc);
@@ -423,7 +568,13 @@ function stockfishProxy(env: Record<string, string>): Plugin {
       }
     };
     child.on('error', (e) => fail(e));
-    child.on('close', (code) => fail(new Error(`Stockfish exited (${code})${proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : ''}`)));
+    child.on('close', (code) =>
+      fail(
+        new Error(
+          `Stockfish exited (${code})${proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : ''}`,
+        ),
+      ),
+    );
     send(proc, 'uci');
     return proc;
   };
@@ -458,7 +609,12 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
   };
 
-  const request = (proc: SfProcess, fen: string, depth: number, movetimeMs?: number): Promise<SfResult> =>
+  const request = (
+    proc: SfProcess,
+    fen: string,
+    depth: number,
+    movetimeMs?: number,
+  ): Promise<SfResult> =>
     new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const ix = proc.queue.findIndex((p) => p.resolve === resolve);
@@ -482,7 +638,8 @@ function stockfishProxy(env: Record<string, string>): Plugin {
             available: false,
             exe: cfg.exe,
             depth: cfg.depth,
-            error: 'Native Stockfish not found. Set CVS_SF_EXE to a Stockfish .exe (download from stockfishchess.org).',
+            error:
+              'Native Stockfish not found. Set CVS_SF_EXE to a Stockfish .exe (download from stockfishchess.org).',
           });
         }
         return json(res, 200, { ok: true, available: true, exe: cfg.exe, depth: cfg.depth });
@@ -494,9 +651,14 @@ function stockfishProxy(env: Record<string, string>): Plugin {
             const fen = body.fen?.trim();
             if (!fen) return json(res, 400, { error: 'fen is required' });
             const cfg = sfConfig();
-            if (!existsSync(cfg.exe)) return json(res, 503, { error: 'Native Stockfish not found', exe: cfg.exe });
-            const depth = body.depth ? Math.max(1, Math.min(30, Math.round(body.depth))) : cfg.depth;
-            const movetimeMs = body.movetimeMs ? Math.max(10, Math.min(10_000, Math.round(body.movetimeMs))) : undefined;
+            if (!existsSync(cfg.exe))
+              return json(res, 503, { error: 'Native Stockfish not found', exe: cfg.exe });
+            const depth = body.depth
+              ? Math.max(1, Math.min(30, Math.round(body.depth)))
+              : cfg.depth;
+            const movetimeMs = body.movetimeMs
+              ? Math.max(10, Math.min(10_000, Math.round(body.movetimeMs)))
+              : undefined;
             const out = await request(acquireSf(cfg), fen, depth, movetimeMs);
             return json(res, 200, out);
           })
@@ -508,13 +670,11 @@ function stockfishProxy(env: Record<string, string>): Plugin {
 
 function trainingSupervisor(): Plugin {
   const clients = new Set<import('http').ServerResponse>();
-  let current:
-    | {
-        child: ChildProcessWithoutNullStreams | null;
-        zstd: ChildProcessWithoutNullStreams | null;
-        stopRequested: boolean;
-      }
-    | null = null;
+  let current: {
+    child: ChildProcessWithoutNullStreams | null;
+    zstd: ChildProcessWithoutNullStreams | null;
+    stopRequested: boolean;
+  } | null = null;
   let status: TrainingStatus = idleStatus();
 
   const json = (res: import('http').ServerResponse, code: number, body: unknown) => {
@@ -615,7 +775,9 @@ function trainingSupervisor(): Plugin {
   };
 }
 
-function idleStatus(config: Required<TrainingStartConfig> = normalizeTrainingConfig({})): TrainingStatus {
+function idleStatus(
+  config: Required<TrainingStartConfig> = normalizeTrainingConfig({}),
+): TrainingStatus {
   return {
     phase: 'idle',
     active: false,
@@ -630,7 +792,8 @@ function idleStatus(config: Required<TrainingStartConfig> = normalizeTrainingCon
 }
 
 function normalizeTrainingConfig(raw: TrainingStartConfig): Required<TrainingStartConfig> {
-  const num = (v: number | undefined, fallback: number) => (Number.isFinite(v) && v !== undefined ? v : fallback);
+  const num = (v: number | undefined, fallback: number) =>
+    Number.isFinite(v) && v !== undefined ? v : fallback;
   return {
     mode: raw.mode ?? 'import-train',
     input: raw.input?.trim() || 'fixtures/sample-game.pgn',
@@ -653,7 +816,10 @@ function npmCommand(): string {
 function runImport(
   cfg: Required<TrainingStartConfig>,
   log: (line: string) => void,
-  onChild: (child: ChildProcessWithoutNullStreams, zstd: ChildProcessWithoutNullStreams | null) => void,
+  onChild: (
+    child: ChildProcessWithoutNullStreams,
+    zstd: ChildProcessWithoutNullStreams | null,
+  ) => void,
 ): Promise<void> {
   const zst = /\.zst$/i.test(cfg.input);
   const args = [
@@ -717,7 +883,11 @@ function runTrain(
   return waitFor(child, log, 'train');
 }
 
-function waitFor(child: ChildProcessWithoutNullStreams, log: (line: string) => void, label: string): Promise<void> {
+function waitFor(
+  child: ChildProcessWithoutNullStreams,
+  log: (line: string) => void,
+  label: string,
+): Promise<void> {
   child.stdout.on('data', (d) => String(d).split(/\r?\n/).forEach(log));
   child.stderr.on('data', (d) => String(d).split(/\r?\n/).forEach(log));
   return new Promise((resolve, reject) => {
@@ -743,7 +913,8 @@ function parseProgress(line: string, status: TrainingStatus): void {
     status.import.skipped = Number(done[3]);
     status.import.rows = Number(done[4]);
   }
-  const trained = /trained\s+(\d+)\s+rows,\s+holdout\s+(\d+):\s+top-1\s+([\d.]+)%\s+->\s+([\d.]+)%/.exec(line);
+  const trained =
+    /trained\s+(\d+)\s+rows,\s+holdout\s+(\d+):\s+top-1\s+([\d.]+)%\s+->\s+([\d.]+)%/.exec(line);
   if (trained) {
     status.train.trainRows = Number(trained[1]);
     status.train.holdoutRows = Number(trained[2]);
@@ -801,7 +972,13 @@ function readJsonBody<T>(req: import('http').IncomingMessage): Promise<T> {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ''); // '' = load ALL vars, incl. non-VITE_
   return {
-    plugins: [react(), openaiProxy(env), cvsEngineProxy(env), stockfishProxy(env), trainingSupervisor()],
+    plugins: [
+      react(),
+      openaiProxy(env),
+      cvsEngineProxy(env),
+      stockfishProxy(env),
+      trainingSupervisor(),
+    ],
     server: {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
@@ -811,7 +988,13 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'node',
-      include: ['engine/**/*.test.ts', 'app/**/*.test.ts', 'app/**/*.test.tsx', 'llm/**/*.test.ts', 'arena/**/*.test.ts'],
+      include: [
+        'engine/**/*.test.ts',
+        'app/**/*.test.ts',
+        'app/**/*.test.tsx',
+        'llm/**/*.test.ts',
+        'arena/**/*.test.ts',
+      ],
       testTimeout: 30000,
     },
   };

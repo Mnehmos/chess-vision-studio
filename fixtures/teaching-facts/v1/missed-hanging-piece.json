@@ -1,0 +1,700 @@
+{
+  "schemaVersion": 1,
+  "fenBefore": "4k3/8/8/8/4q3/8/4R3/4K3 w - - 0 1",
+  "before": {
+    "sideToMove": "white",
+    "pieces": [
+      {
+        "id": "black-king-e8",
+        "side": "black",
+        "pieceType": "king",
+        "square": "e8",
+        "attackers": [],
+        "defenders": [
+          {
+            "id": "black-queen-e4",
+            "side": "black",
+            "pieceType": "queen",
+            "square": "e4"
+          }
+        ],
+        "attackerCount": 0,
+        "defenderCount": 1,
+        "attacked": false,
+        "loose": false,
+        "see": {
+          "status": "computed",
+          "value": {
+            "losing": false
+          }
+        },
+        "onlyDefenderOf": []
+      },
+      {
+        "id": "black-queen-e4",
+        "side": "black",
+        "pieceType": "queen",
+        "square": "e4",
+        "attackers": [
+          {
+            "id": "white-rook-e2",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "e2"
+          }
+        ],
+        "defenders": [],
+        "attackerCount": 1,
+        "defenderCount": 0,
+        "attacked": true,
+        "loose": true,
+        "see": {
+          "status": "computed",
+          "value": {
+            "losing": true,
+            "bestCaptureUci": "e2e4",
+            "scoreCp": 900
+          }
+        },
+        "onlyDefenderOf": [
+          {
+            "id": "black-king-e8",
+            "side": "black",
+            "pieceType": "king",
+            "square": "e8"
+          }
+        ]
+      },
+      {
+        "id": "white-king-e1",
+        "side": "white",
+        "pieceType": "king",
+        "square": "e1",
+        "attackers": [],
+        "defenders": [
+          {
+            "id": "white-rook-e2",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "e2"
+          }
+        ],
+        "attackerCount": 0,
+        "defenderCount": 1,
+        "attacked": false,
+        "loose": false,
+        "see": {
+          "status": "unavailable",
+          "reason": "piece_not_capturable_by_side_to_move"
+        },
+        "onlyDefenderOf": [
+          {
+            "id": "white-rook-e2",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "e2"
+          }
+        ]
+      },
+      {
+        "id": "white-rook-e2",
+        "side": "white",
+        "pieceType": "rook",
+        "square": "e2",
+        "attackers": [
+          {
+            "id": "black-queen-e4",
+            "side": "black",
+            "pieceType": "queen",
+            "square": "e4"
+          }
+        ],
+        "defenders": [
+          {
+            "id": "white-king-e1",
+            "side": "white",
+            "pieceType": "king",
+            "square": "e1"
+          }
+        ],
+        "attackerCount": 1,
+        "defenderCount": 1,
+        "attacked": true,
+        "loose": false,
+        "see": {
+          "status": "unavailable",
+          "reason": "piece_not_capturable_by_side_to_move"
+        },
+        "onlyDefenderOf": [
+          {
+            "id": "white-king-e1",
+            "side": "white",
+            "pieceType": "king",
+            "square": "e1"
+          }
+        ]
+      }
+    ],
+    "pawnStructure": {
+      "doubled": [],
+      "isolated": [],
+      "passed": [],
+      "islands": [],
+      "backward": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "connectedPassed": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "openFiles": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "semiOpenFiles": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "kingShieldMissing": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "pawnChains": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      }
+    },
+    "kingSafety": {
+      "status": "uncomputed",
+      "reason": "not_in_milestone_1"
+    },
+    "availableCaptures": {
+      "status": "uncomputed",
+      "reason": "not_in_milestone_1"
+    },
+    "availableMotifs": {
+      "status": "uncomputed",
+      "reason": "not_in_milestone_1"
+    }
+  },
+  "played": {
+    "move": {
+      "uci": "e1f1",
+      "from": "e1",
+      "to": "f1"
+    },
+    "fenAfter": "4k3/8/8/8/4q3/8/4R3/5K2 b - - 1 1",
+    "position": {
+      "sideToMove": "black",
+      "pieces": [
+        {
+          "id": "black-king-e8",
+          "side": "black",
+          "pieceType": "king",
+          "square": "e8",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "black-queen-e4",
+              "side": "black",
+              "pieceType": "queen",
+              "square": "e4"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "black-queen-e4",
+          "side": "black",
+          "pieceType": "queen",
+          "square": "e4",
+          "attackers": [
+            {
+              "id": "white-rook-e2",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e2"
+            }
+          ],
+          "defenders": [],
+          "attackerCount": 1,
+          "defenderCount": 0,
+          "attacked": true,
+          "loose": true,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": [
+            {
+              "id": "black-king-e8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "e8"
+            }
+          ]
+        },
+        {
+          "id": "white-king-f1",
+          "side": "white",
+          "pieceType": "king",
+          "square": "f1",
+          "attackers": [],
+          "defenders": [],
+          "attackerCount": 0,
+          "defenderCount": 0,
+          "attacked": false,
+          "loose": true,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": [
+            {
+              "id": "white-rook-e2",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e2"
+            }
+          ]
+        },
+        {
+          "id": "white-rook-e2",
+          "side": "white",
+          "pieceType": "rook",
+          "square": "e2",
+          "attackers": [
+            {
+              "id": "black-queen-e4",
+              "side": "black",
+              "pieceType": "queen",
+              "square": "e4"
+            }
+          ],
+          "defenders": [
+            {
+              "id": "white-king-f1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "f1"
+            }
+          ],
+          "attackerCount": 1,
+          "defenderCount": 1,
+          "attacked": true,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false,
+              "bestCaptureUci": "e4e2",
+              "scoreCp": -400
+            }
+          },
+          "onlyDefenderOf": []
+        }
+      ],
+      "pawnStructure": {
+        "doubled": [],
+        "isolated": [],
+        "passed": [],
+        "islands": [],
+        "backward": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "connectedPassed": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "openFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "semiOpenFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "kingShieldMissing": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "pawnChains": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        }
+      },
+      "kingSafety": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableCaptures": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableMotifs": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      }
+    },
+    "deltas": {
+      "createdHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "removedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "worsenedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "createdStructures": {
+        "status": "computed",
+        "items": []
+      },
+      "removedStructures": {
+        "status": "computed",
+        "items": []
+      }
+    }
+  },
+  "best": {
+    "move": {
+      "uci": "e2e4",
+      "from": "e2",
+      "to": "e4"
+    },
+    "fenAfter": "4k3/8/8/8/4R3/8/8/4K3 b - - 0 1",
+    "position": {
+      "sideToMove": "black",
+      "pieces": [
+        {
+          "id": "black-king-e8",
+          "side": "black",
+          "pieceType": "king",
+          "square": "e8",
+          "attackers": [
+            {
+              "id": "white-rook-e4",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e4"
+            }
+          ],
+          "defenders": [],
+          "attackerCount": 1,
+          "defenderCount": 0,
+          "attacked": true,
+          "loose": true,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-king-e1",
+          "side": "white",
+          "pieceType": "king",
+          "square": "e1",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "white-rook-e4",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e4"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-rook-e4",
+          "side": "white",
+          "pieceType": "rook",
+          "square": "e4",
+          "attackers": [],
+          "defenders": [],
+          "attackerCount": 0,
+          "defenderCount": 0,
+          "attacked": false,
+          "loose": true,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": [
+            {
+              "id": "white-king-e1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "e1"
+            }
+          ]
+        }
+      ],
+      "pawnStructure": {
+        "doubled": [],
+        "isolated": [],
+        "passed": [],
+        "islands": [],
+        "backward": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "connectedPassed": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "openFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "semiOpenFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "kingShieldMissing": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "pawnChains": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        }
+      },
+      "kingSafety": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableCaptures": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableMotifs": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      }
+    },
+    "deltas": {
+      "createdHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "removedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "worsenedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "createdStructures": {
+        "status": "computed",
+        "items": []
+      },
+      "removedStructures": {
+        "status": "computed",
+        "items": []
+      }
+    }
+  },
+  "refutation": {
+    "move": {
+      "uci": "e4e2",
+      "from": "e4",
+      "to": "e2"
+    },
+    "fenAfter": "4k3/8/8/8/8/8/4q3/5K2 w - - 0 2",
+    "position": {
+      "sideToMove": "white",
+      "pieces": [
+        {
+          "id": "black-king-e8",
+          "side": "black",
+          "pieceType": "king",
+          "square": "e8",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "black-queen-e2",
+              "side": "black",
+              "pieceType": "queen",
+              "square": "e2"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "black-queen-e2",
+          "side": "black",
+          "pieceType": "queen",
+          "square": "e2",
+          "attackers": [
+            {
+              "id": "white-king-f1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "f1"
+            }
+          ],
+          "defenders": [],
+          "attackerCount": 1,
+          "defenderCount": 0,
+          "attacked": true,
+          "loose": true,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": true,
+              "bestCaptureUci": "f1e2",
+              "scoreCp": 900
+            }
+          },
+          "onlyDefenderOf": [
+            {
+              "id": "black-king-e8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "e8"
+            }
+          ]
+        },
+        {
+          "id": "white-king-f1",
+          "side": "white",
+          "pieceType": "king",
+          "square": "f1",
+          "attackers": [
+            {
+              "id": "black-queen-e2",
+              "side": "black",
+              "pieceType": "queen",
+              "square": "e2"
+            }
+          ],
+          "defenders": [],
+          "attackerCount": 1,
+          "defenderCount": 0,
+          "attacked": true,
+          "loose": true,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": []
+        }
+      ],
+      "pawnStructure": {
+        "doubled": [],
+        "isolated": [],
+        "passed": [],
+        "islands": [],
+        "backward": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "connectedPassed": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "openFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "semiOpenFiles": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "kingShieldMissing": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        },
+        "pawnChains": {
+          "status": "uncomputed",
+          "reason": "not_in_milestone_1"
+        }
+      },
+      "kingSafety": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableCaptures": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "availableMotifs": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      }
+    },
+    "deltas": {
+      "createdHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "removedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "worsenedHazards": {
+        "status": "uncomputed",
+        "reason": "not_in_milestone_1"
+      },
+      "createdStructures": {
+        "status": "computed",
+        "items": []
+      },
+      "removedStructures": {
+        "status": "computed",
+        "items": []
+      }
+    }
+  },
+  "provenance": {
+    "engine": "cvs-bitboard-core",
+    "factsRegistryVersion": 1,
+    "validators": [
+      "legal_move_generation",
+      "attack_map",
+      "see",
+      "pawn_structure"
+    ]
+  },
+  "errors": []
+}

@@ -6,14 +6,24 @@ import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
 import { repetitionConversionWarning } from '../engine/repetition';
 import type { AnalyzedEntry } from '../engine/analytics';
-import { extractPlyFeatures, controlShare, type FeatureEntry, type PlyFeatures } from '../engine/features';
+import {
+  extractPlyFeatures,
+  controlShare,
+  type FeatureEntry,
+  type PlyFeatures,
+} from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
-import { getStockfishHealth, makeNativeStockfishEngine, type StockfishHealth } from './stockfish-client';
+import {
+  getStockfishHealth,
+  makeNativeStockfishEngine,
+  type StockfishHealth,
+} from './stockfish-client';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import {
   analyzeWithCvsEngine,
   getCvsEngineHealth,
+  getTeachingFacts,
   type CvsEngineAnalysis,
   type CvsEngineHealth,
 } from './cvs-engine-client';
@@ -33,6 +43,9 @@ import { PlayMode } from './PlayMode';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
+import { plyRecordToUci, sanLineToUci } from '../engine/adapters/uci-line';
+import type { TeachingFactBundleV1, TeachingFactsRequestV1 } from '../engine/teaching/types';
+import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
@@ -102,13 +115,23 @@ export function App() {
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
   const [sfNative, setSfNative] = useState(false); // true = native Stockfish subprocess, false = WASM fallback
-  const [cvsEngineHealth, setCvsEngineHealth] = useState<CvsEngineHealth>({ ok: false, available: false });
+  const [cvsEngineHealth, setCvsEngineHealth] = useState<CvsEngineHealth>({
+    ok: false,
+    available: false,
+  });
   const [cvsEngineAnalysis, setCvsEngineAnalysis] = useState<CvsEngineAnalysis | null>(null);
   const [cvsEngineBusy, setCvsEngineBusy] = useState(false);
   const [cvsEngineError, setCvsEngineError] = useState('');
+  const [teachingFactsRequest, setTeachingFactsRequest] = useState<TeachingFactsRequestV1 | null>(
+    null,
+  );
+  const [teachingFacts, setTeachingFacts] = useState<TeachingFactBundleV1 | null>(null);
+  const [teachingFactsBusy, setTeachingFactsBusy] = useState(false);
+  const [teachingFactsError, setTeachingFactsError] = useState('');
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const cvsEngineRunRef = useRef(0);
+  const teachingFactsRunRef = useRef(0);
   const analysisCacheRef = useRef<Map<string, Map<number, MoveAnalysis>>>(new Map());
   const featureCacheRef = useRef<Map<string, Map<number, CachedFeatureEntry>>>(new Map());
   // analysisCacheRef is a ref (stable identity), so bump this to signal the dataset
@@ -136,7 +159,11 @@ export function App() {
     let alive = true;
     fetch('/api/openai/health')
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => alive && setProxy({ checked: true, hasKey: !!d?.hasKey, model: d?.model || OPENAI_MODEL }))
+      .then(
+        (d) =>
+          alive &&
+          setProxy({ checked: true, hasKey: !!d?.hasKey, model: d?.model || OPENAI_MODEL }),
+      )
       .catch(() => alive && setProxy((p) => ({ ...p, checked: true })));
     return () => {
       alive = false;
@@ -147,12 +174,22 @@ export function App() {
   const keySource: 'env' | 'local' | 'none' = proxy.hasKey ? 'env' : apiKey ? 'local' : 'none';
   // The right client: proxy (key server-side) if available, else the browser key.
   const commentaryClient = (): ChatClient | null => {
-    if (proxy.hasKey) return createOpenAIClient({ apiKey: 'via-proxy', model: effectiveModel, baseUrl: '/api/openai' });
+    if (proxy.hasKey)
+      return createOpenAIClient({
+        apiKey: 'via-proxy',
+        model: effectiveModel,
+        baseUrl: '/api/openai',
+      });
     if (apiKey) return createOpenAIClient({ apiKey, model: OPENAI_MODEL });
     return null;
   };
   const [commentary, setCommentary] = useState<Map<number, string>>(new Map());
-  const [commentaryJob, setCommentaryJob] = useState<CommentaryJob>({ running: false, done: 0, total: 0, error: '' });
+  const [commentaryJob, setCommentaryJob] = useState<CommentaryJob>({
+    running: false,
+    done: 0,
+    total: 0,
+    error: '',
+  });
   const [explaining, setExplaining] = useState(false);
   const commentaryCacheRef = useRef<Map<string, Map<number, string>>>(new Map());
   // Per-game commentary cache: switch games and your generated notes come right back.
@@ -200,7 +237,11 @@ export function App() {
       .then((health) => alive && setCvsEngineHealth(health))
       .catch((e) => {
         if (!alive) return;
-        setCvsEngineHealth({ ok: false, available: false, error: String((e as Error)?.message ?? e) });
+        setCvsEngineHealth({
+          ok: false,
+          available: false,
+          error: String((e as Error)?.message ?? e),
+        });
       });
     return () => {
       alive = false;
@@ -225,14 +266,19 @@ export function App() {
     };
   }, []);
 
-  const fen = view === 0 ? currentGame?.initialFen ?? plies[0]?.fenBefore ?? START_FEN : plies[view - 1].fenAfter;
+  const fen =
+    view === 0
+      ? (currentGame?.initialFen ?? plies[0]?.fenBefore ?? START_FEN)
+      : plies[view - 1].fenAfter;
   // Always-on legal-move hints: whatever lens is active, clicking a piece
   // shows where it can go (chess.js from the current FEN).
   const legalDots = useMemo(() => {
     if (!selected) return undefined;
     try {
       const c = new Chess(fen);
-      const ms = c.moves({ square: selected as never, verbose: true }) as unknown as { to: string }[];
+      const ms = c.moves({ square: selected as never, verbose: true }) as unknown as {
+        to: string;
+      }[];
       return ms.length ? (ms.map((m) => m.to) as Square[]) : undefined;
     } catch {
       return undefined;
@@ -241,10 +287,13 @@ export function App() {
 
   const plyIndex = view - 1; // index into plies for the move that produced `fen`
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
-  const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
-  const cvsEngineFen = view > 0 ? plies[plyIndex]?.fenBefore ?? fen : fen;
+  const moveLabel =
+    view > 0
+      ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}`
+      : undefined;
+  const cvsEngineFen = view > 0 ? (plies[plyIndex]?.fenBefore ?? fen) : fen;
   const cvsEngineContext = view > 0 && moveLabel ? `before ${moveLabel}` : 'current board';
-  const cvsPlayedUci = view > 0 ? `${plies[plyIndex]?.from ?? ''}${plies[plyIndex]?.to ?? ''}` : undefined;
+  const cvsPlayedUci = view > 0 ? safePlyUci(plies[plyIndex]) : undefined;
 
   useEffect(() => {
     if (tab !== 'board' || !cvsEngineHealth.available) return;
@@ -271,6 +320,68 @@ export function App() {
       if (cvsEngineRunRef.current === run) cvsEngineRunRef.current += 1;
     };
   }, [cvsEngineFen, tab, cvsEngineHealth.available, cvsEngineHealth.depth]);
+
+  useEffect(() => {
+    if (tab !== 'board' || !cvsEngineHealth.available || view <= 0 || !plies[plyIndex]) {
+      setTeachingFactsRequest(null);
+      setTeachingFacts(null);
+      setTeachingFactsBusy(false);
+      setTeachingFactsError('');
+      return;
+    }
+    const ply = plies[plyIndex];
+    let request: TeachingFactsRequestV1;
+    try {
+      const playedMoveUci = plyRecordToUci(ply);
+      const bestLine = analysis ? sanLineToUci(ply.fenBefore, analysis.evalBefore.pv) : [];
+      if (analysis?.evalBefore.pv.length && bestLine.length !== analysis.evalBefore.pv.length) {
+        throw new Error('move_conversion_failed: Stockfish best line could not be fully replayed');
+      }
+      const refutationLine = analysis ? sanLineToUci(ply.fenAfter, analysis.evalAfter.pv) : [];
+      if (analysis?.evalAfter.pv.length && refutationLine.length !== analysis.evalAfter.pv.length) {
+        throw new Error('move_conversion_failed: Stockfish refutation could not be fully replayed');
+      }
+      request = {
+        schemaVersion: 1,
+        fenBefore: ply.fenBefore,
+        playedMoveUci,
+        bestMoveUci: bestLine[0],
+        refutationUci: refutationLine[0],
+        principalVariationUci: bestLine.length ? bestLine : undefined,
+        options: { includeMotifOpportunities: false, includeCounterfactual: true },
+      };
+    } catch (error) {
+      setTeachingFactsRequest(null);
+      setTeachingFacts(null);
+      setTeachingFactsBusy(false);
+      setTeachingFactsError(String((error as Error)?.message ?? error));
+      return;
+    }
+
+    const run = ++teachingFactsRunRef.current;
+    setTeachingFactsRequest(request);
+    setTeachingFacts(null);
+    setTeachingFactsBusy(true);
+    setTeachingFactsError('');
+    const timer = window.setTimeout(() => {
+      getTeachingFacts(request)
+        .then((result) => {
+          if (teachingFactsRunRef.current === run) setTeachingFacts(result);
+        })
+        .catch((error) => {
+          if (teachingFactsRunRef.current === run) {
+            setTeachingFactsError(String((error as Error)?.message ?? error));
+          }
+        })
+        .finally(() => {
+          if (teachingFactsRunRef.current === run) setTeachingFactsBusy(false);
+        });
+    }, 80);
+    return () => {
+      window.clearTimeout(timer);
+      if (teachingFactsRunRef.current === run) teachingFactsRunRef.current += 1;
+    };
+  }, [analysis, cvsEngineHealth.available, plies, plyIndex, tab, view]);
 
   // ── LLM commentary handlers ────────────────────────────────────────────────
   const saveKey = (key: string) => {
@@ -307,7 +418,13 @@ export function App() {
     if (!client || !analysis || plyIndex < 0) return;
     setExplaining(true);
     try {
-      const feat = getFeatureEntry(featureCacheRef.current, currentGameKey, plies[plyIndex], plyIndex, analysis).features;
+      const feat = getFeatureEntry(
+        featureCacheRef.current,
+        currentGameKey,
+        plies[plyIndex],
+        plyIndex,
+        analysis,
+      ).features;
       const text = await narrate(client, analysis, feat);
       setCommentary((prev) => {
         const next = new Map(prev).set(plyIndex, text);
@@ -332,7 +449,13 @@ export function App() {
         if (!commentaryCacheRef.current.get(gameKey)?.has(idx)) {
           const a = analyses.get(idx);
           if (a && plies[idx]) {
-            const feat = getFeatureEntry(featureCacheRef.current, gameKey, plies[idx], idx, a).features;
+            const feat = getFeatureEntry(
+              featureCacheRef.current,
+              gameKey,
+              plies[idx],
+              idx,
+              a,
+            ).features;
             const text = await narrate(client, a, feat);
             if (currentGameKeyRef.current !== gameKey) return; // user switched games — stop
             setCommentary((prev) => {
@@ -382,7 +505,11 @@ export function App() {
         if (target < 0) break; // whole game analyzed
         claimedRef.current.add(target);
         try {
-          const a = withRepetitionWarning(await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san), plies, target);
+          const a = withRepetitionWarning(
+            await analyzeMoveLive(engine, plies[target].fenBefore, plies[target].san),
+            plies,
+            target,
+          );
           if (!alive) return;
           setAnalyses((prev) => {
             const next = new Map(prev).set(target, a);
@@ -437,7 +564,8 @@ export function App() {
     // here" never reads as "attacks here".
     if (followMove && view > 0) {
       const p = plies[view - 1];
-      if (p) out.push({ from: p.from as Square, to: p.to as Square, color: ARROW.move, move: true });
+      if (p)
+        out.push({ from: p.from as Square, to: p.to as Square, color: ARROW.move, move: true });
     }
 
     if (selected) out.push(...selectionArrows(fen, selected, cascade));
@@ -445,14 +573,27 @@ export function App() {
     if (analysis && analysis.rankedInsights.length) {
       const top = analysis.rankedInsights[0];
       const threats = showAllThreats
-        ? analysis.rankedInsights.filter((i) => i.source === 'refutation' || i.source === 'available')
+        ? analysis.rankedInsights.filter(
+            (i) => i.source === 'refutation' || i.source === 'available',
+          )
         : showThreats && top.source === 'refutation'
           ? [top]
           : [];
       for (const ins of threats) out.push(...lineArrows(fen, ins, ins !== top));
     }
     return out;
-  }, [fen, selected, analysis, showThreats, showAllThreats, cascade, focused, followMove, view, plies]);
+  }, [
+    fen,
+    selected,
+    analysis,
+    showThreats,
+    showAllThreats,
+    cascade,
+    focused,
+    followMove,
+    view,
+    plies,
+  ]);
 
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
@@ -528,7 +669,8 @@ export function App() {
     };
     const nextPlies = [...prefix, nextPly];
     const nextAnalyses = new Map([...analyses].filter(([i]) => i < prefix.length));
-    const canExtendCurrentBranch = currentGame.headers.CVSBranch === 'analysis' && view === plies.length;
+    const canExtendCurrentBranch =
+      currentGame.headers.CVSBranch === 'analysis' && view === plies.length;
 
     if (canExtendCurrentBranch) {
       const updated: ParsedGame = { ...currentGame, plies: nextPlies };
@@ -536,7 +678,10 @@ export function App() {
       analysisCacheRef.current.set(gameCacheKey(updated), nextAnalyses);
     } else {
       const branchIndex = games.length;
-      const origin = view > 0 ? `${plies[view - 1]?.moveNumber}${plies[view - 1]?.color === 'w' ? '.' : '...'} ${plies[view - 1]?.san}` : 'start';
+      const origin =
+        view > 0
+          ? `${plies[view - 1]?.moveNumber}${plies[view - 1]?.color === 'w' ? '.' : '...'} ${plies[view - 1]?.san}`
+          : 'start';
       const branch: ParsedGame = {
         index: branchIndex,
         headers: {
@@ -611,14 +756,22 @@ export function App() {
     for (const t of tasks) remainingByKey.set(t.key, (remainingByKey.get(t.key) ?? 0) + 1);
     const gamesTotal = remainingByKey.size;
     setDatasetJob({
-      running: true, done: 0, total: tasks.length,
-      gamesDone: 0, gamesTotal, currentGame: 'starting engines…',
+      running: true,
+      done: 0,
+      total: tasks.length,
+      gamesDone: 0,
+      gamesTotal,
+      currentGame: 'starting engines…',
     });
 
     // The actual work for one ply — shared by the pool and the single-engine fallback.
     const analyzeTask = async (engine: UciEngine, task: (typeof tasks)[number]) => {
       if (datasetRunRef.current !== runId) return;
-      const a = withRepetitionWarning(await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san), task.game.plies, task.plyIndex);
+      const a = withRepetitionWarning(
+        await analyzeMoveLive(engine, task.ply.fenBefore, task.ply.san),
+        task.game.plies,
+        task.plyIndex,
+      );
       if (datasetRunRef.current !== runId) return;
       const cached = analysisCacheRef.current.get(task.key) ?? new Map<number, MoveAnalysis>();
       cached.set(task.plyIndex, a);
@@ -637,7 +790,8 @@ export function App() {
       }
     };
     const onProgress = (done: number) => {
-      if (datasetRunRef.current === runId) setDatasetJob((prev) => ({ ...prev, done: Math.min(done, prev.total) }));
+      if (datasetRunRef.current === runId)
+        setDatasetJob((prev) => ({ ...prev, done: Math.min(done, prev.total) }));
     };
 
     let gamesDone = 0;
@@ -649,13 +803,26 @@ export function App() {
         ({
           evaluate: async ({ fen, depth }: { fen: string; depth?: number; timeoutMs?: number }) => {
             try {
-              const r = await analyzeWithCvsEngine(fen, Math.min(depth ?? 6, cvsEngineHealth.depth ?? 6));
-              if (r.error) return { depth: depth ?? 0, pv: [], status: 'unavailable' as const, reason: 'engine_error' as const };
+              const r = await analyzeWithCvsEngine(
+                fen,
+                Math.min(depth ?? 6, cvsEngineHealth.depth ?? 6),
+              );
+              if (r.error)
+                return {
+                  depth: depth ?? 0,
+                  pv: [],
+                  status: 'unavailable' as const,
+                  reason: 'engine_error' as const,
+                };
               const chess = new Chess(fen);
               const sanPv: string[] = [];
               for (const u of r.pv ?? []) {
                 try {
-                  const m = chess.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u.slice(4) || undefined });
+                  const m = chess.move({
+                    from: u.slice(0, 2),
+                    to: u.slice(2, 4),
+                    promotion: u.slice(4) || undefined,
+                  });
                   if (!m) break;
                   sanPv.push(m.san);
                 } catch {
@@ -666,7 +833,12 @@ export function App() {
                 ? { mate: r.mate, depth: r.depth, pv: sanPv }
                 : { cp: r.scoreCp, depth: r.depth, pv: sanPv };
             } catch {
-              return { depth: depth ?? 0, pv: [], status: 'unavailable' as const, reason: 'engine_error' as const };
+              return {
+                depth: depth ?? 0,
+                pv: [],
+                status: 'unavailable' as const,
+                reason: 'engine_error' as const,
+              };
             }
           },
         }) as unknown as UciEngine;
@@ -684,7 +856,12 @@ export function App() {
       };
       await Promise.all(Array.from({ length: STREAMS }, worker));
       if (datasetRunRef.current === runId) {
-        setDatasetJob((prev) => ({ ...prev, running: false, gamesDone: prev.gamesTotal, currentGame: '' }));
+        setDatasetJob((prev) => ({
+          ...prev,
+          running: false,
+          gamesDone: prev.gamesTotal,
+          currentGame: '',
+        }));
         setCacheVersion((n) => n + 1);
       }
       return;
@@ -692,11 +869,17 @@ export function App() {
     // A pool of independent engines turns this from serial (one worker) into parallel
     // (≈cores) throughput — the only way 20k+ positions finish in reasonable time.
     const pool = await createEnginePool(defaultPoolSize());
-    if (datasetRunRef.current !== runId) { pool.dispose(); return; }
+    if (datasetRunRef.current !== runId) {
+      pool.dispose();
+      return;
+    }
     enginePoolRef.current = pool;
     try {
       if (pool.size > 0) {
-        setDatasetJob((prev) => ({ ...prev, currentGame: `${pool.size} engine${pool.size === 1 ? '' : 's'} working…` }));
+        setDatasetJob((prev) => ({
+          ...prev,
+          currentGame: `${pool.size} engine${pool.size === 1 ? '' : 's'} working…`,
+        }));
         await pool.run(tasks, analyzeTask, onProgress);
       } else if (engineRef.current) {
         // No extra workers booted — fall back to the single shared engine.
@@ -712,7 +895,12 @@ export function App() {
       if (enginePoolRef.current === pool) enginePoolRef.current = null;
     }
     if (datasetRunRef.current === runId) {
-      setDatasetJob((prev) => ({ ...prev, running: false, gamesDone: prev.gamesTotal, currentGame: '' }));
+      setDatasetJob((prev) => ({
+        ...prev,
+        running: false,
+        gamesDone: prev.gamesTotal,
+        currentGame: '',
+      }));
       setCacheVersion((n) => n + 1);
     }
   };
@@ -809,7 +997,14 @@ export function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: PAGE_BG, color: 'var(--text)', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: PAGE_BG,
+        color: 'var(--text)',
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}
+    >
       <style>{`
         html,body{margin:0;background:#12100e}
         :root{color-scheme:dark;
@@ -831,24 +1026,63 @@ export function App() {
         @media (max-width:1180px){.cvs-workspace{grid-template-columns:480px minmax(0,1fr)}}
         @media (max-width:820px){.cvs-workspace{grid-template-columns:1fr}}
       `}</style>
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px clamp(10px, 3vw, 24px) 56px', overflowX: 'hidden' }}>
-        <header style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          maxWidth: 1280,
+          margin: '0 auto',
+          padding: '20px clamp(10px, 3vw, 24px) 56px',
+          overflowX: 'hidden',
+        }}
+      >
+        <header
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 18,
+            marginBottom: 16,
+            flexWrap: 'wrap',
+          }}
+        >
           <div>
-            <h1 style={{ margin: 0, fontSize: 22, letterSpacing: '-0.01em', fontFamily: "'Space Grotesk','Inter',system-ui,sans-serif" }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 22,
+                letterSpacing: '-0.01em',
+                fontFamily: "'Space Grotesk','Inter',system-ui,sans-serif",
+              }}
+            >
               Chess <span style={{ color: 'var(--accent-light)' }}>Vision</span> Studio
             </h1>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 2 }}>
+            <div
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 10,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase',
+                color: 'var(--muted)',
+                marginTop: 2,
+              }}
+            >
               perception engine · relations · see · saliency
             </div>
           </div>
           <nav style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
-            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>Analyze</TabButton>
-            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>Play</TabButton>
+            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
+              Analyze
+            </TabButton>
+            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>
+              Play
+            </TabButton>
             <TabButton
               active={tab === 'dataset'}
               onClick={() => setTab('dataset')}
               disabled={games.length <= 1}
-              title={games.length <= 1 ? 'Import a multi-game PGN (your Chess.com / Lichess export) to unlock cross-game insights' : undefined}
+              title={
+                games.length <= 1
+                  ? 'Import a multi-game PGN (your Chess.com / Lichess export) to unlock cross-game insights'
+                  : undefined
+              }
             >
               {games.length <= 1
                 ? 'Insights'
@@ -857,11 +1091,24 @@ export function App() {
                   : `Insights · ${games.length}`}
             </TabButton>
           </nav>
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <EngineBadge label={sfNative ? 'Stockfish · native' : 'Stockfish'} state={engineState} />
+          <span
+            style={{
+              marginLeft: 'auto',
+              display: 'inline-flex',
+              gap: 8,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            <EngineBadge
+              label={sfNative ? 'Stockfish · native' : 'Stockfish'}
+              state={engineState}
+            />
             <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
             {engineState === 'ready' && analyses.size < plies.length && (
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>analyzing {analyses.size}/{plies.length}…</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                analyzing {analyses.size}/{plies.length}…
+              </span>
             )}
             {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
               <span style={{ fontSize: 12, color: '#3fbf5f' }}>analysis complete ✓</span>
@@ -879,170 +1126,225 @@ export function App() {
           onLoad={loadPgn}
         />
 
-      {tab === 'dataset' ? (
-        <DatasetPanel
-          games={games}
-          engineReady={engineState === 'ready'}
-          analysisProgress={datasetJob}
-          cache={analysisCacheRef.current}
-          cacheVersion={cacheVersion}
-          keyOf={gameCacheKey}
-          onAnalyzeAll={analyzeAllGames}
-          onOpenGame={(i) => {
-            selectGame(i);
-            setTab('board');
-          }}
-        />
-      ) : tab === 'play' ? (
-        <PlayMode
-          engine={engineState === 'ready' ? engineRef.current : null}
-          engineReady={engineState === 'ready'}
-          narrateMove={hasKey ? (a, f) => narrate(commentaryClient()!, a, f) : undefined}
-          cvsHealth={cvsEngineHealth}
-        />
-      ) : (
-        <>
-      <div className="cvs-workspace">
-        {/* Left: board + nav */}
-        <div style={{ ...cardStyle, width: '100%', maxWidth: 480, padding: 12, boxSizing: 'border-box' }}>
-          <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
-          <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
-            <Board2D
-              legalDots={legalDots}
-              fen={fen}
-              ledMap={ledMap}
-              selected={selected}
-              onSelect={onAnalysisSquareClick}
-              arrows={arrows}
-              draggable
-              onPieceDrop={(from, to) => tryAnalysisMove(from, to)}
-            />
-            {analysisPromo && (
+        {tab === 'dataset' ? (
+          <DatasetPanel
+            games={games}
+            engineReady={engineState === 'ready'}
+            analysisProgress={datasetJob}
+            cache={analysisCacheRef.current}
+            cacheVersion={cacheVersion}
+            keyOf={gameCacheKey}
+            onAnalyzeAll={analyzeAllGames}
+            onOpenGame={(i) => {
+              selectGame(i);
+              setTab('board');
+            }}
+          />
+        ) : tab === 'play' ? (
+          <PlayMode
+            engine={engineState === 'ready' ? engineRef.current : null}
+            engineReady={engineState === 'ready'}
+            narrateMove={hasKey ? (a, f) => narrate(commentaryClient()!, a, f) : undefined}
+            cvsHealth={cvsEngineHealth}
+          />
+        ) : (
+          <>
+            <div className="cvs-workspace">
+              {/* Left: board + nav */}
               <div
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  background: 'rgba(16,24,40,0.55)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 5,
+                  ...cardStyle,
+                  width: '100%',
+                  maxWidth: 480,
+                  padding: 12,
+                  boxSizing: 'border-box',
                 }}
               >
-                <div style={{ ...cardStyle, padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>Promote to</span>
-                  {PROMOTION_PIECES.map((piece) => (
-                    <button
-                      key={piece}
-                      onClick={() => applyAnalysisMove(analysisPromo.from, analysisPromo.to, piece)}
-                      style={{ ...primaryBtn, width: 42, padding: '8px 0', textTransform: 'uppercase' }}
+                <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
+                <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
+                  <Board2D
+                    legalDots={legalDots}
+                    fen={fen}
+                    ledMap={ledMap}
+                    selected={selected}
+                    onSelect={onAnalysisSquareClick}
+                    arrows={arrows}
+                    draggable
+                    onPieceDrop={(from, to) => tryAnalysisMove(from, to)}
+                  />
+                  {analysisPromo && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(16,24,40,0.55)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 5,
+                      }}
                     >
-                      {piece}
-                    </button>
-                  ))}
-                  <button style={{ ...primaryBtn, background: 'var(--muted)' }} onClick={() => setAnalysisPromo(null)}>
-                    Cancel
-                  </button>
+                      <div
+                        style={{
+                          ...cardStyle,
+                          padding: 10,
+                          display: 'flex',
+                          gap: 8,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>
+                          Promote to
+                        </span>
+                        {PROMOTION_PIECES.map((piece) => (
+                          <button
+                            key={piece}
+                            onClick={() =>
+                              applyAnalysisMove(analysisPromo.from, analysisPromo.to, piece)
+                            }
+                            style={{
+                              ...primaryBtn,
+                              width: 42,
+                              padding: '8px 0',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {piece}
+                          </button>
+                        ))}
+                        <button
+                          style={{ ...primaryBtn, background: 'var(--muted)' }}
+                          onClick={() => setAnalysisPromo(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+                <Nav view={view} total={plies.length} setView={setView} />
+                <button
+                  onClick={exportAnalysis}
+                  title="Download the full analysis (every ply: move, classification, insights, features, board control, coach) + the current view as JSON"
+                  style={{
+                    width: '100%',
+                    marginTop: 8,
+                    border: '1px solid var(--border)',
+                    background: 'var(--card)',
+                    color: 'var(--text)',
+                    borderRadius: 8,
+                    padding: '6px 10px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⬇ Export JSON (all plies)
+                </button>
+                <MiniBadges features={currentFeatures} />
+                <ControlBar features={currentFeatures} />
+                <MoveStrip plies={plies} view={view} setView={setView} />
+                <AnnotationLegend
+                  showThreats={showThreats}
+                  setShowThreats={setShowThreats}
+                  showAllThreats={showAllThreats}
+                  setShowAllThreats={setShowAllThreats}
+                  cascade={cascade}
+                  setCascade={setCascade}
+                  followMove={followMove}
+                  setFollowMove={setFollowMove}
+                  hasSelection={!!selected}
+                  onClear={() => setSelected(undefined)}
+                />
+                <Legend modeId={modeId} />
               </div>
+
+              {/* Middle: facts + mate-line card */}
+              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <FactsPanel
+                  fen={fen}
+                  selected={selected}
+                  analysis={analysis}
+                  move={moveLabel}
+                  focused={focused}
+                  onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+                />
+                <EngineComparisonPanel
+                  stockfishState={engineState}
+                  stockfishAnalysis={analysis}
+                  move={moveLabel}
+                  cvsHealth={cvsEngineHealth}
+                  cvsAnalysis={cvsEngineAnalysis}
+                  cvsBusy={cvsEngineBusy}
+                  cvsError={cvsEngineError}
+                  cvsContext={cvsEngineContext}
+                  cvsPlayedUci={cvsPlayedUci}
+                />
+                <TeachingFactsDebugPanel
+                  request={teachingFactsRequest}
+                  facts={teachingFacts}
+                  busy={teachingFactsBusy}
+                  error={teachingFactsError}
+                />
+                {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
+                <CommentaryPanel
+                  hasKey={hasKey}
+                  keySource={keySource}
+                  model={effectiveModel}
+                  onSaveKey={saveKey}
+                  handshake={handshake}
+                  onHandshake={runHandshake}
+                  currentText={plyIndex >= 0 ? commentary.get(plyIndex) : undefined}
+                  onExplainCurrent={explainCurrent}
+                  canExplain={!!analysis}
+                  explaining={explaining}
+                  job={commentaryJob}
+                  onGenerateAll={generateAllCommentary}
+                  totalAnalyzed={analyses.size}
+                />
+              </div>
+
+              {/* Right: LED twin + move list */}
+              <div
+                style={{
+                  width: '100%',
+                  minWidth: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                }}
+              >
+                <LedPreview ledMap={ledMap} />
+                <MoveHistory
+                  plies={plies}
+                  view={view}
+                  setView={setView}
+                  analyses={analyses}
+                  branchLabel={
+                    currentGame?.headers.CVSBranch === 'analysis' ? currentGame.label : undefined
+                  }
+                  branchSourceLabel={
+                    currentGame?.headers.CVSBranch === 'analysis'
+                      ? currentGame.headers.CVSBranchFrom
+                      : undefined
+                  }
+                  onBackToBranchSource={
+                    currentGame?.headers.CVSBranch === 'analysis' ? returnToBranchSource : undefined
+                  }
+                />
+              </div>
+            </div>
+
+            {entries.length > 0 && (
+              <AnalyticsPanel
+                entries={entries}
+                features={featureEntries}
+                view={view}
+                onJump={(ply) => setView(ply)}
+              />
             )}
-          </div>
-          <Nav view={view} total={plies.length} setView={setView} />
-          <button
-            onClick={exportAnalysis}
-            title="Download the full analysis (every ply: move, classification, insights, features, board control, coach) + the current view as JSON"
-            style={{
-              width: '100%',
-              marginTop: 8,
-              border: '1px solid var(--border)',
-              background: 'var(--card)',
-              color: 'var(--text)',
-              borderRadius: 8,
-              padding: '6px 10px',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            ⬇ Export JSON (all plies)
-          </button>
-          <MiniBadges features={currentFeatures} />
-          <ControlBar features={currentFeatures} />
-          <MoveStrip plies={plies} view={view} setView={setView} />
-          <AnnotationLegend
-            showThreats={showThreats}
-            setShowThreats={setShowThreats}
-            showAllThreats={showAllThreats}
-            setShowAllThreats={setShowAllThreats}
-            cascade={cascade}
-            setCascade={setCascade}
-            followMove={followMove}
-            setFollowMove={setFollowMove}
-            hasSelection={!!selected}
-            onClear={() => setSelected(undefined)}
-          />
-          <Legend modeId={modeId} />
-        </div>
-
-        {/* Middle: facts + mate-line card */}
-        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FactsPanel
-            fen={fen}
-            selected={selected}
-            analysis={analysis}
-            move={moveLabel}
-            focused={focused}
-            onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
-          />
-          <EngineComparisonPanel
-            stockfishState={engineState}
-            stockfishAnalysis={analysis}
-            move={moveLabel}
-            cvsHealth={cvsEngineHealth}
-            cvsAnalysis={cvsEngineAnalysis}
-            cvsBusy={cvsEngineBusy}
-            cvsError={cvsEngineError}
-            cvsContext={cvsEngineContext}
-            cvsPlayedUci={cvsPlayedUci}
-          />
-          {analysis?.mateProof && <MateCard proof={analysis.mateProof} fen={fen} />}
-          <CommentaryPanel
-            hasKey={hasKey}
-            keySource={keySource}
-            model={effectiveModel}
-            onSaveKey={saveKey}
-            handshake={handshake}
-            onHandshake={runHandshake}
-            currentText={plyIndex >= 0 ? commentary.get(plyIndex) : undefined}
-            onExplainCurrent={explainCurrent}
-            canExplain={!!analysis}
-            explaining={explaining}
-            job={commentaryJob}
-            onGenerateAll={generateAllCommentary}
-            totalAnalyzed={analyses.size}
-          />
-        </div>
-
-        {/* Right: LED twin + move list */}
-        <div style={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <LedPreview ledMap={ledMap} />
-          <MoveHistory
-            plies={plies}
-            view={view}
-            setView={setView}
-            analyses={analyses}
-            branchLabel={currentGame?.headers.CVSBranch === 'analysis' ? currentGame.label : undefined}
-            branchSourceLabel={currentGame?.headers.CVSBranch === 'analysis' ? currentGame.headers.CVSBranchFrom : undefined}
-            onBackToBranchSource={currentGame?.headers.CVSBranch === 'analysis' ? returnToBranchSource : undefined}
-          />
-        </div>
-      </div>
-
-      {entries.length > 0 && (
-        <AnalyticsPanel entries={entries} features={featureEntries} view={view} onJump={(ply) => setView(ply)} />
-      )}
-        </>
-      )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -1054,7 +1356,11 @@ export function App() {
 /** Game-level pass the per-move analyzer cannot do: repetition/conversion
  * awareness (the IUBKTvjF lesson). When it fires, it OWNS the headline —
  * "mobility improved" must never outrank "you are repeating a won game". */
-function withRepetitionWarning(a: MoveAnalysis, plies: PlyRecord[], plyIndex: number): MoveAnalysis {
+function withRepetitionWarning(
+  a: MoveAnalysis,
+  plies: PlyRecord[],
+  plyIndex: number,
+): MoveAnalysis {
   const warning = repetitionConversionWarning(plies, plyIndex, a);
   if (!warning) return a;
   return {
@@ -1067,7 +1373,8 @@ function withRepetitionWarning(a: MoveAnalysis, plies: PlyRecord[], plyIndex: nu
 function focusLedMap(ins: InsightCandidate): LedMap {
   const squares: Record<string, LedColor> = {};
   for (const sq of allSquares()) squares[sq] = 'off';
-  const execSq = ins.kind === 'motif' && ins.byPiece.length >= 3 ? ins.byPiece.slice(2) : ins.squares[0];
+  const execSq =
+    ins.kind === 'motif' && ins.byPiece.length >= 3 ? ins.byPiece.slice(2) : ins.squares[0];
   if (execSq) squares[execSq] = 'purple';
   for (const sq of ins.squares.slice(1)) if (squares[sq] === 'off') squares[sq] = 'orange';
   return { mode: 'focus', squares };
@@ -1086,6 +1393,15 @@ function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
     return new Chess(fen).moves({ square: sq as never, verbose: true }) as unknown as VerboseMove[];
   } catch {
     return [];
+  }
+}
+
+function safePlyUci(ply: PlyRecord | undefined): string | undefined {
+  if (!ply) return undefined;
+  try {
+    return plyRecordToUci(ply);
+  } catch {
+    return undefined;
   }
 }
 
@@ -1155,7 +1471,9 @@ function SourceBar({
 }) {
   const [open, setOpen] = useState(false);
   const multi = games.length > 1;
-  const loadedLabel = multi ? `${games.length} games loaded` : games[gameIndex]?.label ?? 'Sample game';
+  const loadedLabel = multi
+    ? `${games.length} games loaded`
+    : (games[gameIndex]?.label ?? 'Sample game');
   return (
     <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -1164,14 +1482,32 @@ function SourceBar({
         </button>
         <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
           <strong style={{ color: 'var(--text)' }}>{loadedLabel}</strong>
-          <span style={{ color: 'var(--muted)' }}> · paste your Chess.com / Lichess export to analyze your own games</span>
+          <span style={{ color: 'var(--muted)' }}>
+            {' '}
+            · paste your Chess.com / Lichess export to analyze your own games
+          </span>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
           {multi && tab === 'board' && (
             <select
               value={gameIndex}
               onChange={(e) => onSelectGame(Number(e.target.value))}
-              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }}
+              style={{
+                maxWidth: 320,
+                fontSize: 13,
+                padding: '7px 8px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--card)',
+              }}
             >
               {games.map((g, i) => (
                 <option key={i} value={i}>
@@ -1211,7 +1547,8 @@ function SourceBar({
               Load games
             </button>
             <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Multi-game exports open a Dataset view: opening tree, results over time, per-game review.
+              Multi-game exports open a Dataset view: opening tree, results over time, per-game
+              review.
             </span>
           </div>
         </div>
@@ -1220,7 +1557,19 @@ function SourceBar({
   );
 }
 
-function TabButton({ active, onClick, children, disabled, title }: { active: boolean; onClick: () => void; children: ReactNode; disabled?: boolean; title?: string }) {
+function TabButton({
+  active,
+  onClick,
+  children,
+  disabled,
+  title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  disabled?: boolean;
+  title?: string;
+}) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -1243,11 +1592,23 @@ function TabButton({ active, onClick, children, disabled, title }: { active: boo
 }
 
 function EngineBadge({ label, state }: { label: string; state: 'loading' | 'ready' | 'off' }) {
-  const text = state === 'loading' ? 'engine: loading…' : state === 'ready' ? 'engine: ready' : 'engine: off (pure modes only)';
+  const text =
+    state === 'loading'
+      ? 'engine: loading…'
+      : state === 'ready'
+        ? 'engine: ready'
+        : 'engine: off (pure modes only)';
   const bg = state === 'ready' ? '#3fbf5f' : state === 'loading' ? '#e8923b' : 'var(--muted)';
   return (
-    <span title={text} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
-      {state === 'loading' ? `${label}: loading` : state === 'ready' ? `${label}: ready` : `${label}: off`}
+    <span
+      title={text}
+      style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}
+    >
+      {state === 'loading'
+        ? `${label}: loading`
+        : state === 'ready'
+          ? `${label}: ready`
+          : `${label}: off`}
     </span>
   );
 }
@@ -1263,17 +1624,14 @@ function CvsEngineBadge({ health, busy }: { health: CvsEngineHealth; busy: boole
       : 'CVS Engine: not found';
   const bg = checking ? '#e8923b' : health.available ? 'var(--accent)' : 'var(--muted)';
   return (
-    <span title={health.error} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
+    <span
+      title={health.error}
+      style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}
+    >
       {text}
     </span>
   );
 }
-
-
-
-
-
-
 
 function ModeBar({
   modeId,
@@ -1285,7 +1643,15 @@ function ModeBar({
   engineReady: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8, maxWidth: 'min(460px, 100%)' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4,
+        marginBottom: 8,
+        maxWidth: 'min(460px, 100%)',
+      }}
+    >
       {MODES.map((m) => {
         const disabled = m.needsAnalysis && !engineReady;
         return (
@@ -1315,7 +1681,15 @@ function ModeBar({
   );
 }
 
-function Nav({ view, total, setView }: { view: number; total: number; setView: (n: number) => void }) {
+function Nav({
+  view,
+  total,
+  setView,
+}: {
+  view: number;
+  total: number;
+  setView: (n: number) => void;
+}) {
   return (
     <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <button onClick={() => setView(0)} disabled={view === 0}>
@@ -1339,12 +1713,35 @@ function Nav({ view, total, setView }: { view: number; total: number; setView: (
 
 // Plain-language glossary so the badges are never cryptic — keyed by leading phrase.
 const BADGE_GLOSSARY: { match: string; explain: string }[] = [
-  { match: 'Mobility', explain: 'Mobility — change in the moving side’s total legal moves (higher = freer pieces).' },
-  { match: 'Safe moves', explain: 'Safe moves — change in legal moves that don’t drop material (Static Exchange Evaluation ≥ 0).' },
-  { match: 'King escapes', explain: 'King escapes — legal squares the side-to-move’s king can flee to. 0 means no escape: mating danger.' },
-  { match: 'Loose pieces', explain: 'Loose pieces — the moving side’s pieces with no defender. Undefended pieces are tactic targets.' },
-  { match: 'Best SEE', explain: 'Best capture — most material (in pawns) the side to move can safely win right now via a Static-Exchange-Evaluation-safe capture.' },
-  { match: 'Motif', explain: 'Tactic — the strongest PROVEN tactic available (fork, pin, skewer, mate net…); “none” if no validated tactic.' },
+  {
+    match: 'Mobility',
+    explain: 'Mobility — change in the moving side’s total legal moves (higher = freer pieces).',
+  },
+  {
+    match: 'Safe moves',
+    explain:
+      'Safe moves — change in legal moves that don’t drop material (Static Exchange Evaluation ≥ 0).',
+  },
+  {
+    match: 'King escapes',
+    explain:
+      'King escapes — legal squares the side-to-move’s king can flee to. 0 means no escape: mating danger.',
+  },
+  {
+    match: 'Loose pieces',
+    explain:
+      'Loose pieces — the moving side’s pieces with no defender. Undefended pieces are tactic targets.',
+  },
+  {
+    match: 'Best SEE',
+    explain:
+      'Best capture — most material (in pawns) the side to move can safely win right now via a Static-Exchange-Evaluation-safe capture.',
+  },
+  {
+    match: 'Motif',
+    explain:
+      'Tactic — the strongest PROVEN tactic available (fork, pin, skewer, mate net…); “none” if no validated tactic.',
+  },
 ];
 
 function badgeTitle(badge: string): string {
@@ -1358,19 +1755,46 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
   const c = features ? controlShare(features.threatAfter) : undefined;
   const segs = c
     ? [
-        { pct: c.exclusiveWhitePct, color: 'var(--accent)', label: `White ${c.exclusiveWhitePct}%` },
+        {
+          pct: c.exclusiveWhitePct,
+          color: 'var(--accent)',
+          label: `White ${c.exclusiveWhitePct}%`,
+        },
         { pct: c.contestedPct, color: '#8a5cc4', label: `contested ${c.contestedPct}%` },
         { pct: c.exclusiveBlackPct, color: '#d43b3b', label: `Black ${c.exclusiveBlackPct}%` },
         { pct: c.neutralPct, color: '#e6e6e6', label: `neutral ${c.neutralPct}%` },
       ]
     : [];
   return (
-    <div style={{ width: 'min(456px, 100%)', marginTop: 6 }} title="Share of the 64 squares each side's pieces attack (contested = both).">
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
+    <div
+      style={{ width: 'min(456px, 100%)', marginTop: 6 }}
+      title="Share of the 64 squares each side's pieces attack (contested = both)."
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 11,
+          color: 'var(--muted)',
+          marginBottom: 2,
+        }}
+      >
         <span>Board control</span>
-        {c && <span>center {c.centerWhite}–{c.centerBlack}</span>}
+        {c && (
+          <span>
+            center {c.centerWhite}–{c.centerBlack}
+          </span>
+        )}
       </div>
-      <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
+      <div
+        style={{
+          display: 'flex',
+          height: 12,
+          borderRadius: 3,
+          overflow: 'hidden',
+          background: 'var(--track)',
+        }}
+      >
         {segs.map((s, i) =>
           s.pct > 0 ? (
             <div key={i} title={s.label} style={{ width: `${s.pct}%`, background: s.color }} />
@@ -1379,7 +1803,14 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
       </div>
       {c && (
         <div
-          style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--muted)', marginTop: 2, flexWrap: 'wrap' }}
+          style={{
+            display: 'flex',
+            gap: 10,
+            fontSize: 11,
+            color: 'var(--muted)',
+            marginTop: 2,
+            flexWrap: 'wrap',
+          }}
           title={`Total reach (overlaps on contested): White ${c.whitePct}%, Black ${c.blackPct}%`}
         >
           <span style={{ color: 'var(--accent)' }}>White {c.exclusiveWhitePct}%</span>
@@ -1393,7 +1824,14 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
 }
 
 function MiniBadges({ features }: { features?: PlyFeatures }) {
-  const badges = features?.badges ?? ['Mobility --', 'Safe moves --', 'King escapes --', 'Loose pieces --', 'Best SEE --', 'Motif --'];
+  const badges = features?.badges ?? [
+    'Mobility --',
+    'Safe moves --',
+    'King escapes --',
+    'Loose pieces --',
+    'Best SEE --',
+    'Motif --',
+  ];
   return (
     <div
       style={{
@@ -1592,7 +2030,9 @@ function MoveHistory({
           {onBackToBranchSource && (
             <button
               onClick={onBackToBranchSource}
-              title={branchSourceLabel ? `Return to ${branchSourceLabel}` : 'Return to the source line'}
+              title={
+                branchSourceLabel ? `Return to ${branchSourceLabel}` : 'Return to the source line'
+              }
               style={{
                 border: '1px solid var(--border)',
                 background: 'var(--card)',
