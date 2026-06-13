@@ -24,6 +24,7 @@ import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
 import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
+import { EngineComparisonPanel } from './EngineComparisonPanel';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
@@ -44,7 +45,6 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
   borderRadius: 10,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
 };
 const primaryBtn: React.CSSProperties = {
   border: 'none',
@@ -207,6 +207,19 @@ export function App() {
   }, []);
 
   const fen = view === 0 ? currentGame?.initialFen ?? plies[0]?.fenBefore ?? START_FEN : plies[view - 1].fenAfter;
+  // Always-on legal-move hints: whatever lens is active, clicking a piece
+  // shows where it can go (chess.js from the current FEN).
+  const legalDots = useMemo(() => {
+    if (!selected) return undefined;
+    try {
+      const c = new Chess(fen);
+      const ms = c.moves({ square: selected as never, verbose: true }) as unknown as { to: string }[];
+      return ms.length ? (ms.map((m) => m.to) as Square[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [selected, fen]);
+
   const plyIndex = view - 1; // index into plies for the move that produced `fen`
   const analysis = view > 0 ? analyses.get(plyIndex) : undefined;
   const moveLabel = view > 0 ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}` : undefined;
@@ -779,6 +792,7 @@ export function App() {
   return (
     <div style={{ minHeight: '100vh', background: PAGE_BG, color: 'var(--text)', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
+        html,body{margin:0;background:#12100e}
         :root{color-scheme:dark;
           --bg:#12100e; --card:#1c1916; --card2:#211d19; --track:#2a2622;
           --border:#322d28; --text:#ece7e1; --text-soft:#cfc8bf; --muted:#9b9389;
@@ -790,6 +804,7 @@ export function App() {
         button{background:var(--card2);border:1px solid var(--border);color:var(--text);
           border-radius:6px;cursor:pointer}
         button:disabled{opacity:.45;cursor:default}
+        section{isolation:isolate}
         h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
         input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
         @keyframes csvBlink{50%{opacity:0.1}}
@@ -864,6 +879,7 @@ export function App() {
           engine={engineState === 'ready' ? engineRef.current : null}
           engineReady={engineState === 'ready'}
           narrateMove={hasKey ? (a, f) => narrate(commentaryClient()!, a, f) : undefined}
+          cvsHealth={cvsEngineHealth}
         />
       ) : (
         <>
@@ -873,6 +889,7 @@ export function App() {
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
           <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
             <Board2D
+              legalDots={legalDots}
               fen={fen}
               ledMap={ledMap}
               selected={selected}
@@ -1233,110 +1250,11 @@ function CvsEngineBadge({ health, busy }: { health: CvsEngineHealth; busy: boole
   );
 }
 
-function EngineComparisonPanel({
-  stockfishState,
-  stockfishAnalysis,
-  move,
-  cvsHealth,
-  cvsAnalysis,
-  cvsBusy,
-  cvsError,
-  cvsContext,
-  cvsPlayedUci,
-}: {
-  stockfishState: 'loading' | 'ready' | 'off';
-  stockfishAnalysis: MoveAnalysis | undefined;
-  move: string | undefined;
-  cvsHealth: CvsEngineHealth;
-  cvsAnalysis: CvsEngineAnalysis | null;
-  cvsBusy: boolean;
-  cvsError: string;
-  cvsContext: string;
-  cvsPlayedUci: string | undefined;
-}) {
-  const labelStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' };
-  const valueStyle: React.CSSProperties = { margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.45 };
-  return (
-    <section style={{ ...cardStyle, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
-        <span style={{ color: 'var(--muted)', fontSize: 12, flexShrink: 0 }}>local WIP</span>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14 }}>
-        <div style={{ minWidth: 0 }}>
-          <p style={labelStyle}>Stockfish</p>
-          {stockfishState !== 'ready' ? (
-            <p style={valueStyle}>{stockfishState === 'loading' ? 'loading' : 'off'}</p>
-          ) : stockfishAnalysis ? (
-            <>
-              <p style={valueStyle}>
-                {move ?? stockfishAnalysis.move}: {stockfishAnalysis.classification}, loss {stockfishAnalysis.cpLoss.toFixed(2)}
-              </p>
-              <p style={{ ...valueStyle, fontSize: 13 }}>
-                eval {formatEval(stockfishAnalysis.evalAfter)} d{stockfishAnalysis.evalAfter.depth}
-              </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}</p>
-            </>
-          ) : (
-            <p style={valueStyle}>waiting for a played move</p>
-          )}
-        </div>
-        <div style={{ minWidth: 0, borderLeft: '1px solid var(--border)', paddingLeft: 14 }}>
-          <p style={labelStyle}>CVS Engine</p>
-          <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsContext}</p>
-          {!cvsHealth.available ? (
-            <p style={valueStyle}>{cvsHealth.error || 'local engine unavailable'}</p>
-          ) : cvsError ? (
-            <p style={{ ...valueStyle, color: 'var(--bad)' }}>{cvsError}</p>
-          ) : cvsAnalysis ? (
-            <>
-              <p style={valueStyle}>
-                {cvsPlayedUci ? `played ${cvsPlayedUci}, ` : ''}best {cvsAnalysis.uci ?? 'none'} {formatCvsAgreement(cvsPlayedUci, cvsAnalysis.uci)}{' '}
-                {cvsBusy ? '(updating)' : ''}
-              </p>
-              <p style={{ ...valueStyle, fontSize: 13 }}>
-                eval {formatCvsEval(cvsAnalysis)} d{cvsAnalysis.depth} in {cvsAnalysis.timeMs}ms
-              </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>
-                {formatNodes(cvsAnalysis.nodes)} nodes, q {formatNodes(cvsAnalysis.qNodes)}, tt {cvsAnalysis.ttHits}
-              </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}</p>
-            </>
-          ) : (
-            <p style={valueStyle}>{cvsBusy ? `analyzing ${cvsContext}` : 'ready'}</p>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
 
-function formatEval(evalInfo: MoveAnalysis['evalAfter']): string {
-  if (typeof evalInfo.mate === 'number') return `M${evalInfo.mate}`;
-  if (typeof evalInfo.cp === 'number') return formatCp(evalInfo.cp);
-  return evalInfo.status === 'terminal' ? 'terminal' : 'unavailable';
-}
 
-function formatCvsEval(result: CvsEngineAnalysis): string {
-  if (typeof result.mate === 'number') return `M${result.mate}`;
-  return formatCp(result.scoreCp);
-}
 
-function formatCvsAgreement(playedUci: string | undefined, bestUci: string | null): string {
-  if (!playedUci || !bestUci) return '';
-  return playedUci === bestUci ? '(agrees)' : '(prefers different move)';
-}
 
-function formatCp(cp: number): string {
-  const pawns = cp / 100;
-  return `${pawns >= 0 ? '+' : ''}${pawns.toFixed(2)}`;
-}
 
-function formatNodes(nodes: number): string {
-  if (nodes >= 1_000_000) return `${(nodes / 1_000_000).toFixed(1)}M`;
-  if (nodes >= 1_000) return `${(nodes / 1_000).toFixed(1)}k`;
-  return String(nodes);
-}
 
 function ModeBar({
   modeId,

@@ -4,11 +4,13 @@
 // inspect card for any square, and — once the engine is loaded — a per-move
 // analysis (classification + What-Changed) plus the validated Control-Lens
 // coaching line and optional written commentary.
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Chess } from 'chess.js';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
+import { EngineComparisonPanel } from './EngineComparisonPanel';
+import { analyzeWithCvsEngine, type CvsEngineAnalysis, type CvsEngineHealth } from './cvs-engine-client';
 import { computeLedMap, type ModeId } from '../engine/led';
 import { MODES, LED_CSS } from './modes';
 import { selectionArrows, lineArrows } from './annotate';
@@ -47,10 +49,12 @@ export function PlayMode({
   engine,
   engineReady = false,
   narrateMove,
+  cvsHealth,
 }: {
   engine?: UciEngine | null;
   engineReady?: boolean;
   narrateMove?: (a: MoveAnalysis, features: PlyFeatures) => Promise<string>;
+  cvsHealth?: CvsEngineHealth;
 }) {
   const [fen, setFen] = useState(START_FEN);
   const [selected, setSelected] = useState<Square | null>(null);
@@ -97,6 +101,23 @@ export function PlayMode({
   // identity; it equals fen after a move and after an inspect-click, so this is a
   // defense-in-depth guard that fails safe if an async race ever desyncs them.
   const liveAnalysis = lastAnalysis && lastAnalysis.positionAfter === fen ? lastAnalysis : null;
+
+  // Native engine eval of the current board (same panel as Analyze mode).
+  const [cvsAnalysis, setCvsAnalysis] = useState<CvsEngineAnalysis | null>(null);
+  const [cvsBusy, setCvsBusy] = useState(false);
+  const [cvsError, setCvsError] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (!cvsHealth?.available) return;
+    let cancelled = false;
+    setCvsBusy(true);
+    const t = setTimeout(() => {
+      analyzeWithCvsEngine(fen, cvsHealth.depth)
+        .then((r) => { if (!cancelled) { setCvsAnalysis(r); setCvsError(undefined); } })
+        .catch((e) => { if (!cancelled) setCvsError(e instanceof Error ? e.message : String(e)); })
+        .finally(() => { if (!cancelled) setCvsBusy(false); });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [fen, cvsHealth?.available, cvsHealth?.depth]);
 
   // The board overlay: the SAME mode-scoped lenses as the analysis view, applied
   // live to the current position. 'legal' doubles as the move-target hint; the
@@ -302,6 +323,7 @@ export function PlayMode({
 
         <div style={{ position: 'relative', width: 'max-content' }}>
           <Board2D
+            legalDots={selected ? legalDotsFor(fen, selected) : undefined}
             fen={fen}
             ledMap={ledMap}
             selected={selected ?? undefined}
@@ -400,6 +422,20 @@ export function PlayMode({
           focused={focused}
           onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
         />
+
+        {cvsHealth && (
+          <EngineComparisonPanel
+            stockfishState={engineReady ? 'ready' : 'off'}
+            stockfishAnalysis={liveAnalysis ?? undefined}
+            move={liveAnalysis?.move}
+            cvsHealth={cvsHealth}
+            cvsAnalysis={cvsAnalysis}
+            cvsBusy={cvsBusy}
+            cvsError={cvsError}
+            cvsContext="current board"
+            cvsPlayedUci={history.length ? `${history[history.length - 1].from}${history[history.length - 1].to}` : undefined}
+          />
+        )}
 
         <div style={{ ...card, padding: 12 }}>
           <strong style={{ fontSize: 13, color: 'var(--text)' }}>Coach</strong>
@@ -601,3 +637,14 @@ const modeBtnDisabled: CSSProperties = {
   opacity: 0.45,
   cursor: 'not-allowed',
 };
+
+// Always-on legal destinations for the clicked piece, regardless of lens.
+function legalDotsFor(fen: string, sq: Square): Square[] | undefined {
+  try {
+    const c = new Chess(fen);
+    const ms = c.moves({ square: sq as never, verbose: true }) as unknown as { to: string }[];
+    return ms.length ? (ms.map((m) => m.to) as Square[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}

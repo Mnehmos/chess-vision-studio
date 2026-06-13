@@ -26,6 +26,7 @@ const LIGHT = '#ebe6d6';
 const DARK = '#9b8b6b';
 
 export function Board2D({
+  legalDots,
   fen,
   ledMap,
   selected,
@@ -35,6 +36,7 @@ export function Board2D({
   draggable = false,
   onPieceDrop,
 }: {
+  legalDots?: Square[];
   fen: string;
   ledMap: LedMap;
   selected?: Square;
@@ -111,6 +113,19 @@ export function Board2D({
                 boxShadow: isSel ? 'inset 0 0 0 3px #16a' : undefined,
               }}
             >
+              {legalDots?.includes(sq) && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    width: piece ? '85%' : '34%',
+                    height: piece ? '85%' : '34%',
+                    borderRadius: '50%',
+                    border: piece ? '3px solid rgba(184,115,51,0.85)' : 'none',
+                    background: piece ? 'transparent' : 'rgba(184,115,51,0.55)',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
               {led !== 'off' && (
                 <span
                   style={{
