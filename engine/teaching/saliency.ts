@@ -28,6 +28,21 @@ export function scorePawnStructureDamage(params: {
   return round3(Math.min(base * 0.6 + cpComponent + countComponent + causal, 1));
 }
 
+// Deterministic saliency for an allowed fork. Tactical, material/king-threatening
+// events get a high base so they outrank quiet structural ones in ranking.
+export function scoreAllowedFork(params: {
+  classification: Classification;
+  materialGain: number; // centipawns
+  kingTarget: boolean;
+  refutationMatch: boolean;
+}): number {
+  const material = Math.min(Math.max(params.materialGain, 0) / 900, 1) * 0.2;
+  const king = params.kingTarget ? 0.1 : 0;
+  const refute = params.refutationMatch ? 0.1 : 0;
+  const sev = (CLASSIFICATION_WEIGHT[params.classification] ?? 0.1) * 0.1;
+  return round3(Math.min(0.6 + material + king + refute + sev, 1));
+}
+
 function round3(n: number): number {
   return Math.round(n * 1000) / 1000;
 }

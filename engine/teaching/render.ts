@@ -1,5 +1,68 @@
-import type { ExplanationPlan, StructureDelta } from './types';
+import type { ExplanationPlan, MotifOpportunity, PieceRef, StructureDelta } from './types';
 import { filesOf } from './evidence';
+
+const PIECE_VALUE_CP: Record<string, number> = {
+  pawn: 100,
+  knight: 300,
+  bishop: 300,
+  rook: 500,
+  queen: 900,
+  king: 0,
+};
+
+function pieceLabel(ref: PieceRef): string {
+  return `the ${ref.pieceType} on ${ref.square}`;
+}
+
+function targetList(targets: PieceRef[]): string {
+  const labels = targets.map(pieceLabel);
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0] ?? '';
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+}
+
+// The most valuable non-king target — the piece a king-fork actually wins.
+function bestWinnableTarget(fork: MotifOpportunity): PieceRef | undefined {
+  const nonKing = fork.targets.filter((t) => t.pieceType !== 'king');
+  if (nonKing.length === 0) return undefined;
+  return nonKing.reduce((best, t) =>
+    (PIECE_VALUE_CP[t.pieceType] ?? 0) > (PIECE_VALUE_CP[best.pieceType] ?? 0) ? t : best,
+  );
+}
+
+function capitalize(s: string): string {
+  return s.length ? (s[0]?.toUpperCase() ?? '') + s.slice(1) : s;
+}
+
+// Render the Allowed Fork plan (plan §11 example). Every clause is evidence-gated:
+// targets are named from the validated fork's PieceRefs; the consequence only names
+// the won piece when one exists; the correction only appears when best avoids it.
+export function renderAllowedFork(params: {
+  playedLabel: string;
+  bestLabel?: string;
+  fork: MotifOpportunity;
+  opponentName: string;
+}): ExplanationPlan {
+  const { fork, opponentName } = params;
+  const plan: ExplanationPlan = {
+    topic: 'Allowed Fork',
+    headline: `${params.playedLabel} allowed a ${fork.forkingPiece.pieceType} fork.`,
+    cause: `${capitalize(fork.forkingPiece.pieceType)} to ${fork.forkingPiece.square} attacks ${targetList(
+      fork.targets,
+    )}.`,
+  };
+  const won = bestWinnableTarget(fork);
+  if (fork.kingTarget && won) {
+    plan.consequence = `${opponentName} gives check, so ${pieceLabel(won)} cannot be saved.`;
+  } else if (won) {
+    plan.consequence = `${opponentName} wins ${pieceLabel(won)}.`;
+  }
+  if (params.bestLabel) {
+    plan.correction = `${params.bestLabel} prevents the fork.`;
+  }
+  return plan;
+}
 
 export type PawnDamageMode = 'causally_supported' | 'accepted_tradeoff' | 'descriptive';
 

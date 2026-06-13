@@ -150,7 +150,14 @@ export interface CaptureOpportunity {
 }
 
 export interface MotifOpportunity {
-  validator: string;
+  kind: string; // 'fork'
+  validator: string; // 'fork_validation'
+  moveUci: string;
+  forkingPiece: PieceRef; // referenced at its post-move square
+  targets: PieceRef[]; // sorted by id
+  givesCheck: boolean;
+  kingTarget: boolean;
+  materialGain: number; // estimated forced consequence, centipawns
 }
 
 export interface HazardFact {

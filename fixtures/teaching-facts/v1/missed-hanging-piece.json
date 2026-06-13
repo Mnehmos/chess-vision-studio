@@ -175,7 +175,7 @@
     },
     "availableMotifs": {
       "status": "uncomputed",
-      "reason": "not_in_milestone_1"
+      "reason": "not_requested"
     }
   },
   "played": {
@@ -345,7 +345,7 @@
       },
       "availableMotifs": {
         "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "reason": "not_requested"
       }
     },
     "deltas": {
@@ -498,7 +498,7 @@
       },
       "availableMotifs": {
         "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "reason": "not_requested"
       }
     },
     "deltas": {
@@ -660,7 +660,7 @@
       },
       "availableMotifs": {
         "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "reason": "not_requested"
       }
     },
     "deltas": {
@@ -688,7 +688,7 @@
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 1,
+    "factsRegistryVersion": 2,
     "validators": [
       "legal_move_generation",
       "attack_map",

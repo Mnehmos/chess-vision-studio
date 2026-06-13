@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "fenBefore": "4k3/8/8/8/8/2n5/4P3/4K3 w - - 0 1",
+  "fenBefore": "6k1/8/8/6n1/8/8/4P3/4R1K1 w - - 0 1",
   "before": {
     "sideToMove": "white",
     "pieces": [
       {
-        "id": "black-king-e8",
+        "id": "black-king-g8",
         "side": "black",
         "pieceType": "king",
-        "square": "e8",
+        "square": "g8",
         "attackers": [],
         "defenders": [],
         "attackerCount": 0,
@@ -24,10 +24,10 @@
         "onlyDefenderOf": []
       },
       {
-        "id": "black-knight-c3",
+        "id": "black-knight-g5",
         "side": "black",
         "pieceType": "knight",
-        "square": "c3",
+        "square": "g5",
         "attackers": [],
         "defenders": [],
         "attackerCount": 0,
@@ -43,9 +43,57 @@
         "onlyDefenderOf": []
       },
       {
-        "id": "white-king-e1",
+        "id": "white-king-g1",
         "side": "white",
         "pieceType": "king",
+        "square": "g1",
+        "attackers": [],
+        "defenders": [
+          {
+            "id": "white-rook-e1",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "e1"
+          }
+        ],
+        "attackerCount": 0,
+        "defenderCount": 1,
+        "attacked": false,
+        "loose": false,
+        "see": {
+          "status": "unavailable",
+          "reason": "piece_not_capturable_by_side_to_move"
+        },
+        "onlyDefenderOf": []
+      },
+      {
+        "id": "white-pawn-e2",
+        "side": "white",
+        "pieceType": "pawn",
+        "square": "e2",
+        "attackers": [],
+        "defenders": [
+          {
+            "id": "white-rook-e1",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "e1"
+          }
+        ],
+        "attackerCount": 0,
+        "defenderCount": 1,
+        "attacked": false,
+        "loose": false,
+        "see": {
+          "status": "unavailable",
+          "reason": "piece_not_capturable_by_side_to_move"
+        },
+        "onlyDefenderOf": []
+      },
+      {
+        "id": "white-rook-e1",
+        "side": "white",
+        "pieceType": "rook",
         "square": "e1",
         "attackers": [],
         "defenders": [],
@@ -59,43 +107,18 @@
         },
         "onlyDefenderOf": [
           {
+            "id": "white-king-g1",
+            "side": "white",
+            "pieceType": "king",
+            "square": "g1"
+          },
+          {
             "id": "white-pawn-e2",
             "side": "white",
             "pieceType": "pawn",
             "square": "e2"
           }
         ]
-      },
-      {
-        "id": "white-pawn-e2",
-        "side": "white",
-        "pieceType": "pawn",
-        "square": "e2",
-        "attackers": [
-          {
-            "id": "black-knight-c3",
-            "side": "black",
-            "pieceType": "knight",
-            "square": "c3"
-          }
-        ],
-        "defenders": [
-          {
-            "id": "white-king-e1",
-            "side": "white",
-            "pieceType": "king",
-            "square": "e1"
-          }
-        ],
-        "attackerCount": 1,
-        "defenderCount": 1,
-        "attacked": true,
-        "loose": false,
-        "see": {
-          "status": "unavailable",
-          "reason": "piece_not_capturable_by_side_to_move"
-        },
-        "onlyDefenderOf": []
       }
     ],
     "pawnStructure": {
@@ -162,8 +185,8 @@
       "reason": "not_in_milestone_1"
     },
     "availableMotifs": {
-      "status": "uncomputed",
-      "reason": "not_in_milestone_1"
+      "status": "computed",
+      "items": []
     }
   },
   "played": {
@@ -172,15 +195,15 @@
       "from": "e2",
       "to": "e4"
     },
-    "fenAfter": "4k3/8/8/8/4P3/2n5/8/4K3 b - e3 0 1",
+    "fenAfter": "6k1/8/8/6n1/4P3/8/8/4R1K1 b - e3 0 1",
     "position": {
       "sideToMove": "black",
       "pieces": [
         {
-          "id": "black-king-e8",
+          "id": "black-king-g8",
           "side": "black",
           "pieceType": "king",
-          "square": "e8",
+          "square": "g8",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -194,10 +217,10 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "black-knight-c3",
+          "id": "black-knight-g5",
           "side": "black",
           "pieceType": "knight",
-          "square": "c3",
+          "square": "g5",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -211,16 +234,23 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "white-king-e1",
+          "id": "white-king-g1",
           "side": "white",
           "pieceType": "king",
-          "square": "e1",
+          "square": "g1",
           "attackers": [],
-          "defenders": [],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
           "attackerCount": 0,
-          "defenderCount": 0,
+          "defenderCount": 1,
           "attacked": false,
-          "loose": true,
+          "loose": false,
           "see": {
             "status": "computed",
             "value": {
@@ -236,26 +266,65 @@
           "square": "e4",
           "attackers": [
             {
-              "id": "black-knight-c3",
+              "id": "black-knight-g5",
               "side": "black",
               "pieceType": "knight",
-              "square": "c3"
+              "square": "g5"
             }
           ],
-          "defenders": [],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
           "attackerCount": 1,
-          "defenderCount": 0,
+          "defenderCount": 1,
           "attacked": true,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false,
+              "bestCaptureUci": "g5e4",
+              "scoreCp": -220
+            }
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-rook-e1",
+          "side": "white",
+          "pieceType": "rook",
+          "square": "e1",
+          "attackers": [],
+          "defenders": [],
+          "attackerCount": 0,
+          "defenderCount": 0,
+          "attacked": false,
           "loose": true,
           "see": {
             "status": "computed",
             "value": {
-              "losing": true,
-              "bestCaptureUci": "c3e4",
-              "scoreCp": 100
+              "losing": false
             }
           },
-          "onlyDefenderOf": []
+          "onlyDefenderOf": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            },
+            {
+              "id": "white-pawn-e4",
+              "side": "white",
+              "pieceType": "pawn",
+              "square": "e4"
+            }
+          ]
         }
       ],
       "pawnStructure": {
@@ -322,8 +391,37 @@
         "reason": "not_in_milestone_1"
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "kind": "fork",
+            "validator": "fork_validation",
+            "moveUci": "g5f3",
+            "forkingPiece": {
+              "id": "black-knight-f3",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "f3"
+            },
+            "targets": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              },
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "givesCheck": true,
+            "kingTarget": true,
+            "materialGain": 500
+          }
+        ]
       }
     },
     "deltas": {
@@ -385,19 +483,19 @@
   },
   "best": {
     "move": {
-      "uci": "e1f2",
-      "from": "e1",
-      "to": "f2"
+      "uci": "g1h1",
+      "from": "g1",
+      "to": "h1"
     },
-    "fenAfter": "4k3/8/8/8/8/2n5/4PK2/8 b - - 1 1",
+    "fenAfter": "6k1/8/8/6n1/8/8/4P3/4R2K b - - 1 1",
     "position": {
       "sideToMove": "black",
       "pieces": [
         {
-          "id": "black-king-e8",
+          "id": "black-king-g8",
           "side": "black",
           "pieceType": "king",
-          "square": "e8",
+          "square": "g8",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -411,10 +509,10 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "black-knight-c3",
+          "id": "black-knight-g5",
           "side": "black",
           "pieceType": "knight",
-          "square": "c3",
+          "square": "g5",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -428,10 +526,62 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "white-king-f2",
+          "id": "white-king-h1",
           "side": "white",
           "pieceType": "king",
-          "square": "f2",
+          "square": "h1",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-pawn-e2",
+          "side": "white",
+          "pieceType": "pawn",
+          "square": "e2",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "computed",
+            "value": {
+              "losing": false
+            }
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-rook-e1",
+          "side": "white",
+          "pieceType": "rook",
+          "square": "e1",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -446,47 +596,18 @@
           },
           "onlyDefenderOf": [
             {
+              "id": "white-king-h1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "h1"
+            },
+            {
               "id": "white-pawn-e2",
               "side": "white",
               "pieceType": "pawn",
               "square": "e2"
             }
           ]
-        },
-        {
-          "id": "white-pawn-e2",
-          "side": "white",
-          "pieceType": "pawn",
-          "square": "e2",
-          "attackers": [
-            {
-              "id": "black-knight-c3",
-              "side": "black",
-              "pieceType": "knight",
-              "square": "c3"
-            }
-          ],
-          "defenders": [
-            {
-              "id": "white-king-f2",
-              "side": "white",
-              "pieceType": "king",
-              "square": "f2"
-            }
-          ],
-          "attackerCount": 1,
-          "defenderCount": 1,
-          "attacked": true,
-          "loose": false,
-          "see": {
-            "status": "computed",
-            "value": {
-              "losing": false,
-              "bestCaptureUci": "c3e2",
-              "scoreCp": -220
-            }
-          },
-          "onlyDefenderOf": []
         }
       ],
       "pawnStructure": {
@@ -553,8 +674,8 @@
         "reason": "not_in_milestone_1"
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
@@ -582,19 +703,19 @@
   },
   "refutation": {
     "move": {
-      "uci": "c3e4",
-      "from": "c3",
-      "to": "e4"
+      "uci": "g5f3",
+      "from": "g5",
+      "to": "f3"
     },
-    "fenAfter": "4k3/8/8/8/4n3/8/8/4K3 w - - 0 2",
+    "fenAfter": "6k1/8/8/8/4P3/5n2/8/4R1K1 w - - 1 2",
     "position": {
       "sideToMove": "white",
       "pieces": [
         {
-          "id": "black-king-e8",
+          "id": "black-king-g8",
           "side": "black",
           "pieceType": "king",
-          "square": "e8",
+          "square": "g8",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -610,10 +731,10 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "black-knight-e4",
+          "id": "black-knight-f3",
           "side": "black",
           "pieceType": "knight",
-          "square": "e4",
+          "square": "f3",
           "attackers": [],
           "defenders": [],
           "attackerCount": 0,
@@ -629,28 +750,128 @@
           "onlyDefenderOf": []
         },
         {
-          "id": "white-king-e1",
+          "id": "white-king-g1",
           "side": "white",
           "pieceType": "king",
-          "square": "e1",
-          "attackers": [],
-          "defenders": [],
-          "attackerCount": 0,
-          "defenderCount": 0,
-          "attacked": false,
-          "loose": true,
+          "square": "g1",
+          "attackers": [
+            {
+              "id": "black-knight-f3",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "f3"
+            }
+          ],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
+          "attackerCount": 1,
+          "defenderCount": 1,
+          "attacked": true,
+          "loose": false,
           "see": {
             "status": "unavailable",
             "reason": "piece_not_capturable_by_side_to_move"
           },
           "onlyDefenderOf": []
+        },
+        {
+          "id": "white-pawn-e4",
+          "side": "white",
+          "pieceType": "pawn",
+          "square": "e4",
+          "attackers": [],
+          "defenders": [
+            {
+              "id": "white-rook-e1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e1"
+            }
+          ],
+          "attackerCount": 0,
+          "defenderCount": 1,
+          "attacked": false,
+          "loose": false,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": []
+        },
+        {
+          "id": "white-rook-e1",
+          "side": "white",
+          "pieceType": "rook",
+          "square": "e1",
+          "attackers": [
+            {
+              "id": "black-knight-f3",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "f3"
+            }
+          ],
+          "defenders": [],
+          "attackerCount": 1,
+          "defenderCount": 0,
+          "attacked": true,
+          "loose": true,
+          "see": {
+            "status": "unavailable",
+            "reason": "piece_not_capturable_by_side_to_move"
+          },
+          "onlyDefenderOf": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            },
+            {
+              "id": "white-pawn-e4",
+              "side": "white",
+              "pieceType": "pawn",
+              "square": "e4"
+            }
+          ]
         }
       ],
       "pawnStructure": {
         "doubled": [],
-        "isolated": [],
-        "passed": [],
-        "islands": [],
+        "isolated": [
+          {
+            "id": "white-pawn-e4",
+            "side": "white",
+            "pieceType": "pawn",
+            "square": "e4"
+          }
+        ],
+        "passed": [
+          {
+            "id": "white-pawn-e4",
+            "side": "white",
+            "pieceType": "pawn",
+            "square": "e4"
+          }
+        ],
+        "islands": [
+          {
+            "id": "white-pawn-island-e",
+            "side": "white",
+            "files": [
+              "e"
+            ],
+            "squares": [
+              "e4"
+            ]
+          }
+        ],
         "backward": {
           "status": "uncomputed",
           "reason": "not_in_milestone_1"
@@ -685,8 +906,8 @@
         "reason": "not_in_milestone_1"
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
@@ -708,35 +929,19 @@
       },
       "removedStructures": {
         "status": "computed",
-        "items": [
-          {
-            "factId": "isolated-white-pawn-e4",
-            "kind": "isolated_pawn",
-            "side": "white",
-            "squares": [
-              "e4"
-            ]
-          },
-          {
-            "factId": "passed-white-pawn-e4",
-            "kind": "passed_pawn",
-            "side": "white",
-            "squares": [
-              "e4"
-            ]
-          }
-        ]
+        "items": []
       }
     }
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 1,
+    "factsRegistryVersion": 2,
     "validators": [
       "legal_move_generation",
       "attack_map",
       "see",
-      "pawn_structure"
+      "pawn_structure",
+      "fork_validation"
     ]
   },
   "errors": []

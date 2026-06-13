@@ -1,6 +1,8 @@
 import type { MoveAnalysis } from '../types';
 import {
   TEACHING_EVENTS_SCHEMA_VERSION,
+  type FactCollection,
+  type FactRef,
   type Side,
   type StructureDelta,
   type TeachingAnalysis,
@@ -9,9 +11,9 @@ import {
 } from './types';
 import { compareCreatedStructures } from './counterfactual';
 import { stableEventId, structureDeltaToFactRef } from './evidence';
-import { renderPawnStructureDamage, type PawnDamageMode } from './render';
+import { renderAllowedFork, renderPawnStructureDamage, type PawnDamageMode } from './render';
 import { resolveTopicId, topicMeta } from './registry';
-import { scorePawnStructureDamage } from './saliency';
+import { scoreAllowedFork, scorePawnStructureDamage } from './saliency';
 
 export interface CompileInput {
   analysis: MoveAnalysis;
@@ -32,7 +34,8 @@ export function compileTeachingEvents(input: CompileInput): TeachingAnalysis {
 
   const events: TeachingEvent[] = [];
   events.push(...detectPawnStructureDamage(input));
-  // Future slices append here: detectAllowedFork, detectMissedHangingPiece, ...
+  events.push(...detectAllowedFork(input));
+  // Future slices append here: detectMissedHangingPiece, detectAllowedPin, ...
 
   if (events.length === 0) {
     return { computed: true, schemaVersion: TEACHING_EVENTS_SCHEMA_VERSION, events: [] };
@@ -56,18 +59,27 @@ function detectPawnStructureDamage(input: CompileInput): TeachingEvent[] {
   const { facts, analysis } = input;
   const mover: Side = facts.before.sideToMove;
   const playedCreated = facts.played.deltas.createdStructures;
+  const playedRemoved = facts.played.deltas.removedStructures;
 
-  const allDamage: StructureDelta[] =
-    playedCreated.status === 'computed'
-      ? playedCreated.items.filter((d) => d.side === mover && DAMAGE_KINDS.includes(d.kind))
-      : [];
+  const createdDamage = damagingItems(playedCreated, mover);
+  const removedDamage = damagingItems(playedRemoved, mover);
+  // Net-new only: a pawn push relocates a weakness (isolated e2 -> isolated e4) and
+  // must NOT read as new damage. A kind counts only when more were created than
+  // removed on the mover's own side.
+  const netNewKinds = new Set<string>();
+  for (const kind of DAMAGE_KINDS) {
+    const created = createdDamage.filter((d) => d.kind === kind).length;
+    const removed = removedDamage.filter((d) => d.kind === kind).length;
+    if (created > removed) netNewKinds.add(kind);
+  }
+  const allDamage: StructureDelta[] = createdDamage.filter((d) => netNewKinds.has(d.kind));
   if (allDamage.length === 0) return [];
 
   const comparison = compareCreatedStructures(
     playedCreated,
     facts.best?.deltas.createdStructures,
     mover,
-    DAMAGE_KINDS,
+    [...netNewKinds],
   );
 
   const classification = analysis.classification;
@@ -159,6 +171,84 @@ function detectPawnStructureDamage(input: CompileInput): TeachingEvent[] {
     plan,
   };
   return [event];
+}
+
+// ── Allowed Fork (plan §10.1) ───────────────────────────────────────────────
+// The played move hands the opponent a validated fork (Rust-proven) that the best
+// move would not. Committed only with move-causation evidence: the fork matches the
+// Stockfish refutation, or the best-move counterfactual avoids it.
+function detectAllowedFork(input: CompileInput): TeachingEvent[] {
+  const { facts, analysis } = input;
+  const mover: Side = facts.before.sideToMove;
+  const opponent: Side = mover === 'white' ? 'black' : 'white';
+
+  const playedMotifs = facts.played.position.availableMotifs;
+  if (playedMotifs.status !== 'computed' || playedMotifs.items.length === 0) return [];
+
+  const bestMotifs = facts.best?.position.availableMotifs;
+  const bestForks = bestMotifs && bestMotifs.status === 'computed' ? bestMotifs.items : null;
+  const bestAvoids = bestForks !== null && bestForks.length === 0;
+
+  const refutationUci = facts.refutation?.move.uci;
+  // Prefer the fork the engine actually plays as the punishment; else the heaviest.
+  const forks = [...playedMotifs.items].sort(
+    (a, b) => b.materialGain - a.materialGain || a.moveUci.localeCompare(b.moveUci),
+  );
+  const fork = forks.find((f) => f.moveUci === refutationUci) ?? forks[0];
+  if (!fork) return [];
+
+  const refutationMatch = fork.moveUci === refutationUci;
+  // No move-causation evidence → do not claim the move "allowed" it.
+  if (!refutationMatch && !bestAvoids) return [];
+
+  const attribution = refutationMatch ? 'proven_refutation' : 'counterfactual_supported';
+  const badge = refutationMatch ? 'engine_line' : 'counterfactual_supported';
+  const playedLabel = playedMoveLabel(analysis, facts.played.move.uci);
+  const bestLabel = bestAvoids ? bestMoveLabel(analysis) : undefined;
+  const opponentName = opponent === 'white' ? 'White' : 'Black';
+
+  const squares = [
+    ...new Set([fork.forkingPiece.square, ...fork.targets.map((t) => t.square)]),
+  ].sort();
+  const forkRef: FactRef = { factId: `fork-${fork.moveUci}`, kind: 'fork', squares, side: opponent };
+  const plan = renderAllowedFork({ playedLabel, bestLabel, fork, opponentName });
+  const saliency = scoreAllowedFork({
+    classification: analysis.classification,
+    materialGain: fork.materialGain,
+    kingTarget: fork.kingTarget,
+    refutationMatch,
+  });
+
+  const correction =
+    bestAvoids && facts.best
+      ? { move: facts.best.move.uci, avoidedFacts: [forkRef], createdFacts: [] }
+      : undefined;
+
+  const event: TeachingEvent = {
+    id: stableEventId('allowed_fork', facts.played.move.uci, squares),
+    topicId: 'allowed_fork',
+    family: 'tactics',
+    action: 'allowed',
+    mechanism: 'fork',
+    side: mover,
+    playedMove: facts.played.move.uci,
+    actors: [fork.forkingPiece],
+    targets: fork.targets,
+    squares,
+    consequence: { cpLoss: analysis.cpLoss, materialLoss: fork.materialGain / 100 },
+    punishment: { move: fork.moveUci, line: [fork.moveUci] },
+    ...(correction ? { correction } : {}),
+    proof: { validators: ['fork_validation'], evidence: [forkRef], attribution, badge },
+    saliency,
+    plan,
+  };
+  return [event];
+}
+
+function damagingItems(collection: FactCollection<StructureDelta>, side: Side): StructureDelta[] {
+  return collection.status === 'computed'
+    ? collection.items.filter((d) => d.side === side && DAMAGE_KINDS.includes(d.kind))
+    : [];
 }
 
 function playedMoveLabel(analysis: MoveAnalysis, uci: string): string {

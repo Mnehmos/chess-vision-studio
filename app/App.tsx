@@ -348,7 +348,7 @@ export function App() {
         bestMoveUci: bestLine[0],
         refutationUci: refutationLine[0],
         principalVariationUci: bestLine.length ? bestLine : undefined,
-        options: { includeMotifOpportunities: false, includeCounterfactual: true },
+        options: { includeMotifOpportunities: true, includeCounterfactual: true },
       };
     } catch (error) {
       setTeachingFactsRequest(null);

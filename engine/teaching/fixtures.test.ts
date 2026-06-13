@@ -14,18 +14,33 @@ describe('TeachingFactBundleV1 Rust fixtures', () => {
       expect(isTeachingFactBundleV1(fixture)).toBe(true);
       const bundle = fixture as TeachingFactBundleV1;
       expect(bundle.provenance.engine).toBe('cvs-bitboard-core');
-      expect(bundle.provenance.factsRegistryVersion).toBe(1);
+      expect(bundle.provenance.factsRegistryVersion).toBe(2);
       expect(bundle.before.pieces.every((piece) => /^[a-h][1-8]$/.test(piece.square))).toBe(true);
       expect(bundle.played.move.uci).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
     }
   });
 
   it('preserves unknown versus false semantics in the contract fixtures', () => {
+    // pawn-structure-damage requested no motifs → uncomputed, never an empty list.
+    const psd = pawnStructureDamage as TeachingFactBundleV1;
+    expect(psd.before.availableMotifs.status).toBe('uncomputed');
     const bundle = allowedFork as TeachingFactBundleV1;
-    expect(bundle.before.availableMotifs.status).toBe('uncomputed');
     const opponentPiece = bundle.played.position.pieces.find(
       (piece) => piece.side === bundle.played.position.sideToMove,
     );
     expect(opponentPiece?.see.status).toBe('unavailable');
+  });
+
+  it('exposes the validated fork the played move allowed (registry v2)', () => {
+    const bundle = allowedFork as TeachingFactBundleV1;
+    const motifs = bundle.played.position.availableMotifs;
+    expect(motifs.status).toBe('computed');
+    if (motifs.status !== 'computed') return;
+    const fork = motifs.items.find((m) => m.moveUci === 'g5f3');
+    expect(fork?.kind).toBe('fork');
+    expect(fork?.kingTarget).toBe(true);
+    expect(fork?.targets.map((t) => t.id).sort()).toEqual(['white-king-g1', 'white-rook-e1']);
+    // the best move's counterfactual avoids it
+    expect(bundle.best?.position.availableMotifs.status).toBe('computed');
   });
 });
