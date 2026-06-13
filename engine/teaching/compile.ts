@@ -13,6 +13,7 @@ import { compareCreatedStructures } from './counterfactual';
 import { stableEventId, structureDeltaToFactRef, toPieceRef } from './evidence';
 import {
   renderAllowedFork,
+  renderFailedDefense,
   renderMissedHangingPiece,
   renderPawnStructureDamage,
   type PawnDamageMode,
@@ -20,6 +21,7 @@ import {
 import { resolveTopicId, topicMeta } from './registry';
 import {
   scoreAllowedFork,
+  scoreFailedDefense,
   scoreMissedHangingPiece,
   scorePawnStructureDamage,
 } from './saliency';
@@ -45,7 +47,8 @@ export function compileTeachingEvents(input: CompileInput): TeachingAnalysis {
   events.push(...detectPawnStructureDamage(input));
   events.push(...detectAllowedFork(input));
   events.push(...detectMissedHangingPiece(input));
-  // Future slices append here: detectFailedDefense, detectAllowedPin, ...
+  events.push(...detectFailedDefense(input));
+  // Future slices append here: detectAllowedPin, ...
 
   if (events.length === 0) {
     return { computed: true, schemaVersion: TEACHING_EVENTS_SCHEMA_VERSION, events: [] };
@@ -319,6 +322,92 @@ function detectMissedHangingPiece(input: CompileInput): TeachingEvent[] {
       evidence: [evidence],
       attribution: 'counterfactual_supported',
       badge: 'counterfactual_supported',
+    },
+    saliency,
+    plan,
+  };
+  return [event];
+}
+
+// ── Failed Defense (plan §10.4) ─────────────────────────────────────────────
+// A pre-existing threat (the mover's own piece was already attacked) that the
+// played move left active: the piece is still hanging afterward, the opponent's
+// refutation captures it, and the best move would have resolved it.
+function detectFailedDefense(input: CompileInput): TeachingEvent[] {
+  const { facts, analysis } = input;
+  const mover: Side = facts.before.sideToMove;
+  const opponent: Side = mover === 'white' ? 'black' : 'white';
+  const cls = analysis.classification;
+  if (cls === 'best' || cls === 'excellent') return [];
+  const refutation = facts.refutation;
+  if (!refutation) return [];
+
+  // A mover piece left hanging after the move, on the square the refutation hits.
+  const target = facts.played.position.pieces.find(
+    (p) =>
+      p.side === mover &&
+      p.square === refutation.move.to &&
+      p.see.status === 'computed' &&
+      p.see.value.losing,
+  );
+  if (!target || target.see.status !== 'computed') return [];
+
+  // The hazard pre-existed: the same piece was already attacked before the move.
+  const before = facts.before.pieces.find((p) => p.id === target.id);
+  if (!before || !before.attacked) return [];
+
+  // A legal defense existed: the best move leaves the piece safe on that square.
+  const bestPieces = facts.best?.position.pieces;
+  if (!bestPieces) return [];
+  const bestStillHanging = bestPieces.some(
+    (p) =>
+      p.side === mover &&
+      p.square === target.square &&
+      p.see.status === 'computed' &&
+      p.see.value.losing,
+  );
+  if (bestStillHanging) return [];
+
+  const scoreCp = target.see.value.scoreCp ?? 0;
+  const squares = [target.square];
+  const refutationLabel = analysis.evalAfter?.pv?.[0] ?? refutation.move.uci;
+  const evidence: FactRef = {
+    factId: `hanging-${target.id}`,
+    kind: 'hanging_piece',
+    squares,
+    side: mover,
+  };
+  const plan = renderFailedDefense({
+    playedLabel: playedMoveLabel(analysis, facts.played.move.uci),
+    bestLabel: bestMoveLabel(analysis),
+    refutationLabel,
+    pieceType: target.pieceType,
+    square: target.square,
+    opponentName: opponent === 'white' ? 'White' : 'Black',
+  });
+  const saliency = scoreFailedDefense({ classification: cls, scoreCp });
+
+  const event: TeachingEvent = {
+    id: stableEventId('failed_defense', facts.played.move.uci, squares),
+    topicId: 'failed_defense',
+    family: 'defense',
+    action: 'failed_to_answer',
+    mechanism: 'hanging_piece',
+    side: mover,
+    playedMove: facts.played.move.uci,
+    actors: [],
+    targets: [toPieceRef(target)],
+    squares,
+    consequence: { cpLoss: analysis.cpLoss, materialLoss: scoreCp / 100 },
+    punishment: { move: refutation.move.uci, line: [refutation.move.uci] },
+    correction: facts.best
+      ? { move: facts.best.move.uci, avoidedFacts: [evidence], createdFacts: [] }
+      : undefined,
+    proof: {
+      validators: ['see', 'attack_map', 'legal_move_generation'],
+      evidence: [evidence],
+      attribution: 'proven_refutation',
+      badge: 'engine_line',
     },
     saliency,
     plan,

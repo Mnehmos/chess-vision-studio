@@ -53,6 +53,16 @@ export function scoreMissedHangingPiece(params: {
   return round3(Math.min(0.6 + material + sev, 1));
 }
 
+// A defense failure that drops material is serious; scale by the loss.
+export function scoreFailedDefense(params: {
+  classification: Classification;
+  scoreCp: number;
+}): number {
+  const material = Math.min(Math.max(params.scoreCp, 0) / 900, 1) * 0.3;
+  const sev = (CLASSIFICATION_WEIGHT[params.classification] ?? 0.1) * 0.1;
+  return round3(Math.min(0.62 + material + sev, 1));
+}
+
 function round3(n: number): number {
   return Math.round(n * 1000) / 1000;
 }

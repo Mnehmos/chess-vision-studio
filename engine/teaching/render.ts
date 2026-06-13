@@ -87,6 +87,27 @@ export function renderMissedHangingPiece(params: {
   return plan;
 }
 
+// Render the Failed Defense plan: a pre-existing threat the move left unanswered,
+// the punishing reply, and the defense that was available.
+export function renderFailedDefense(params: {
+  playedLabel: string;
+  bestLabel?: string;
+  refutationLabel: string;
+  pieceType: string;
+  square: string;
+  opponentName: string;
+}): ExplanationPlan {
+  const plan: ExplanationPlan = {
+    topic: 'Failed Defense',
+    headline: `${params.playedLabel} left the ${params.pieceType} on ${params.square} hanging.`,
+    cause: `${params.opponentName} answers with ${params.refutationLabel}, winning the ${params.pieceType}.`,
+  };
+  if (params.bestLabel) {
+    plan.correction = `${params.bestLabel} saves the ${params.pieceType}.`;
+  }
+  return plan;
+}
+
 export type PawnDamageMode = 'causally_supported' | 'accepted_tradeoff' | 'descriptive';
 
 function listSquares(sqs: string[]): string {
