@@ -187,6 +187,10 @@
     "availableMotifs": {
       "status": "computed",
       "items": []
+    },
+    "availablePins": {
+      "status": "computed",
+      "items": []
     }
   },
   "played": {
@@ -422,6 +426,10 @@
             "materialGain": 500
           }
         ]
+      },
+      "availablePins": {
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
@@ -676,6 +684,10 @@
       "availableMotifs": {
         "status": "computed",
         "items": []
+      },
+      "availablePins": {
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
@@ -908,6 +920,10 @@
       "availableMotifs": {
         "status": "computed",
         "items": []
+      },
+      "availablePins": {
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
@@ -935,13 +951,14 @@
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 2,
+    "factsRegistryVersion": 3,
     "validators": [
       "legal_move_generation",
       "attack_map",
       "see",
       "pawn_structure",
-      "fork_validation"
+      "fork_validation",
+      "pin_validation"
     ]
   },
   "errors": []

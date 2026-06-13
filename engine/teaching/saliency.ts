@@ -53,6 +53,18 @@ export function scoreMissedHangingPiece(params: {
   return round3(Math.min(0.6 + material + sev, 1));
 }
 
+// Allowed pins are tactical; absolute (to the king) outranks relative.
+export function scoreAllowedPin(params: {
+  classification: Classification;
+  absolute: boolean;
+  refutationMatch: boolean;
+}): number {
+  const abs = params.absolute ? 0.15 : 0.05;
+  const refute = params.refutationMatch ? 0.1 : 0;
+  const sev = (CLASSIFICATION_WEIGHT[params.classification] ?? 0.1) * 0.1;
+  return round3(Math.min(0.55 + abs + refute + sev, 1));
+}
+
 // A defense failure that drops material is serious; scale by the loss.
 export function scoreFailedDefense(params: {
   classification: Classification;

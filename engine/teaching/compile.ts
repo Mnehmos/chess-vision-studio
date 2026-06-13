@@ -13,6 +13,7 @@ import { compareCreatedStructures } from './counterfactual';
 import { stableEventId, structureDeltaToFactRef, toPieceRef } from './evidence';
 import {
   renderAllowedFork,
+  renderAllowedPin,
   renderFailedDefense,
   renderMissedHangingPiece,
   renderPawnStructureDamage,
@@ -21,6 +22,7 @@ import {
 import { resolveTopicId, topicMeta } from './registry';
 import {
   scoreAllowedFork,
+  scoreAllowedPin,
   scoreFailedDefense,
   scoreMissedHangingPiece,
   scorePawnStructureDamage,
@@ -48,7 +50,7 @@ export function compileTeachingEvents(input: CompileInput): TeachingAnalysis {
   events.push(...detectAllowedFork(input));
   events.push(...detectMissedHangingPiece(input));
   events.push(...detectFailedDefense(input));
-  // Future slices append here: detectAllowedPin, ...
+  events.push(...detectAllowedPin(input));
 
   if (events.length === 0) {
     return { computed: true, schemaVersion: TEACHING_EVENTS_SCHEMA_VERSION, events: [] };
@@ -409,6 +411,80 @@ function detectFailedDefense(input: CompileInput): TeachingEvent[] {
       attribution: 'proven_refutation',
       badge: 'engine_line',
     },
+    saliency,
+    plan,
+  };
+  return [event];
+}
+
+// ── Allowed Pin (plan §10.2) ────────────────────────────────────────────────
+// The played move hands the opponent a validated pin (Rust-proven) the best move
+// would not. Same evidence discipline as Allowed Fork: refutation match or a clean
+// best-move counterfactual.
+function detectAllowedPin(input: CompileInput): TeachingEvent[] {
+  const { facts, analysis } = input;
+  const mover: Side = facts.before.sideToMove;
+  const opponent: Side = mover === 'white' ? 'black' : 'white';
+
+  const playedPins = facts.played.position.availablePins;
+  if (playedPins.status !== 'computed' || playedPins.items.length === 0) return [];
+
+  const bestPins = facts.best?.position.availablePins;
+  const bestList = bestPins && bestPins.status === 'computed' ? bestPins.items : null;
+  const bestAvoids = bestList !== null && bestList.length === 0;
+
+  const refutationUci = facts.refutation?.move.uci;
+  // Prefer the pin the engine punishes with; absolute pins outrank relative.
+  const pins = [...playedPins.items].sort(
+    (a, b) =>
+      Number(b.kind === 'absolute') - Number(a.kind === 'absolute') ||
+      a.moveUci.localeCompare(b.moveUci),
+  );
+  const pin = pins.find((p) => p.moveUci === refutationUci) ?? pins[0];
+  if (!pin) return [];
+
+  const refutationMatch = pin.moveUci === refutationUci;
+  if (!refutationMatch && !bestAvoids) return [];
+
+  const attribution = refutationMatch ? 'proven_refutation' : 'counterfactual_supported';
+  const badge = refutationMatch ? 'engine_line' : 'counterfactual_supported';
+  const bestLabel = bestAvoids ? bestMoveLabel(analysis) : undefined;
+  const squares = [
+    ...new Set([pin.pinner.square, pin.pinned.square, pin.anchor.square, ...pin.ray]),
+  ].sort();
+  const pinRef: FactRef = { factId: `pin-${pin.moveUci}`, kind: 'pin', squares, side: opponent };
+  const plan = renderAllowedPin({
+    playedLabel: playedMoveLabel(analysis, facts.played.move.uci),
+    bestLabel,
+    pin,
+    opponentName: opponent === 'white' ? 'White' : 'Black',
+  });
+  const saliency = scoreAllowedPin({
+    classification: analysis.classification,
+    absolute: pin.kind === 'absolute',
+    refutationMatch,
+  });
+
+  const correction =
+    bestAvoids && facts.best
+      ? { move: facts.best.move.uci, avoidedFacts: [pinRef], createdFacts: [] }
+      : undefined;
+
+  const event: TeachingEvent = {
+    id: stableEventId('allowed_pin', facts.played.move.uci, squares),
+    topicId: 'allowed_pin',
+    family: 'tactics',
+    action: 'allowed',
+    mechanism: 'pin',
+    side: mover,
+    playedMove: facts.played.move.uci,
+    actors: [pin.pinner],
+    targets: [pin.pinned, pin.anchor],
+    squares,
+    consequence: { cpLoss: analysis.cpLoss },
+    punishment: { move: pin.moveUci, line: [pin.moveUci] },
+    ...(correction ? { correction } : {}),
+    proof: { validators: ['pin_validation'], evidence: [pinRef], attribution, badge },
     saliency,
     plan,
   };

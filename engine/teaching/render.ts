@@ -1,4 +1,10 @@
-import type { ExplanationPlan, MotifOpportunity, PieceRef, StructureDelta } from './types';
+import type {
+  ExplanationPlan,
+  MotifOpportunity,
+  PieceRef,
+  PinOpportunity,
+  StructureDelta,
+} from './types';
 import { filesOf } from './evidence';
 
 const PIECE_VALUE_CP: Record<string, number> = {
@@ -104,6 +110,30 @@ export function renderFailedDefense(params: {
   };
   if (params.bestLabel) {
     plan.correction = `${params.bestLabel} saves the ${params.pieceType}.`;
+  }
+  return plan;
+}
+
+// Render the Allowed Pin plan: the pinning move, the pinned piece and its anchor,
+// the immobility consequence, and the move that prevents it.
+export function renderAllowedPin(params: {
+  playedLabel: string;
+  bestLabel?: string;
+  pin: PinOpportunity;
+  opponentName: string;
+}): ExplanationPlan {
+  const { pin } = params;
+  const plan: ExplanationPlan = {
+    topic: 'Allowed Pin',
+    headline: `${params.playedLabel} allowed a pin.`,
+    cause: `${capitalize(pin.pinner.pieceType)} to ${pin.pinner.square} pins the ${pin.pinned.pieceType} on ${pin.pinned.square} to the ${pin.anchor.pieceType} on ${pin.anchor.square}.`,
+    consequence:
+      pin.kind === 'absolute'
+        ? `The ${pin.pinned.pieceType} is pinned to the king and cannot move.`
+        : `The ${pin.pinned.pieceType} is pinned to the ${pin.anchor.pieceType} and cannot move without loss.`,
+  };
+  if (params.bestLabel) {
+    plan.correction = `${params.bestLabel} prevents the pin.`;
   }
   return plan;
 }

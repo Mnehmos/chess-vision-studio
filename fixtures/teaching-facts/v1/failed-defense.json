@@ -125,6 +125,10 @@
     "availableMotifs": {
       "status": "uncomputed",
       "reason": "not_requested"
+    },
+    "availablePins": {
+      "status": "uncomputed",
+      "reason": "not_requested"
     }
   },
   "played": {
@@ -272,6 +276,10 @@
         "reason": "not_in_milestone_1"
       },
       "availableMotifs": {
+        "status": "uncomputed",
+        "reason": "not_requested"
+      },
+      "availablePins": {
         "status": "uncomputed",
         "reason": "not_requested"
       }
@@ -430,6 +438,10 @@
       "availableMotifs": {
         "status": "uncomputed",
         "reason": "not_requested"
+      },
+      "availablePins": {
+        "status": "uncomputed",
+        "reason": "not_requested"
       }
     },
     "deltas": {
@@ -562,6 +574,10 @@
       "availableMotifs": {
         "status": "uncomputed",
         "reason": "not_requested"
+      },
+      "availablePins": {
+        "status": "uncomputed",
+        "reason": "not_requested"
       }
     },
     "deltas": {
@@ -589,7 +605,7 @@
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 2,
+    "factsRegistryVersion": 3,
     "validators": [
       "legal_move_generation",
       "attack_map",

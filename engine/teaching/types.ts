@@ -31,6 +31,7 @@ export interface PositionFacts {
   kingSafety: FactCollection<KingSafetyFact>;
   availableCaptures: FactCollection<CaptureOpportunity>;
   availableMotifs: FactCollection<MotifOpportunity>;
+  availablePins: FactCollection<PinOpportunity>;
 }
 
 export interface MoveStateFacts {
@@ -158,6 +159,18 @@ export interface MotifOpportunity {
   givesCheck: boolean;
   kingTarget: boolean;
   materialGain: number; // estimated forced consequence, centipawns
+}
+
+export interface PinOpportunity {
+  kind: string; // 'absolute' | 'relative'
+  validator: string; // 'pin_validation'
+  moveUci: string;
+  pinner: PieceRef;
+  pinned: PieceRef;
+  anchor: PieceRef; // king for an absolute pin
+  ray: string[]; // squares between pinner and anchor, incl. the pinned square
+  givesCheck: boolean;
+  pinnedImmobile: boolean; // true for an absolute pin
 }
 
 export interface HazardFact {
