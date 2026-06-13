@@ -1207,7 +1207,7 @@ function EngineComparisonPanel({
         <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
         <span style={{ color: 'var(--muted)', fontSize: 12, flexShrink: 0 }}>local WIP</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14 }}>
         <div style={{ minWidth: 0 }}>
           <p style={labelStyle}>Stockfish</p>
           {stockfishState !== 'ready' ? (

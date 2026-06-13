@@ -40,7 +40,7 @@ export function FactsPanel({
       : [];
 
   return (
-    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: 12, minWidth: 300, fontSize: 14, lineHeight: 1.55 }}>
+    <div style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: 12, minWidth: 0, fontSize: 14, lineHeight: 1.55 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <h3 style={{ margin: 0, fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--muted)' }}>Square facts</h3>
         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--muted)' }}>click any square</span>

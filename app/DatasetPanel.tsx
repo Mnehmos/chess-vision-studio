@@ -173,8 +173,8 @@ export function DatasetPanel({
 
           {ds.hero && (
             <>
-              <h4 style={{ margin: '16px 0 4px' }}>Win rate over time</h4>
-              <Sparkline timeline={ds.timeline} />
+              <h4 style={{ margin: '16px 0 4px' }}>Accuracy over time</h4>
+              <AccuracyChart perGame={datasetAnalysis.perGame} />
               <ResultStrip ds={ds} onOpenGame={onOpenGame} />
 
               <h4 style={{ margin: '16px 0 4px' }}>Openings (your perspective)</h4>
@@ -246,29 +246,40 @@ function RecordBar({ rec }: { rec: Record4 }) {
   );
 }
 
-// ── win-rate-over-time sparkline ─────────────────────────────────────────────
-// Rolling score (win=1, draw=0.5) over the last WINDOW games — answers "am I
-// trending up?" where a cumulative line just always climbs.
-function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['timeline'] }) {
-  const W = 360;
-  const H = 70;
-  const pts = timeline.filter((t) => t.heroScore !== null);
-  if (pts.length < 2) return <div style={{ fontSize: 13, color: 'var(--muted)' }}>Not enough games to chart.</div>;
-  const n = pts.length;
-  const WINDOW = Math.min(20, Math.max(5, Math.floor(n / 4)));
-  const rolling = pts.map((_, i) => {
-    const from = Math.max(0, i - WINDOW + 1);
-    const slice = pts.slice(from, i + 1);
-    return slice.reduce((a, t) => a + (t.heroScore as number), 0) / slice.length;
-  });
-  const line = rolling.map((r, i) => `${(i / (n - 1)) * W},${H - r * (H - 14) - 4}`).join(' ');
-  const evenY = H - 0.5 * (H - 14) - 4;
+// ── accuracy-over-time chart ─────────────────────────────────────────────────
+// Hero accuracy per analyzed game, chronological. Needs analysis data — the
+// chart itself nudges toward "Analyze all games" until there's enough.
+function AccuracyChart({ perGame }: { perGame: { ts: number | null; accuracy: number }[] }) {
+  const W = 420;
+  const H = 96;
+  const PAD = 14;
+  if (perGame.length < 3) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+        {perGame.length === 0
+          ? 'No analyzed games yet — run “Analyze all games” to chart your accuracy over time.'
+          : `Only ${perGame.length} analyzed game${perGame.length === 1 ? '' : 's'} — analyze more to see the trend.`}
+      </div>
+    );
+  }
+  const n = perGame.length;
+  const lo = Math.max(0, Math.min(...perGame.map((p) => p.accuracy)) - 5);
+  const hi = 100;
+  const x = (i: number) => PAD + (i / (n - 1)) * (W - 2 * PAD);
+  const y = (a: number) => PAD + (1 - (a - lo) / (hi - lo)) * (H - 2 * PAD);
+  const line = perGame.map((p, i) => `${x(i)},${y(p.accuracy)}`).join(' ');
+  const y80 = y(80);
   return (
-    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: 4 }}>
-      <line x1={0} y1={evenY} x2={W} y2={evenY} stroke="var(--border)" strokeDasharray="4 3" />
-      <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} />
-      <text x={4} y={12} fontSize={10} fill="#9b9389">
-        win rate · rolling {WINDOW}-game score · dashes = 50%
+    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: 4, maxWidth: '100%' }}>
+      {y80 > PAD && y80 < H - PAD && (
+        <line x1={PAD} y1={y80} x2={W - PAD} y2={y80} stroke="var(--border)" strokeDasharray="4 3" />
+      )}
+      <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
+      {perGame.map((p, i) => (
+        <circle key={i} cx={x(i)} cy={y(p.accuracy)} r={2.5} fill="var(--accent-light)" />
+      ))}
+      <text x={PAD} y={11} fontSize={10} fill="#9b9389">
+        accuracy per analyzed game · dashes = 80%
       </text>
     </svg>
   );

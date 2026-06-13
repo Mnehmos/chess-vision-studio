@@ -8,6 +8,8 @@ import {
 import type { ParsedGame, PlyRecord } from '../position';
 import type { MoveAnalysis } from '../types';
 
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
 const mkAnalysis = (over: Partial<MoveAnalysis>): MoveAnalysis => ({
   positionBefore: '',
   positionAfter: '',
@@ -67,6 +69,7 @@ describe('computeDatasetAnalysis', () => {
       UTCDate: '2026.06.02',
       UTCTime: '08:00:00',
     },
+    initialFen: START_FEN,
     plies: [mkPly(1, 'w', 'e4'), mkPly(2, 'b', 'e5')],
     label: '#1  Me vs Rival · 1-0',
   };
@@ -80,6 +83,7 @@ describe('computeDatasetAnalysis', () => {
       UTCDate: '2026.06.02',
       UTCTime: '08:30:00',
     },
+    initialFen: START_FEN,
     plies: [mkPly(1, 'w', 'd4'), mkPly(2, 'b', 'd5')],
     label: '#2  Rival vs Me · 0-1',
   };

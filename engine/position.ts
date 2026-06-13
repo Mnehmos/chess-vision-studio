@@ -3,6 +3,8 @@
 import { Chess } from 'chess.js';
 import type { PositionState } from './types';
 
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
 export function positionFromFen(fen: string): PositionState {
   const chess = new Chess(fen);
   return {
@@ -28,20 +30,22 @@ export interface PlyRecord {
 export function pliesFromPgn(pgn: string): PlyRecord[] {
   const chess = new Chess();
   chess.loadPgn(pgn);
-  return pliesFromHistory(chess.history({ verbose: true }));
+  return pliesFromHistory(chess.history({ verbose: true }), headersFromPgn(pgn).FEN);
 }
 
 function pliesFromHistory(
   history: { san: string; color: 'w' | 'b'; from: string; to: string }[],
+  initialFen = START_FEN,
 ): PlyRecord[] {
-  const replay = new Chess();
+  const replay = new Chess(initialFen);
   const records: PlyRecord[] = [];
   history.forEach((move, i) => {
     const fenBefore = replay.fen();
+    const moveNumber = replay.moveNumber();
     replay.move(move.san);
     records.push({
       ply: i + 1,
-      moveNumber: Math.floor(i / 2) + 1,
+      moveNumber,
       san: move.san,
       color: move.color,
       from: move.from,
@@ -57,6 +61,7 @@ function pliesFromHistory(
 export interface ParsedGame {
   index: number;
   headers: Record<string, string>;
+  initialFen: string;
   plies: PlyRecord[];
   label: string; // 'White vs Black · 1-0 · 2026.06.06'
 }
@@ -95,18 +100,23 @@ function gameLabel(headers: Record<string, string>, index: number): string {
   return `#${index + 1}  ${w} vs ${b} · ${res}${date}`;
 }
 
+function normalizedInitialFen(headers: Record<string, string>): string {
+  return new Chess(headers.FEN || START_FEN).fen();
+}
+
 /** Parse every game in a (possibly multi-game) PGN export. Malformed games skipped. */
 export function gamesFromPgn(pgn: string): ParsedGame[] {
   const chunks = splitPgnGames(pgn);
   const out: ParsedGame[] = [];
   chunks.forEach((chunk) => {
     try {
+      const headers = headersFromPgn(chunk);
+      const initialFen = normalizedInitialFen(headers);
       const chess = new Chess();
       chess.loadPgn(chunk);
-      const plies = pliesFromHistory(chess.history({ verbose: true }));
-      if (plies.length === 0) return;
-      const headers = headersFromPgn(chunk);
-      out.push({ index: out.length, headers, plies, label: gameLabel(headers, out.length) });
+      const plies = pliesFromHistory(chess.history({ verbose: true }), initialFen);
+      if (plies.length === 0 && !headers.FEN) return;
+      out.push({ index: out.length, headers, initialFen, plies, label: gameLabel(headers, out.length) });
     } catch {
       // skip malformed game, keep parsing the rest
     }

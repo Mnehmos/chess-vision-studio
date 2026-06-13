@@ -263,7 +263,7 @@ export function PlayMode({
   return (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
       {/* ── Board + controls ───────────────────────────────────────────── */}
-      <div style={{ ...card, padding: 12, width: 'max-content' }}>
+      <div style={{ ...card, padding: 12, flex: '0 1 auto', maxWidth: 'min(620px, 100%)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 10 }}>
           <strong data-testid="play-status" style={{ fontSize: 15, color: status.tone }}>
             {status.text}
@@ -391,17 +391,15 @@ export function PlayMode({
       </div>
 
       {/* ── Right column: Facts · Coach · Moves ─────────────────────────── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: '1 1 280px', minWidth: 280, maxWidth: 360 }}>
-        <div style={{ ...card, padding: 12 }}>
-          <FactsPanel
-            fen={fen}
-            selected={selected ?? undefined}
-            analysis={liveAnalysis ?? undefined}
-            move={liveAnalysis?.move}
-            focused={focused}
-            onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
-          />
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: '1 1 320px', minWidth: 280, maxWidth: 480 }}>
+        <FactsPanel
+          fen={fen}
+          selected={selected ?? undefined}
+          analysis={liveAnalysis ?? undefined}
+          move={liveAnalysis?.move}
+          focused={focused}
+          onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+        />
 
         <div style={{ ...card, padding: 12 }}>
           <strong style={{ fontSize: 13, color: 'var(--text)' }}>Coach</strong>

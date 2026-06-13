@@ -53,6 +53,8 @@ export interface DatasetAnalysis {
   overall: GameAnalytics; // computeAnalytics over EVERY analyzed ply across all games
   worst: DatasetWorstMove[]; // biggest cpLoss teaching moments across dataset, worst first, top ~12
   timeOfDay: TimeBucket[]; // ALWAYS length 4, order: morning, afternoon, evening, night
+  /** Hero accuracy per analyzed game (>=5 hero plies), chronological where dated. */
+  perGame: { gameIndex: number; ts: number | null; accuracy: number }[];
 }
 
 const TEACHING_CLASSES: ReadonlySet<Classification> = new Set<Classification>([
@@ -168,6 +170,7 @@ export function computeDatasetAnalysis(
 
   const buckets = new Map<TimeBucketKey, BucketAcc>();
   for (const key of BUCKET_ORDER) buckets.set(key, emptyBucket(key, labelForKey(key)));
+  const perGame: DatasetAnalysis['perGame'] = [];
 
   for (const g of games) {
     coverage.pliesTotal += g.plies.length;
@@ -196,6 +199,8 @@ export function computeDatasetAnalysis(
 
     if (!moves) continue;
 
+    let gameAccSum = 0;
+    let gameHeroPlies = 0;
     for (const [plyIndex, analysis] of moves) {
       const rec = g.plies[plyIndex];
       if (!rec) continue; // cache key outside this game's plies — ignore
@@ -214,14 +219,26 @@ export function computeDatasetAnalysis(
       }
 
       // Hero-only contributions to the time-of-day cpLoss/accuracy.
-      if (bucket && heroColor && rec.color === heroColor) {
-        bucket.analyzedPlies += 1;
-        bucket.heroPlies += 1;
-        bucket.cpLossSum += analysis.cpLoss;
-        bucket.accSum += moveAccuracy(analysis.cpLoss);
+      if (heroColor && rec.color === heroColor) {
+        gameAccSum += moveAccuracy(analysis.cpLoss);
+        gameHeroPlies += 1;
+        if (bucket) {
+          bucket.analyzedPlies += 1;
+          bucket.heroPlies += 1;
+          bucket.cpLossSum += analysis.cpLoss;
+          bucket.accSum += moveAccuracy(analysis.cpLoss);
+        }
       }
     }
+    if (gameHeroPlies >= 5) {
+      perGame.push({
+        gameIndex: g.index,
+        ts: start ? start.getTime() : null,
+        accuracy: gameAccSum / gameHeroPlies,
+      });
+    }
   }
+  perGame.sort((a, b) => (a.ts ?? Infinity) - (b.ts ?? Infinity));
 
   const overall = computeAnalytics(allEntries);
 
@@ -244,5 +261,5 @@ export function computeDatasetAnalysis(
     };
   });
 
-  return { hero, coverage, overall, worst, timeOfDay };
+  return { hero, coverage, overall, worst, timeOfDay, perGame };
 }
