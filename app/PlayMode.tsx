@@ -538,8 +538,8 @@ function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
         margin: '6px 0',
         width: 'max-content',
         borderRadius: 8,
-        border: active ? '1px solid #1570ef' : '1px solid var(--border)',
-        background: active ? '#eff6ff' : '#fff',
+        border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+        background: active ? 'rgba(184,115,51,0.18)' : 'var(--card2)',
       }}
     >
       <span
@@ -548,7 +548,7 @@ function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
           height: 14,
           borderRadius: '50%',
           background: color === 'w' ? '#fff' : '#111',
-          border: '1px solid #98a2b3',
+          border: '1px solid var(--border)',
           display: 'inline-block',
         }}
       />
@@ -577,7 +577,7 @@ const primaryBtn: CSSProperties = {
   fontSize: 13,
   padding: '6px 12px',
   borderRadius: 8,
-  border: '1px solid #1570ef',
+  border: '1px solid var(--accent)',
   background: 'var(--accent-light)',
   color: '#fff',
   cursor: 'pointer',
@@ -593,8 +593,8 @@ const modeBtn: CSSProperties = {
 };
 const modeBtnActive: CSSProperties = {
   ...modeBtn,
-  border: '1px solid #1570ef',
-  background: '#eff6ff',
+  border: '1px solid var(--accent)',
+  background: 'rgba(184,115,51,0.18)',
   color: 'var(--accent-light)',
   fontWeight: 600,
 };

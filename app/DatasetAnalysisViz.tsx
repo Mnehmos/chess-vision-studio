@@ -37,13 +37,22 @@ export function DatasetAnalysisViz({
   onOpenGame: (gameIndex: number) => void;
 }): JSX.Element {
   const { hero, coverage, overall, worst, timeOfDay } = analysis;
-  const hasAnalysis = coverage.pliesAnalyzed > 0;
+  // The 1-move trap: a single analyzed ply produced "White 100% / Black 0%".
+  // Accuracy sections need a real sample before they mean anything.
+  const hasAnalysis = coverage.pliesAnalyzed >= 50;
+  const coveragePct = coverage.pliesTotal ? (coverage.pliesAnalyzed / coverage.pliesTotal) * 100 : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* 1) Coverage — what fraction of the data these charts are built from. */}
       <div style={card}>
         <Coverage coverage={coverage} hasAnalysis={hasAnalysis} />
+        {coveragePct < 100 && (
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--warn)' }}>
+            ⚠ Everything below reflects only the {coveragePct < 1 ? '<1' : Math.round(coveragePct)}% analyzed so far —
+            run <strong>Analyze all games</strong> above for the full picture.
+          </div>
+        )}
       </div>
 
       {/* 2) Time of day — the headline. Works from results even without analysis. */}
@@ -61,7 +70,7 @@ export function DatasetAnalysisViz({
           </div>
         ) : (
           <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-            Run an analysis pass to see your accuracy split by side.
+            Not enough analyzed moves yet for a reliable accuracy split — run “Analyze all games”.
           </div>
         )}
       </div>
@@ -162,7 +171,7 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
         alignItems: 'center',
         padding: '4px 6px',
         borderRadius: 6,
-        background: isBest ? '#f3f8ff' : 'transparent',
+        background: isBest ? 'rgba(184,115,51,0.14)' : 'transparent',
       }}
     >
       {/* Label + games */}
@@ -189,7 +198,7 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
         <Meter pct={scorePct} color={scoreColor(b.scorePct)} bg="var(--track)" />
         {showAccuracy && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Meter pct={acc ?? 0} color={accColor(acc ?? 0)} bg="#f5f6f8" height={5} />
+            <Meter pct={acc ?? 0} color={accColor(acc ?? 0)} bg="var(--track)" height={5} />
             <span style={{ fontSize: 10, color: 'var(--muted)', minWidth: 70, textAlign: 'right' }}>
               {acc === null ? 'no analysis' : `${acc.toFixed(0)}% accurate`}
             </span>

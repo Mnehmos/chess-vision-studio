@@ -116,7 +116,7 @@ export function DatasetPanel({
             onClick={onAnalyzeAll}
             disabled={disabled}
             style={{
-              border: '1px solid #3b6fd4',
+              border: '1px solid var(--accent)',
               background: !disabled ? 'var(--accent)' : 'var(--track)',
               color: !disabled ? '#fff' : 'var(--muted)',
               borderRadius: 4,
@@ -173,7 +173,7 @@ export function DatasetPanel({
 
           {ds.hero && (
             <>
-              <h4 style={{ margin: '16px 0 4px' }}>Score over time</h4>
+              <h4 style={{ margin: '16px 0 4px' }}>Win rate over time</h4>
               <Sparkline timeline={ds.timeline} />
               <ResultStrip ds={ds} onOpenGame={onOpenGame} />
 
@@ -246,27 +246,29 @@ function RecordBar({ rec }: { rec: Record4 }) {
   );
 }
 
-// ── score-over-time sparkline ────────────────────────────────────────────────
+// ── win-rate-over-time sparkline ─────────────────────────────────────────────
+// Rolling score (win=1, draw=0.5) over the last WINDOW games — answers "am I
+// trending up?" where a cumulative line just always climbs.
 function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['timeline'] }) {
   const W = 360;
   const H = 70;
   const pts = timeline.filter((t) => t.heroScore !== null);
   if (pts.length < 2) return <div style={{ fontSize: 13, color: 'var(--muted)' }}>Not enough games to chart.</div>;
   const n = pts.length;
-  const maxCum = pts[pts.length - 1].cumulative || 1;
-  // Hero cumulative line.
-  const line = pts
-    .map((t, i) => `${(i / (n - 1)) * W},${H - (t.cumulative / maxCum) * H}`)
-    .join(' ');
-  // "Even" reference: 0.5 points per game.
-  const evenEnd = 0.5 * n;
-  const evenY = H - (Math.min(evenEnd, maxCum) / maxCum) * H;
+  const WINDOW = Math.min(20, Math.max(5, Math.floor(n / 4)));
+  const rolling = pts.map((_, i) => {
+    const from = Math.max(0, i - WINDOW + 1);
+    const slice = pts.slice(from, i + 1);
+    return slice.reduce((a, t) => a + (t.heroScore as number), 0) / slice.length;
+  });
+  const line = rolling.map((r, i) => `${(i / (n - 1)) * W},${H - r * (H - 14) - 4}`).join(' ');
+  const evenY = H - 0.5 * (H - 14) - 4;
   return (
     <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: 4 }}>
-      <line x1={0} y1={H} x2={W} y2={evenY} stroke="var(--border)" strokeDasharray="4 3" />
+      <line x1={0} y1={evenY} x2={W} y2={evenY} stroke="var(--border)" strokeDasharray="4 3" />
       <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} />
-      <text x={4} y={12} fontSize={10} fill="#999">
-        cumulative score (↑ = winning)
+      <text x={4} y={12} fontSize={10} fill="#9b9389">
+        win rate · rolling {WINDOW}-game score · dashes = 50%
       </text>
     </svg>
   );
@@ -476,7 +478,7 @@ function GamesList({
                 <tr
                   key={s.index}
                   onClick={() => onOpenGame(s.index)}
-                  style={{ cursor: 'pointer', borderTop: '1px solid #f3f3f3' }}
+                  style={{ cursor: 'pointer', borderTop: '1px solid var(--border)' }}
                 >
                   <td style={{ padding: '3px 6px', width: 6 }}>
                     <div style={{ width: 6, height: 14, background: c, borderRadius: 2 }} />
@@ -536,7 +538,7 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
       onClick={onClick}
       style={{
         border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
-        background: active ? 'var(--track)' : '#fff',
+        background: active ? 'var(--track)' : 'var(--card2)',
         color: active ? 'var(--accent-light)' : 'var(--text-soft)',
         borderRadius: 4,
         padding: '3px 9px',
