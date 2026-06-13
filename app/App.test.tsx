@@ -11,6 +11,19 @@ import { App } from './App';
 
 afterEach(cleanup);
 
+const FEN_ONLY_PGN = `[Event "?"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "?"]
+[Black "?"]
+[Result "*"]
+[SetUp "1"]
+[FEN "2kr3r/ppp2Nbp/4p1p1/2q2n2/2B5/1P2R3/P5PP/R2Q3K w - - 0 1"]
+[Link "https://www.chess.com/analysis/game/pgn/5LBfKDrV7U/analysis"]
+
+*`;
+
 describe('App — move history + navigation', () => {
   it('renders the full game move history (grouped notation)', () => {
     const { container, getAllByText } = render(<App />);
@@ -45,5 +58,31 @@ describe('App — move history + navigation', () => {
     fireEvent.click(getByText('▶')); // ply 2
     // the ply indicator updates
     expect(within(container as HTMLElement).getByText(/ply 2 \//)).toBeTruthy();
+  });
+  it('loads a From Position PGN with only a FEN and no moves', () => {
+    const { container, getByText, queryByText } = render(<App />);
+    fireEvent.click(getByText(/Import PGN/));
+    const textarea = container.querySelector('textarea');
+    expect(textarea).toBeTruthy();
+    fireEvent.change(textarea!, { target: { value: FEN_ONLY_PGN } });
+    fireEvent.click(getByText('Load games'));
+
+    const dataPiece = (sq: string) =>
+      container.querySelector(`[data-square="${sq}"]`)?.getAttribute('data-piece');
+    expect(dataPiece('c8')).toBe('bK');
+    expect(dataPiece('f7')).toBe('wN');
+    expect(dataPiece('h1')).toBe('wK');
+
+    fireEvent.click(container.querySelector('[data-square="f7"]')!);
+    fireEvent.click(container.querySelector('[data-square="d8"]')!);
+    expect(dataPiece('f7')).toBe('');
+    expect(dataPiece('d8')).toBe('wN');
+    expect(getByText('Nxd8')).toBeTruthy();
+    expect(container.textContent).toContain('branch after start');
+
+    fireEvent.click(getByText('Back to source line'));
+    expect(dataPiece('c8')).toBe('bK');
+    expect(dataPiece('f7')).toBe('wN');
+    expect(queryByText('Back to source line')).toBeNull();
   });
 });

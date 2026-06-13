@@ -9,7 +9,7 @@ import type { Classification, MoveAnalysis } from '../engine/types';
 const CLASS_COLOR: Record<Classification, string> = {
   best: '#2f855a',
   excellent: '#3fbf5f',
-  good: '#5a9bd4',
+  good: 'var(--accent-light)',
   inaccuracy: '#e8923b',
   mistake: '#e2603b',
   blunder: '#e23b3b',
@@ -19,7 +19,7 @@ const CLASS_COLOR: Record<Classification, string> = {
 const CLASS_ORDER: Classification[] = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'];
 
 // Team colors mirror the board visual grammar: White = blue, Black = red.
-const TEAM = { w: '#3b6fd4', b: '#d43b3b' } as const;
+const TEAM = { w: 'var(--accent)', b: '#d43b3b' } as const;
 
 type Scope = 'game' | 'step';
 
@@ -65,14 +65,14 @@ export function AnalyticsPanel({
           </ScopeButton>
         </div>
         {scope === 'step' && (
-          <span style={{ fontSize: 12, color: '#888' }}>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             through move {Math.ceil(view / 2) || 0} · {scoped.length} plies analyzed
           </span>
         )}
       </div>
 
       {scoped.length === 0 ? (
-        <div style={{ color: '#888', fontSize: 13 }}>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
           Step forward to build the review move by move.
         </div>
       ) : (
@@ -92,12 +92,12 @@ export function AnalyticsPanel({
           <div style={{ minWidth: 280, flex: 1 }}>
             <h4 style={{ margin: '0 0 4px' }}>What happened</h4>
             {analytics.matesFound > 0 && (
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
                 Forced mates in play: {analytics.matesFound}
               </div>
             )}
             {timeline.length === 0 ? (
-              <div style={{ color: '#888', fontSize: 13 }}>Nothing notable yet — a quiet stretch.</div>
+              <div style={{ color: 'var(--muted)', fontSize: 13 }}>Nothing notable yet — a quiet stretch.</div>
             ) : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: 13 }}>
                 {timeline.map((ev) => (
@@ -114,7 +114,7 @@ export function AnalyticsPanel({
                       marginBottom: 2,
                     }}
                   >
-                    <span style={{ fontWeight: 600, minWidth: 64, color: '#333' }}>{ev.move}</span>
+                    <span style={{ fontWeight: 600, minWidth: 64, color: 'var(--text-soft)' }}>{ev.move}</span>
                     <span style={{ color: ev.tone }}>{ev.text}</span>
                   </li>
                 ))}
@@ -136,8 +136,8 @@ function ScopeButton({ active, onClick, children }: { active: boolean; onClick: 
         padding: '4px 10px',
         fontSize: 12,
         cursor: 'pointer',
-        background: active ? '#3b6fd4' : '#f4f4f4',
-        color: active ? '#fff' : '#444',
+        background: active ? 'var(--accent)' : '#f4f4f4',
+        color: active ? '#fff' : 'var(--text-soft)',
       }}
     >
       {children}
@@ -153,7 +153,7 @@ function SideCard({ title, color, s }: { title: string; color: string; s: SideSt
         <span style={{ color }}>{title}</span> —{' '}
         <span style={{ color: accColor(s.accuracy) }}>{s.accuracy.toFixed(0)}% accuracy</span>
       </h4>
-      <div style={{ fontSize: 13, color: '#666', marginBottom: 6 }}>
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>
         {s.moves} moves · avg loss {s.avgCpLoss.toFixed(2)}
       </div>
       <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', marginBottom: 4 }}>
@@ -190,7 +190,7 @@ function MistakeColumn({
     <div style={{ minWidth: 200 }}>
       <h4 style={{ margin: '0 0 4px', color }}>{title}</h4>
       {moves.length === 0 ? (
-        <div style={{ color: '#888', fontSize: 13 }}>No mistakes ≥ 1 pawn.</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No mistakes ≥ 1 pawn.</div>
       ) : (
         <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
           {moves.map((m) => (
@@ -232,14 +232,14 @@ function PatternsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
 }
 
 function PatternGrid({ patterns }: { patterns: PatternProfile }) {
-  if (patterns.topPatterns.length === 0) return <div style={{ color: '#aaa', fontSize: 12 }}>none</div>;
+  if (patterns.topPatterns.length === 0) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>none</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(132px, 1fr))', gap: 6 }}>
       {patterns.topPatterns.map((p) => (
-        <div key={p.type} style={{ border: '1px solid #e4e4e4', borderRadius: 4, padding: '6px 8px', minHeight: 50, background: '#fafafa' }}>
-          <div style={{ fontSize: 12, color: '#666' }}>{p.count}x</div>
+        <div key={p.type} style={{ border: '1px solid #e4e4e4', borderRadius: 4, padding: '6px 8px', minHeight: 50, background: 'var(--card2)' }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.count}x</div>
           <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
-          <div style={{ fontSize: 11, color: '#777', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.detail}</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.detail}</div>
         </div>
       ))}
     </div>
@@ -251,7 +251,7 @@ function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
     <div style={{ minWidth: 220, flex: '1 1 240px' }}>
       <h4 style={{ margin: '0 0 6px' }}>
         Motifs <span style={{ fontSize: 11, fontWeight: 400, color: '#3fbf5f' }}>created</span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: '#999' }}> / </span>
+        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--muted)' }}> / </span>
         <span style={{ fontSize: 11, fontWeight: 400, color: '#e2603b' }}>suffered</span>
       </h4>
       <SideLabel color={TEAM.w} text="White" />
@@ -264,17 +264,17 @@ function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
 
 function MotifBars({ patterns }: { patterns: PatternProfile }) {
   const rows = motifRows(patterns).slice(0, 6);
-  if (rows.length === 0) return <div style={{ color: '#aaa', fontSize: 12 }}>none</div>;
+  if (rows.length === 0) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>none</div>;
   return (
     <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
       {rows.map((r) => (
         <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 32px', gap: 6, alignItems: 'center' }}>
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-          <div style={{ display: 'flex', height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ width: `${r.createdPct}%`, background: '#3fbf5f' }} />
             <div style={{ width: `${r.sufferedPct}%`, background: '#e2603b' }} />
           </div>
-          <span style={{ color: '#777', textAlign: 'right' }}>{r.total}</span>
+          <span style={{ color: 'var(--muted)', textAlign: 'right' }}>{r.total}</span>
         </div>
       ))}
     </div>
@@ -302,10 +302,10 @@ function PhaseBars({ patterns }: { patterns: PatternProfile }) {
         return (
           <div key={phase} style={{ display: 'grid', gridTemplateColumns: '82px 1fr 44px', gap: 6, alignItems: 'center', fontSize: 12, marginBottom: 4 }}>
             <span>{phase}</span>
-            <div style={{ height: 8, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${width}%`, height: '100%', background: row.avgCpLoss >= 1 ? '#e2603b' : '#5a9bd4' }} />
+            <div style={{ height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${width}%`, height: '100%', background: row.avgCpLoss >= 1 ? '#e2603b' : 'var(--accent-light)' }} />
             </div>
-            <span style={{ color: '#777', textAlign: 'right' }}>{row.avgCpLoss.toFixed(1)}</span>
+            <span style={{ color: 'var(--muted)', textAlign: 'right' }}>{row.avgCpLoss.toFixed(1)}</span>
           </div>
         );
       })}
@@ -348,7 +348,7 @@ function buildTimeline(entries: AnalyzedEntry[]): TimelineEvent[] {
       color: e.color,
       move: e.analysis.move,
       text,
-      tone: CLASS_COLOR[e.analysis.classification] ?? '#444',
+      tone: CLASS_COLOR[e.analysis.classification] ?? 'var(--text-soft)',
     });
   }
   return out;
@@ -372,7 +372,7 @@ function whatHappened(a: MoveAnalysis): string | null {
 
 function accColor(acc: number): string {
   if (acc >= 85) return '#2f855a';
-  if (acc >= 70) return '#5a9bd4';
+  if (acc >= 70) return 'var(--accent-light)';
   if (acc >= 55) return '#e8923b';
   return '#e23b3b';
 }

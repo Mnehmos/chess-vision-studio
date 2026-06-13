@@ -10,7 +10,7 @@ const STATUS_COLOR: Record<SquareStatus, string> = {
   defended_target: '#8a6d3b', // contested but holds
   loose: '#e8b33b', // yellow — loose / tactically relevant
   defended: '#3f813f', // green — safe & protected
-  undefended: '#888',
+  undefended: 'var(--muted)',
 };
 
 export function FactsPanel({
@@ -85,11 +85,11 @@ export function FactsPanel({
           <Row label="Attacked by" items={report.attackedBy.map((a) => a.label)} color="#c53030" />
           <Row label="Defended by" items={report.defendedBy.map((d) => d.label)} color="#2f855a" />
           <div>
-            <span style={{ color: '#666' }}>SEE:</span>{' '}
+            <span style={{ color: 'var(--muted)' }}>SEE:</span>{' '}
             {report.safe ? 'safe' : `losing ${report.see}`}
           </div>
           <div style={{ marginTop: 6 }}>
-            <span style={{ color: '#666' }}>Status:</span>{' '}
+            <span style={{ color: 'var(--muted)' }}>Status:</span>{' '}
             <span
               style={{
                 padding: '1px 8px',
@@ -105,7 +105,7 @@ export function FactsPanel({
           </div>
           {dependentTactics.length > 0 && (
             <div style={{ marginTop: 6 }}>
-              <span style={{ color: '#666' }}>Part of:</span>{' '}
+              <span style={{ color: 'var(--muted)' }}>Part of:</span>{' '}
               {dependentTactics.map((ins, i) => (
                 <span key={ins.id}>
                   <span
@@ -147,7 +147,7 @@ export function FactsPanel({
           />
           {dependentTactics.length > 0 && (
             <div style={{ marginTop: 6 }}>
-              <span style={{ color: '#666' }}>Part of:</span>{' '}
+              <span style={{ color: 'var(--muted)' }}>Part of:</span>{' '}
               {dependentTactics.map((ins, i) => (
                 <span key={ins.id}>
                   <span
@@ -163,7 +163,7 @@ export function FactsPanel({
           )}
         </div>
       ) : (
-        <div style={{ color: '#888', marginBottom: 12 }}>Click a square to inspect.</div>
+        <div style={{ color: 'var(--muted)', marginBottom: 12 }}>Click a square to inspect.</div>
       )}
 
       {liveAnalysis && liveAnalysis.rankedInsights.length > 0 && (
@@ -192,7 +192,7 @@ export function FactsPanel({
                       fontWeight: isFocused ? 700 : 400,
                     }}
                   >
-                    <span style={{ color: '#666' }}>[{ins.saliency.toFixed(2)}]</span> {insightLabel(ins)} @{' '}
+                    <span style={{ color: 'var(--muted)' }}>[{ins.saliency.toFixed(2)}]</span> {insightLabel(ins)} @{' '}
                     {ins.squares.join(',')}
                   </span>
                 </li>
@@ -208,7 +208,7 @@ export function FactsPanel({
 function Row({ label, items, color }: { label: string; items: string[]; color: string }) {
   return (
     <div>
-      <span style={{ color: '#666' }}>{label}:</span>{' '}
+      <span style={{ color: 'var(--muted)' }}>{label}:</span>{' '}
       {items.length ? (
         items.map((it, i) => (
           <span key={it}>
@@ -217,7 +217,7 @@ function Row({ label, items, color }: { label: string; items: string[]; color: s
           </span>
         ))
       ) : (
-        <span style={{ color: '#999' }}>none</span>
+        <span style={{ color: 'var(--muted)' }}>none</span>
       )}
     </div>
   );
@@ -239,7 +239,7 @@ function classColor(c: string): string {
     case 'excellent':
       return '#3fbf5f';
     case 'good':
-      return '#5a9bd4';
+      return 'var(--accent-light)';
     case 'inaccuracy':
       return '#e8923b';
     case 'mistake':
@@ -247,6 +247,6 @@ function classColor(c: string): string {
     case 'blunder':
       return '#e23b3b';
     default:
-      return '#888';
+      return 'var(--muted)';
   }
 }

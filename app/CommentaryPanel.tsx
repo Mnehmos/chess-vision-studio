@@ -50,12 +50,12 @@ export function CommentaryPanel({
     <div style={{ marginTop: 16, border: '1px solid #e0e0e0', borderRadius: 8, padding: 12, maxWidth: 360 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <h4 style={{ margin: 0 }}>Coach commentary</h4>
-        <span style={{ fontSize: 11, color: '#999' }}>{model}</span>
+        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{model}</span>
       </div>
 
       {!hasKey ? (
         <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
             Set <code>OPENAI_API_KEY</code> in <code>.env</code> (stays server-side, never sent
             to the browser), then restart the dev server. Or paste a key below for this browser.
           </div>
@@ -81,7 +81,7 @@ export function CommentaryPanel({
           {/* Handshake: prove the key + model are live before batching. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12 }}>
             <HandshakeBadge handshake={handshake} />
-            <span style={{ color: '#999' }}>
+            <span style={{ color: 'var(--muted)' }}>
               key from {keySource === 'env' ? '.env (server-side)' : 'this browser'}
             </span>
             <button
@@ -108,12 +108,12 @@ export function CommentaryPanel({
               : `Generate commentary for all ${totalAnalyzed} moves`}
           </button>
           {job.running && (
-            <div style={{ height: 4, background: '#eee', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: 'var(--track)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
               <div
                 style={{
                   height: '100%',
                   width: `${job.total ? (job.done / job.total) * 100 : 0}%`,
-                  background: '#3b6fd4',
+                  background: 'var(--accent)',
                   transition: 'width 0.2s',
                 }}
               />
@@ -155,7 +155,7 @@ function HandshakeBadge({ handshake }: { handshake: Handshake }) {
 
 const btn: React.CSSProperties = {
   border: '1px solid #ccc',
-  background: '#fff',
+  background: 'var(--card)',
   borderRadius: 6,
   padding: '4px 10px',
   fontSize: 13,

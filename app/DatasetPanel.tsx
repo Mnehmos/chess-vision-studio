@@ -19,7 +19,7 @@ const B_RES = '#4a4a4a';
 
 // Match the board view's card treatment.
 const card: React.CSSProperties = {
-  background: '#fff',
+  background: 'var(--card)',
   border: '1px solid #e6e8eb',
   borderRadius: 10,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
@@ -84,10 +84,10 @@ export function DatasetPanel({
             minHeight: 34,
           }}
         >
-          <div style={{ fontSize: 13, color: '#475467' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
             {analysisProgress.running ? (
               <>
-                <strong style={{ color: '#101828' }}>
+                <strong style={{ color: 'var(--text)' }}>
                   Analyzing game {Math.min(analysisProgress.gamesDone + 1, analysisProgress.gamesTotal)}
                   /{analysisProgress.gamesTotal}
                 </strong>{' '}
@@ -96,7 +96,7 @@ export function DatasetPanel({
                   <div
                     style={{
                       fontSize: 12,
-                      color: '#98a2b3',
+                      color: 'var(--muted)',
                       marginTop: 2,
                       maxWidth: 520,
                       overflow: 'hidden',
@@ -117,8 +117,8 @@ export function DatasetPanel({
             disabled={disabled}
             style={{
               border: '1px solid #3b6fd4',
-              background: !disabled ? '#3b6fd4' : '#f3f3f3',
-              color: !disabled ? '#fff' : '#888',
+              background: !disabled ? 'var(--accent)' : '#f3f3f3',
+              color: !disabled ? '#fff' : 'var(--muted)',
               borderRadius: 4,
               padding: '6px 10px',
               fontSize: 13,
@@ -133,7 +133,7 @@ export function DatasetPanel({
           <div
             style={{
               height: 6,
-              background: '#eef0f3',
+              background: 'var(--track)',
               borderRadius: 3,
               marginTop: 8,
               overflow: 'hidden',
@@ -143,7 +143,7 @@ export function DatasetPanel({
               style={{
                 height: '100%',
                 width: `${pct}%`,
-                background: '#3b6fd4',
+                background: 'var(--accent)',
                 transition: 'width 0.2s',
               }}
             />
@@ -207,9 +207,9 @@ function HeroRecord({ ds }: { ds: ReturnType<typeof computeDataset> }) {
   return (
     <div>
       <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>
-        {r.wins}<span style={{ color: WIN }}>W</span> · {r.draws}<span style={{ color: '#888' }}>D</span> ·{' '}
+        {r.wins}<span style={{ color: WIN }}>W</span> · {r.draws}<span style={{ color: 'var(--muted)' }}>D</span> ·{' '}
         {r.losses}<span style={{ color: LOSS }}>L</span>
-        <span style={{ fontSize: 14, fontWeight: 400, color: '#666', marginLeft: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted)', marginLeft: 10 }}>
           {r.winPct.toFixed(0)}% win · {r.scorePct.toFixed(0)}% score
         </span>
       </div>
@@ -225,7 +225,7 @@ function HeroRecord({ ds }: { ds: ReturnType<typeof computeDataset> }) {
 function ColorRecord({ title, rec }: { title: string; rec: Record4 }) {
   return (
     <div style={{ flex: 1 }}>
-      <div style={{ color: '#666', marginBottom: 2 }}>
+      <div style={{ color: 'var(--muted)', marginBottom: 2 }}>
         {title}: {rec.wins}-{rec.draws}-{rec.losses}
       </div>
       <RecordBar rec={rec} />
@@ -251,7 +251,7 @@ function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['
   const W = 360;
   const H = 70;
   const pts = timeline.filter((t) => t.heroScore !== null);
-  if (pts.length < 2) return <div style={{ fontSize: 13, color: '#888' }}>Not enough games to chart.</div>;
+  if (pts.length < 2) return <div style={{ fontSize: 13, color: 'var(--muted)' }}>Not enough games to chart.</div>;
   const n = pts.length;
   const maxCum = pts[pts.length - 1].cumulative || 1;
   // Hero cumulative line.
@@ -262,7 +262,7 @@ function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['
   const evenEnd = 0.5 * n;
   const evenY = H - (Math.min(evenEnd, maxCum) / maxCum) * H;
   return (
-    <svg width={W} height={H} style={{ display: 'block', background: '#fafafa', border: '1px solid #eee', borderRadius: 4 }}>
+    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid #eee', borderRadius: 4 }}>
       <line x1={0} y1={H} x2={W} y2={evenY} stroke="#ddd" strokeDasharray="4 3" />
       <polyline points={line} fill="none" stroke="#3b6fd4" strokeWidth={2} />
       <text x={4} y={12} fontSize={10} fill="#999">
@@ -282,7 +282,7 @@ function ResultStrip({
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 6 }}>
       {ds.timeline.map((t) => {
-        const c = t.heroScore === 1 ? WIN : t.heroScore === 0.5 ? DRAW : t.heroScore === 0 ? LOSS : '#eee';
+        const c = t.heroScore === 1 ? WIN : t.heroScore === 0.5 ? DRAW : t.heroScore === 0 ? LOSS : 'var(--track)';
         const s = ds.summaries[t.index];
         return (
           <div
@@ -308,7 +308,7 @@ function OpeningsTable({ ds }: { ds: ReturnType<typeof computeDataset> }) {
             <td style={{ padding: '2px 8px 2px 0', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={o.name}>
               {o.name}
             </td>
-            <td style={{ padding: '2px 8px', color: '#666', textAlign: 'right' }}>{o.games}</td>
+            <td style={{ padding: '2px 8px', color: 'var(--muted)', textAlign: 'right' }}>{o.games}</td>
             <td style={{ padding: '2px 0', width: 120 }}>
               <StackedBar
                 height={10}
@@ -319,7 +319,7 @@ function OpeningsTable({ ds }: { ds: ReturnType<typeof computeDataset> }) {
                 ]}
               />
             </td>
-            <td style={{ padding: '2px 0 2px 8px', color: '#666', textAlign: 'right', width: 44 }}>
+            <td style={{ padding: '2px 0 2px 8px', color: 'var(--muted)', textAlign: 'right', width: 44 }}>
               {((o.score / o.games) * 100).toFixed(0)}%
             </td>
           </tr>
@@ -341,7 +341,7 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
       <h3 style={{ margin: '0 0 8px' }}>Move explorer</h3>
       <div style={{ fontSize: 13, color: '#555', marginBottom: 6, minHeight: 20 }}>
         {stack.length === 0 ? (
-          <span style={{ color: '#888' }}>Start position — pick a move played in your games.</span>
+          <span style={{ color: 'var(--muted)' }}>Start position — pick a move played in your games.</span>
         ) : (
           <span>
             {stack.map((s, i) => (
@@ -370,11 +370,11 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
       )}
 
       {moves.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#888' }}>End of book — no further games from here.</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>End of book — no further games from here.</div>
       ) : (
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
           <thead>
-            <tr style={{ color: '#888', textAlign: 'left', fontSize: 11 }}>
+            <tr style={{ color: 'var(--muted)', textAlign: 'left', fontSize: 11 }}>
               <th style={{ padding: '0 6px 4px 0' }}>Move</th>
               <th style={{ padding: '0 6px 4px' }}>Games</th>
               <th style={{ padding: '0 0 4px' }}>Results</th>
@@ -396,12 +396,12 @@ function MoveRow({ m, here, onPlay }: { m: MoveStat; here: number; onPlay: () =>
   return (
     <tr style={{ borderTop: '1px solid #f0f0f0' }}>
       <td style={{ padding: '4px 6px 4px 0' }}>
-        <span onClick={onPlay} style={{ cursor: 'pointer', fontWeight: 600, color: '#3b6fd4' }}>
+        <span onClick={onPlay} style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--accent)' }}>
           {m.san}
         </span>
       </td>
-      <td style={{ padding: '4px 6px', color: '#666', whiteSpace: 'nowrap' }}>
-        {m.games} <span style={{ color: '#aaa' }}>({pct}%)</span>
+      <td style={{ padding: '4px 6px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+        {m.games} <span style={{ color: 'var(--muted)' }}>({pct}%)</span>
       </td>
       <td style={{ padding: '4px 0', minWidth: 130 }}>
         <StackedBar
@@ -470,7 +470,7 @@ function GamesList({
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <tbody>
             {rows.map((s) => {
-              const c = s.heroScore === 1 ? WIN : s.heroScore === 0.5 ? '#999' : s.heroScore === 0 ? LOSS : '#bbb';
+              const c = s.heroScore === 1 ? WIN : s.heroScore === 0.5 ? 'var(--muted)' : s.heroScore === 0 ? LOSS : '#bbb';
               const interest = interestByIndex.get(s.index);
               return (
                 <tr
@@ -484,13 +484,13 @@ function GamesList({
                   <td style={{ padding: '3px 4px', width: 30, textAlign: 'center', whiteSpace: 'nowrap' }}>
                     <AnalyzedMark a={analyzedByIndex.get(s.index)} />
                   </td>
-                  <td style={{ padding: '3px 8px', color: '#888', whiteSpace: 'nowrap' }}>{s.date ?? '—'}</td>
+                  <td style={{ padding: '3px 8px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{s.date ?? '—'}</td>
                   <td style={{ padding: '3px 8px', whiteSpace: 'nowrap' }}>
                     {s.white} vs {s.black}
                   </td>
-                  <td style={{ padding: '3px 8px', color: '#666' }}>{s.result}</td>
+                  <td style={{ padding: '3px 8px', color: 'var(--muted)' }}>{s.result}</td>
                   <td
-                    style={{ padding: '3px 8px', color: '#888', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    style={{ padding: '3px 8px', color: 'var(--muted)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     title={s.opening}
                   >
                     {s.opening}
@@ -498,7 +498,7 @@ function GamesList({
                   <td
                     style={{
                       padding: '3px 8px',
-                      color: '#666',
+                      color: 'var(--muted)',
                       maxWidth: 260,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -520,7 +520,7 @@ function GamesList({
 
 // Per-game cache state: ✓ when fully analyzed (durable), a count while partial.
 function AnalyzedMark({ a }: { a?: { done: number; total: number } }) {
-  if (!a || a.total === 0 || a.done === 0) return <span style={{ color: '#d0d5dd' }} title="Not analyzed">·</span>;
+  if (!a || a.total === 0 || a.done === 0) return <span style={{ color: 'var(--border)' }} title="Not analyzed">·</span>;
   if (a.done >= a.total) return <span style={{ color: '#2f855a', fontWeight: 700 }} title="Analyzed (cached locally)">✓</span>;
   return (
     <span style={{ color: '#e8923b', fontSize: 11 }} title={`${a.done}/${a.total} plies analyzed`}>
@@ -535,9 +535,9 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
     <button
       onClick={onClick}
       style={{
-        border: '1px solid ' + (active ? '#3b6fd4' : '#ccc'),
+        border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
         background: active ? '#e8f0ff' : '#fff',
-        color: active ? '#1f4fa3' : '#444',
+        color: active ? '#1f4fa3' : 'var(--text-soft)',
         borderRadius: 4,
         padding: '3px 9px',
         fontSize: 12,
@@ -560,7 +560,7 @@ function StackedBar({
 }) {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   return (
-    <div style={{ display: 'flex', width: '100%', height, borderRadius: 3, overflow: 'hidden', background: '#f0f0f0' }}>
+    <div style={{ display: 'flex', width: '100%', height, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
       {segments.map((s, i) =>
         s.value > 0 ? (
           <div
@@ -586,7 +586,7 @@ function StackedBar({
 
 function Legend({ items }: { items: [string, string][] }) {
   return (
-    <div style={{ display: 'flex', gap: 12, marginTop: 3, fontSize: 11, color: '#777' }}>
+    <div style={{ display: 'flex', gap: 12, marginTop: 3, fontSize: 11, color: 'var(--muted)' }}>
       {items.map(([label, color]) => (
         <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ width: 9, height: 9, background: color, borderRadius: 2, display: 'inline-block' }} />
@@ -599,7 +599,7 @@ function Legend({ items }: { items: [string, string][] }) {
 
 const smallBtn: React.CSSProperties = {
   border: '1px solid #ccc',
-  background: '#fff',
+  background: 'var(--card)',
   borderRadius: 4,
   padding: '2px 8px',
   fontSize: 12,

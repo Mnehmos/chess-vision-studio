@@ -55,7 +55,7 @@ const IDLE_STATUS: TrainingStatus = {
 };
 
 const card: CSSProperties = {
-  background: '#fff',
+  background: 'var(--card)',
   border: '1px solid #e6e8eb',
   borderRadius: 8,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
@@ -64,7 +64,7 @@ const card: CSSProperties = {
 const label: CSSProperties = {
   display: 'block',
   fontSize: 11,
-  color: '#667085',
+  color: 'var(--muted)',
   marginBottom: 4,
   fontWeight: 600,
 };
@@ -76,14 +76,14 @@ const input: CSSProperties = {
   borderRadius: 6,
   padding: '7px 8px',
   fontSize: 13,
-  background: '#fff',
-  color: '#101828',
+  background: 'var(--card)',
+  color: 'var(--text)',
 };
 
 const smallBtn: CSSProperties = {
   border: '1px solid #d0d5dd',
-  background: '#fff',
-  color: '#344054',
+  background: 'var(--card)',
+  color: 'var(--text)',
   borderRadius: 6,
   padding: '7px 10px',
   fontSize: 13,
@@ -94,7 +94,7 @@ const smallBtn: CSSProperties = {
 const startBtn: CSSProperties = {
   ...smallBtn,
   border: '1px solid #3b6fd4',
-  background: '#3b6fd4',
+  background: 'var(--accent)',
   color: '#fff',
 };
 
@@ -196,7 +196,7 @@ export function TrainingMonitor() {
       <div style={{ ...card, padding: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <PhaseBadge phase={status.phase} active={status.active} />
-          <span style={{ fontSize: 12, color: '#667085' }}>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>
             started {formatTime(status.startedAt)} / ended {formatTime(status.endedAt)}
           </span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
@@ -272,7 +272,7 @@ export function TrainingMonitor() {
             <Metric title="Tuned top-1" value={formatPct(status.train.tunedTop1)} sub="holdout" />
             <Metric title="Delta" value={delta === null ? '--' : signedPct(delta)} sub={status.phase === 'done' ? 'written' : 'pending'} />
           </div>
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr', gap: 6, fontSize: 12, color: '#475467' }}>
+          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr', gap: 6, fontSize: 12, color: 'var(--text-soft)' }}>
             <Artifact labelText="Dataset" value={status.config.datasetOut} />
             <Artifact labelText="Weights" value={status.config.weightsOut} />
             <Artifact labelText="Report" value={status.config.reportOut} />
@@ -283,7 +283,7 @@ export function TrainingMonitor() {
       <section style={{ ...card, padding: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <h3 style={{ margin: 0, fontSize: 15 }}>Live log</h3>
-          <span style={{ fontSize: 12, color: '#98a2b3' }}>{status.logs.length} lines</span>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{status.logs.length} lines</span>
         </div>
         <div
           ref={logRef}
@@ -291,7 +291,7 @@ export function TrainingMonitor() {
             minHeight: 220,
             maxHeight: 360,
             overflowY: 'auto',
-            background: '#101828',
+            background: 'var(--text)',
             color: '#e4e7ec',
             borderRadius: 6,
             padding: 10,
@@ -368,7 +368,7 @@ function Segmented({
               border: 0,
               borderRight: o.id === 'import-train' ? '1px solid #d0d5dd' : 0,
               background: active ? '#e8f0ff' : '#fff',
-              color: active ? '#1f4fa3' : '#344054',
+              color: active ? '#1f4fa3' : 'var(--text)',
               padding: '7px 11px',
               fontSize: 13,
               fontWeight: active ? 700 : 500,
@@ -386,9 +386,9 @@ function Segmented({
 function Metric({ title, value, sub }: { title: string; value: string; sub: string }) {
   return (
     <div style={{ border: '1px solid #eef0f3', borderRadius: 6, padding: 10, minHeight: 64 }}>
-      <div style={{ fontSize: 11, color: '#667085', fontWeight: 600 }}>{title}</div>
-      <div style={{ fontSize: 22, fontWeight: 750, color: '#101828', marginTop: 2 }}>{value}</div>
-      <div style={{ fontSize: 11, color: '#98a2b3' }}>{sub}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>{title}</div>
+      <div style={{ fontSize: 22, fontWeight: 750, color: 'var(--text)', marginTop: 2 }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{sub}</div>
     </div>
   );
 }
@@ -396,12 +396,12 @@ function Metric({ title, value, sub }: { title: string; value: string; sub: stri
 function Progress({ labelText, pct }: { labelText: string; pct: number }) {
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#667085', marginBottom: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
         <span>{labelText}</span>
         <span>{pct}%</span>
       </div>
-      <div style={{ height: 8, background: '#eef0f3', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#3b6fd4', transition: 'width 0.2s' }} />
+      <div style={{ height: 8, background: 'var(--track)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
       </div>
     </div>
   );
@@ -410,7 +410,7 @@ function Progress({ labelText, pct }: { labelText: string; pct: number }) {
 function Artifact({ labelText, value }: { labelText: string; value: string }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr)', gap: 8 }}>
-      <span style={{ color: '#98a2b3' }}>{labelText}</span>
+      <span style={{ color: 'var(--muted)' }}>{labelText}</span>
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>
         {value}
       </span>
@@ -420,12 +420,12 @@ function Artifact({ labelText, value }: { labelText: string; value: string }) {
 
 function PhaseBadge({ phase, active }: { phase: TrainingPhase; active: boolean }) {
   const colors: Record<TrainingPhase, { bg: string; fg: string }> = {
-    idle: { bg: '#f2f4f7', fg: '#344054' },
+    idle: { bg: '#f2f4f7', fg: 'var(--text)' },
     importing: { bg: '#e8f0ff', fg: '#1f4fa3' },
     training: { bg: '#fff4e5', fg: '#9a5b00' },
     done: { bg: '#e7f8ed', fg: '#1f7a3f' },
     error: { bg: '#fee4e2', fg: '#b42318' },
-    stopped: { bg: '#f2f4f7', fg: '#475467' },
+    stopped: { bg: '#f2f4f7', fg: 'var(--text-soft)' },
   };
   const c = colors[phase];
   return (

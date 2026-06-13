@@ -78,12 +78,12 @@ export function PlayMode({
     const sideToMove = c.turn() === 'w' ? 'White' : 'Black';
     const winner = c.turn() === 'w' ? 'Black' : 'White';
     if (c.isCheckmate()) return { text: `Checkmate — ${winner} wins`, over: true, tone: '#b42318' };
-    if (c.isStalemate()) return { text: 'Stalemate — draw', over: true, tone: '#475467' };
-    if (c.isInsufficientMaterial()) return { text: 'Draw — insufficient material', over: true, tone: '#475467' };
-    if (c.isThreefoldRepetition()) return { text: 'Draw — threefold repetition', over: true, tone: '#475467' };
-    if (c.isDraw()) return { text: 'Draw — fifty-move rule', over: true, tone: '#475467' };
+    if (c.isStalemate()) return { text: 'Stalemate — draw', over: true, tone: 'var(--text-soft)' };
+    if (c.isInsufficientMaterial()) return { text: 'Draw — insufficient material', over: true, tone: 'var(--text-soft)' };
+    if (c.isThreefoldRepetition()) return { text: 'Draw — threefold repetition', over: true, tone: 'var(--text-soft)' };
+    if (c.isDraw()) return { text: 'Draw — fifty-move rule', over: true, tone: 'var(--text-soft)' };
     const check = c.inCheck() ? ' — check' : '';
-    return { text: `${sideToMove} to move${check}`, over: false, tone: check ? '#b54708' : '#101828' };
+    return { text: `${sideToMove} to move${check}`, over: false, tone: check ? '#b54708' : 'var(--text)' };
   }, [fen]);
 
   // Legal destinations of the picked-up piece — for click-to-move acceptance.
@@ -324,7 +324,7 @@ export function PlayMode({
               }}
             >
               <div style={{ ...card, padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: '#475467', marginRight: 2 }}>Promote to</span>
+                <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>Promote to</span>
                 {PROMO_PIECES.map((p) => (
                   <button
                     key={p}
@@ -337,7 +337,7 @@ export function PlayMode({
                       height: 44,
                       border: '1px solid #d0d5dd',
                       borderRadius: 8,
-                      background: '#fff',
+                      background: 'var(--card)',
                       cursor: 'pointer',
                     }}
                   >
@@ -352,7 +352,7 @@ export function PlayMode({
         <TurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />
 
         <div
-          style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', margin: '8px 2px 0', fontSize: 12, color: '#475467' }}
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', margin: '8px 2px 0', fontSize: 12, color: 'var(--text-soft)' }}
         >
           {(MODES.find((m) => m.id === mode)?.legend ?? []).map((l) => (
             <span key={l.color + l.meaning} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -382,7 +382,7 @@ export function PlayMode({
           hasSelection={!!selected}
           onClear={() => setSelected(null)}
         />
-        <p style={{ fontSize: 12, color: '#98a2b3', margin: '8px 2px 0' }}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 2px 0' }}>
           Drag a piece or click from → to. Only legal moves are allowed.
           <label style={{ marginLeft: 10, cursor: 'pointer' }} title="dev overlay: artifact identity + eval status">
             <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} /> debug
@@ -404,13 +404,13 @@ export function PlayMode({
         </div>
 
         <div style={{ ...card, padding: 12 }}>
-          <strong style={{ fontSize: 13, color: '#101828' }}>Coach</strong>
+          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Coach</strong>
           {!engineReady ? (
-            <p style={{ fontSize: 13, color: '#98a2b3', marginTop: 6 }}>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
               Engine not loaded — inspect-only. The overlays and Facts still work.
             </p>
           ) : analyzing ? (
-            <p style={{ fontSize: 13, color: '#475467', marginTop: 6 }}>Analyzing your move…</p>
+            <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: 6 }}>Analyzing your move…</p>
           ) : lens ? (
             <div style={{ marginTop: 6 }}>
               <span
@@ -427,10 +427,10 @@ export function PlayMode({
               >
                 {lens.verdict.replace(/_/g, ' ')}
               </span>
-              <p style={{ fontSize: 13, color: '#344054', margin: '4px 0 0', lineHeight: 1.5 }}>{lens.teachingLine}</p>
+              <p style={{ fontSize: 13, color: 'var(--text)', margin: '4px 0 0', lineHeight: 1.5 }}>{lens.teachingLine}</p>
             </div>
           ) : (
-            <p style={{ fontSize: 13, color: '#98a2b3', marginTop: 6 }}>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
               Make a move — I’ll explain what it controlled.
             </p>
           )}
@@ -448,7 +448,7 @@ export function PlayMode({
                 <p
                   style={{
                     fontSize: 13,
-                    color: '#344054',
+                    color: 'var(--text)',
                     marginTop: 8,
                     background: '#f3f1ea',
                     padding: 8,
@@ -462,7 +462,7 @@ export function PlayMode({
             </>
           ) : (
             engineReady && (
-              <p style={{ fontSize: 12, color: '#98a2b3', marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
                 Add an OpenAI key (.env, server-side) for written commentary.
               </p>
             )
@@ -470,16 +470,16 @@ export function PlayMode({
         </div>
 
         <div style={{ ...card, padding: 12 }}>
-          <strong style={{ fontSize: 13, color: '#101828' }}>Moves</strong>
+          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Moves</strong>
           {rows.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#98a2b3', marginTop: 8 }}>No moves yet — White to start.</p>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 8 }}>No moves yet — White to start.</p>
           ) : (
             <ol style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
               {rows.map((r) => (
                 <li key={r.n} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
-                  <span style={{ color: '#98a2b3', width: 24, textAlign: 'right' }}>{r.n}.</span>
+                  <span style={{ color: 'var(--muted)', width: 24, textAlign: 'right' }}>{r.n}.</span>
                   <span style={{ width: 64 }}>{r.white}</span>
-                  <span style={{ width: 64, color: '#344054' }}>{r.black ?? ''}</span>
+                  <span style={{ width: 64, color: 'var(--text)' }}>{r.black ?? ''}</span>
                 </li>
               ))}
             </ol>
@@ -494,12 +494,12 @@ export function PlayMode({
               padding: 10,
               fontSize: 11,
               fontFamily: 'ui-monospace, monospace',
-              color: '#475467',
+              color: 'var(--text-soft)',
               wordBreak: 'break-all',
               lineHeight: 1.5,
             }}
           >
-            <strong style={{ color: '#101828' }}>debug</strong>
+            <strong style={{ color: 'var(--text)' }}>debug</strong>
             <div>ply: {history.length} · sideToMove: {turn}</div>
             <div>selected: {selected ?? '—'} · focused: {focused ? focused.squares.join(',') : '—'}</div>
             <div>fen: {fen}</div>
@@ -552,14 +552,14 @@ function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
           display: 'inline-block',
         }}
       />
-      <strong style={{ fontSize: 13, color: '#101828' }}>{color === 'w' ? 'White' : 'Black'}</strong>
-      {active && <span style={{ fontSize: 11, color: '#1570ef', fontWeight: 600 }}>● to move</span>}
+      <strong style={{ fontSize: 13, color: 'var(--text)' }}>{color === 'w' ? 'White' : 'Black'}</strong>
+      {active && <span style={{ fontSize: 11, color: 'var(--accent-light)', fontWeight: 600 }}>● to move</span>}
     </div>
   );
 }
 
 const card: CSSProperties = {
-  background: '#fff',
+  background: 'var(--card)',
   border: '1px solid #eaecf0',
   borderRadius: 12,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
@@ -569,8 +569,8 @@ const btn: CSSProperties = {
   padding: '6px 10px',
   borderRadius: 8,
   border: '1px solid #d0d5dd',
-  background: '#fff',
-  color: '#344054',
+  background: 'var(--card)',
+  color: 'var(--text)',
   cursor: 'pointer',
 };
 const primaryBtn: CSSProperties = {
@@ -578,7 +578,7 @@ const primaryBtn: CSSProperties = {
   padding: '6px 12px',
   borderRadius: 8,
   border: '1px solid #1570ef',
-  background: '#1570ef',
+  background: 'var(--accent-light)',
   color: '#fff',
   cursor: 'pointer',
 };
@@ -587,15 +587,15 @@ const modeBtn: CSSProperties = {
   padding: '5px 9px',
   borderRadius: 7,
   border: '1px solid #d0d5dd',
-  background: '#fff',
-  color: '#344054',
+  background: 'var(--card)',
+  color: 'var(--text)',
   cursor: 'pointer',
 };
 const modeBtnActive: CSSProperties = {
   ...modeBtn,
   border: '1px solid #1570ef',
   background: '#eff6ff',
-  color: '#1570ef',
+  color: 'var(--accent-light)',
   fontWeight: 600,
 };
 const modeBtnDisabled: CSSProperties = {

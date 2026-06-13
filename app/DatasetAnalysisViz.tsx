@@ -8,7 +8,7 @@ import type { DatasetAnalysis, TimeBucket, SideStats, DatasetWorstMove } from '.
 const CLASS_COLOR: Record<string, string> = {
   best: '#2f855a',
   excellent: '#3fbf5f',
-  good: '#5a9bd4',
+  good: 'var(--accent-light)',
   inaccuracy: '#e8923b',
   mistake: '#e2603b',
   blunder: '#e23b3b',
@@ -16,14 +16,14 @@ const CLASS_COLOR: Record<string, string> = {
 const CLASS_ORDER = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'] as const;
 
 // Team colors mirror the board: White = blue, Black = red.
-const TEAM = { w: '#3b6fd4', b: '#d43b3b' } as const;
+const TEAM = { w: 'var(--accent)', b: '#d43b3b' } as const;
 
 const card: React.CSSProperties = {
   border: '1px solid #e6e8eb',
   borderRadius: 10,
   padding: 16,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-  background: '#fff',
+  background: 'var(--card)',
 };
 
 const num = (n: number) => n.toLocaleString();
@@ -60,7 +60,7 @@ export function DatasetAnalysisViz({
             <SideRow title="Black" color={TEAM.b} s={overall.black} />
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: '#888' }}>
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>
             Run an analysis pass to see your accuracy split by side.
           </div>
         )}
@@ -81,18 +81,18 @@ function Coverage({ coverage, hasAnalysis }: { coverage: DatasetAnalysis['covera
   return (
     <div>
       <h3 style={{ margin: '0 0 6px' }}>Coverage</h3>
-      <div style={{ fontSize: 13, color: '#475467', marginBottom: 8 }}>
+      <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 8 }}>
         Analyzed {num(pliesAnalyzed)} / {num(pliesTotal)} moves · {num(gamesFull)} / {num(gamesTotal)} games fully
         reviewed
         {gamesAnalyzed > gamesFull && (
-          <span style={{ color: '#98a2b3' }}> · {num(gamesAnalyzed)} touched</span>
+          <span style={{ color: 'var(--muted)' }}> · {num(gamesAnalyzed)} touched</span>
         )}
       </div>
-      <div style={{ height: 6, background: '#eef0f3', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#3b6fd4' }} />
+      <div style={{ height: 6, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)' }} />
       </div>
       {!hasAnalysis && (
-        <div style={{ marginTop: 10, fontSize: 13, color: '#666' }}>
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--muted)' }}>
           Run “Analyze all games” to populate these charts. Your time-of-day results below still work without it.
         </div>
       )}
@@ -124,11 +124,11 @@ function TimeOfDay({ buckets, hero }: { buckets: TimeBucket[]; hero: string | nu
   return (
     <div>
       <h3 style={{ margin: '0 0 2px' }}>When you play your best</h3>
-      <div style={{ fontSize: 13, color: '#475467', marginBottom: 10 }}>
+      <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 10 }}>
         {best
           ? <>
               {hero ? `${hero}, you` : 'You'} score highest in the{' '}
-              <strong style={{ color: '#101828' }}>{best.label.toLowerCase()}</strong>
+              <strong style={{ color: 'var(--text)' }}>{best.label.toLowerCase()}</strong>
               {best.scorePct !== null && <> — {best.scorePct.toFixed(0)}% there. </>}
               {anyAccuracy && best.accuracy !== null
                 ? ` Your accuracy follows along too.`
@@ -139,7 +139,7 @@ function TimeOfDay({ buckets, hero }: { buckets: TimeBucket[]; hero: string | nu
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {played.length === 0 ? (
-          <div style={{ fontSize: 13, color: '#888' }}>No timestamped games to chart.</div>
+          <div style={{ fontSize: 13, color: 'var(--muted)' }}>No timestamped games to chart.</div>
         ) : (
           played.map((b) => (
             <TimeRow key={b.key} b={b} isBest={b.key === bestKey} showAccuracy={anyAccuracy} />
@@ -167,11 +167,11 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
     >
       {/* Label + games */}
       <div>
-        <div style={{ fontWeight: 600, fontSize: 13, color: '#101828' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
           {isBest ? '★ ' : ''}
           {b.label}
         </div>
-        <div style={{ fontSize: 11, color: '#98a2b3' }}>
+        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
           {num(b.games)} game{b.games === 1 ? '' : 's'}
         </div>
       </div>
@@ -181,7 +181,7 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
         <div style={{ fontSize: 16, fontWeight: isBest ? 700 : 600, color: scoreColor(b.scorePct) }}>
           {b.scorePct === null ? '—' : `${b.scorePct.toFixed(0)}%`}
         </div>
-        <div style={{ fontSize: 10, color: '#98a2b3' }}>score</div>
+        <div style={{ fontSize: 10, color: 'var(--muted)' }}>score</div>
       </div>
 
       {/* Bars: score (filled) and, when analyzed, accuracy underneath. */}
@@ -190,7 +190,7 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
         {showAccuracy && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Meter pct={acc ?? 0} color={accColor(acc ?? 0)} bg="#f5f6f8" height={5} />
-            <span style={{ fontSize: 10, color: '#98a2b3', minWidth: 70, textAlign: 'right' }}>
+            <span style={{ fontSize: 10, color: 'var(--muted)', minWidth: 70, textAlign: 'right' }}>
               {acc === null ? 'no analysis' : `${acc.toFixed(0)}% accurate`}
             </span>
           </div>
@@ -215,12 +215,12 @@ function SideRow({ title, color, s }: { title: string; color: string; s: SideSta
         <span style={{ fontSize: 15, fontWeight: 700, color: accColor(s.accuracy) }}>
           {s.accuracy.toFixed(0)}% accuracy
         </span>
-        <span style={{ fontSize: 12, color: '#666' }}>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
           {num(s.moves)} moves · avg loss {s.avgCpLoss.toFixed(2)}
         </span>
       </div>
       {/* Stacked classification distribution. */}
-      <div style={{ display: 'flex', height: 14, borderRadius: 3, overflow: 'hidden', background: '#f0f0f0' }}>
+      <div style={{ display: 'flex', height: 14, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
         {CLASS_ORDER.map((c) => {
           const v = s.byClass[c] ?? 0;
           const w = pctOf(v, total);
@@ -255,7 +255,7 @@ function TeachingMoments({
     <div>
       <h3 style={{ margin: '0 0 8px' }}>Biggest teaching moments</h3>
       {rows.length === 0 ? (
-        <div style={{ fontSize: 13, color: '#888' }}>
+        <div style={{ fontSize: 13, color: 'var(--muted)' }}>
           {hasAnalysis
             ? 'No costly moves found — clean play across the set.'
             : 'Analyze your games to surface the moments worth revisiting.'}
@@ -280,12 +280,12 @@ function TeachingMoments({
               }}
               title={`${m.gameLabel} — open game`}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#475467' }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-soft)' }}>
                 {m.gameLabel}
               </span>
-              <span style={{ fontWeight: 600, color: '#333' }}>{m.move}</span>
-              <span style={{ color: CLASS_COLOR[m.classification] ?? '#444' }}>{m.classification}</span>
-              <span style={{ textAlign: 'right', color: '#666' }}>−{m.cpLoss.toFixed(1)}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-soft)' }}>{m.move}</span>
+              <span style={{ color: CLASS_COLOR[m.classification] ?? 'var(--text-soft)' }}>{m.classification}</span>
+              <span style={{ textAlign: 'right', color: 'var(--muted)' }}>−{m.cpLoss.toFixed(1)}</span>
             </li>
           ))}
         </ul>
@@ -306,7 +306,7 @@ function Meter({ pct, color, bg, height = 8 }: { pct: number; color: string; bg:
 
 // A win-rate-ish score: green at 60%+, encouraging amber in the middle.
 function scoreColor(pct: number | null): string {
-  if (pct === null) return '#98a2b3';
+  if (pct === null) return 'var(--muted)';
   if (pct >= 60) return '#2f855a';
   if (pct >= 50) return '#3fbf5f';
   if (pct >= 40) return '#e8923b';
@@ -315,7 +315,7 @@ function scoreColor(pct: number | null): string {
 
 function accColor(acc: number): string {
   if (acc >= 85) return '#2f855a';
-  if (acc >= 70) return '#5a9bd4';
+  if (acc >= 70) return 'var(--accent-light)';
   if (acc >= 55) return '#e8923b';
   return '#e23b3b';
 }

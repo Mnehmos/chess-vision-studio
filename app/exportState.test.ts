@@ -29,7 +29,7 @@ const analysisE4: MoveAnalysis = {
 
 const ledMap: LedMap = { mode: 'legal', squares: { e4: 'green' } };
 
-const game = { headers: { White: 'Alice', Black: 'Bob' }, plies: [] } as unknown as ParsedGame;
+const game = { headers: { White: 'Alice', Black: 'Bob' }, initialFen: START, plies: [] } as unknown as ParsedGame;
 
 const baseInput = {
   game,

@@ -40,7 +40,7 @@ export function MateCard({ proof, fen }: { proof: MateProof; fen: string }) {
 function Obligation({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ lineHeight: 1.5 }}>
-      <span style={{ color: '#666' }}>{label}:</span> {value}
+      <span style={{ color: 'var(--muted)' }}>{label}:</span> {value}
     </div>
   );
 }

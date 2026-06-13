@@ -40,16 +40,16 @@ const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_op
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 // ── design tokens ─────────────────────────────────────────────────────────────
-const PAGE_BG = '#f5f6f8';
+const PAGE_BG = 'var(--bg)';
 const cardStyle: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid #e6e8eb',
+  background: 'var(--card)',
+  border: '1px solid var(--border)',
   borderRadius: 10,
-  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
 };
 const primaryBtn: React.CSSProperties = {
   border: 'none',
-  background: '#3b6fd4',
+  background: 'var(--accent)',
   color: '#fff',
   borderRadius: 8,
   padding: '8px 14px',
@@ -723,8 +723,14 @@ export function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: PAGE_BG, color: '#1a1a1a', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: PAGE_BG, color: 'var(--text)', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
+        :root{color-scheme:dark;
+          --bg:#12100e; --card:#1c1916; --card2:#211d19; --track:#2a2622;
+          --border:#322d28; --text:#ece7e1; --text-soft:#cfc8bf; --muted:#9b9389;
+          --accent:#b87333; --accent-light:#d4956a;}
+        h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
+        input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
         @keyframes csvBlink{50%{opacity:0.1}}
         .cvs-workspace{display:grid;grid-template-columns:480px minmax(0,1fr) 300px;gap:20px;align-items:start}
         @media (max-width:1180px){.cvs-workspace{grid-template-columns:480px minmax(0,1fr)}}
@@ -733,14 +739,14 @@ export function App() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px clamp(10px, 3vw, 24px) 56px', overflowX: 'hidden' }}>
         <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
           <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.01em' }}>Chess Vision Studio</h1>
-          <span style={{ color: '#667085', fontSize: 13 }}>
+          <span style={{ color: 'var(--muted)', fontSize: 13 }}>
             2D chess perception — relations · SEE · diff · saliency · validated motifs
           </span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <EngineBadge label="Stockfish" state={engineState} />
             <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
             {engineState === 'ready' && analyses.size < plies.length && (
-              <span style={{ fontSize: 12, color: '#888' }}>analyzing {analyses.size}/{plies.length}…</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>analyzing {analyses.size}/{plies.length}…</span>
             )}
             {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
               <span style={{ fontSize: 12, color: '#3fbf5f' }}>analysis complete ✓</span>
@@ -811,7 +817,7 @@ export function App() {
                 }}
               >
                 <div style={{ ...cardStyle, padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#475467', marginRight: 2 }}>Promote to</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>Promote to</span>
                   {PROMOTION_PIECES.map((piece) => (
                     <button
                       key={piece}
@@ -821,7 +827,7 @@ export function App() {
                       {piece}
                     </button>
                   ))}
-                  <button style={{ ...primaryBtn, background: '#667085' }} onClick={() => setAnalysisPromo(null)}>
+                  <button style={{ ...primaryBtn, background: 'var(--muted)' }} onClick={() => setAnalysisPromo(null)}>
                     Cancel
                   </button>
                 </div>
@@ -836,8 +842,8 @@ export function App() {
               width: '100%',
               marginTop: 8,
               border: '1px solid #d0d5dd',
-              background: '#fff',
-              color: '#344054',
+              background: 'var(--card)',
+              color: 'var(--text)',
               borderRadius: 8,
               padding: '6px 10px',
               fontSize: 13,
@@ -1048,16 +1054,16 @@ function SourceBar({
         <button onClick={() => setOpen((o) => !o)} style={primaryBtn}>
           ⬆ Import PGN
         </button>
-        <div style={{ fontSize: 13, color: '#475467' }}>
-          <strong style={{ color: '#101828' }}>{loadedLabel}</strong>
-          <span style={{ color: '#98a2b3' }}> · paste your Chess.com / Lichess export to analyze your own games</span>
+        <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+          <strong style={{ color: 'var(--text)' }}>{loadedLabel}</strong>
+          <span style={{ color: 'var(--muted)' }}> · paste your Chess.com / Lichess export to analyze your own games</span>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {multi && tab === 'board' && (
             <select
               value={gameIndex}
               onChange={(e) => onSelectGame(Number(e.target.value))}
-              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid #d0d5dd', background: '#fff' }}
+              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid #d0d5dd', background: 'var(--card)' }}
             >
               {games.map((g, i) => (
                 <option key={i} value={i}>
@@ -1112,7 +1118,7 @@ function SourceBar({
             >
               Load games
             </button>
-            <span style={{ fontSize: 12, color: '#98a2b3' }}>
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>
               Multi-game exports open a Dataset view: opening tree, results over time, per-game review.
             </span>
           </div>
@@ -1127,9 +1133,9 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       style={{
-        border: '1px solid ' + (active ? '#3b6fd4' : '#ccc'),
-        background: active ? '#3b6fd4' : '#fff',
-        color: active ? '#fff' : '#444',
+        border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
+        background: active ? 'var(--accent)' : '#fff',
+        color: active ? '#fff' : 'var(--text-soft)',
         padding: '6px 14px',
         borderRadius: 6,
         cursor: 'pointer',
@@ -1144,7 +1150,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function EngineBadge({ label, state }: { label: string; state: 'loading' | 'ready' | 'off' }) {
   const text = state === 'loading' ? 'engine: loading…' : state === 'ready' ? 'engine: ready' : 'engine: off (pure modes only)';
-  const bg = state === 'ready' ? '#3fbf5f' : state === 'loading' ? '#e8923b' : '#999';
+  const bg = state === 'ready' ? '#3fbf5f' : state === 'loading' ? '#e8923b' : 'var(--muted)';
   return (
     <span title={text} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
       {state === 'loading' ? `${label}: loading` : state === 'ready' ? `${label}: ready` : `${label}: off`}
@@ -1161,7 +1167,7 @@ function CvsEngineBadge({ health, busy }: { health: CvsEngineHealth; busy: boole
         ? 'CVS Engine: analyzing'
         : 'CVS Engine: ready'
       : 'CVS Engine: not found';
-  const bg = checking ? '#e8923b' : health.available ? '#3b6fd4' : '#999';
+  const bg = checking ? '#e8923b' : health.available ? 'var(--accent)' : 'var(--muted)';
   return (
     <span title={health.error} style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>
       {text}
@@ -1190,13 +1196,13 @@ function EngineComparisonPanel({
   cvsContext: string;
   cvsPlayedUci: string | undefined;
 }) {
-  const labelStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: '#667085', fontWeight: 700, textTransform: 'uppercase' };
-  const valueStyle: React.CSSProperties = { margin: 0, fontSize: 14, color: '#344054', lineHeight: 1.45 };
+  const labelStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' };
+  const valueStyle: React.CSSProperties = { margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.45 };
   return (
     <section style={{ ...cardStyle, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
         <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
-        <span style={{ color: '#667085', fontSize: 12, flexShrink: 0 }}>local WIP</span>
+        <span style={{ color: 'var(--muted)', fontSize: 12, flexShrink: 0 }}>local WIP</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
         <div style={{ minWidth: 0 }}>
@@ -1211,7 +1217,7 @@ function EngineComparisonPanel({
               <p style={{ ...valueStyle, fontSize: 13 }}>
                 eval {formatEval(stockfishAnalysis.evalAfter)} d{stockfishAnalysis.evalAfter.depth}
               </p>
-              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}</p>
             </>
           ) : (
             <p style={valueStyle}>waiting for a played move</p>
@@ -1219,7 +1225,7 @@ function EngineComparisonPanel({
         </div>
         <div style={{ minWidth: 0, borderLeft: '1px solid #eaecf0', paddingLeft: 14 }}>
           <p style={labelStyle}>CVS Engine</p>
-          <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{cvsContext}</p>
+          <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsContext}</p>
           {!cvsHealth.available ? (
             <p style={valueStyle}>{cvsHealth.error || 'local engine unavailable'}</p>
           ) : cvsError ? (
@@ -1233,10 +1239,10 @@ function EngineComparisonPanel({
               <p style={{ ...valueStyle, fontSize: 13 }}>
                 eval {formatCvsEval(cvsAnalysis)} d{cvsAnalysis.depth} in {cvsAnalysis.timeMs}ms
               </p>
-              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>
+              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>
                 {formatNodes(cvsAnalysis.nodes)} nodes, q {formatNodes(cvsAnalysis.qNodes)}, tt {cvsAnalysis.ttHits}
               </p>
-              <p style={{ ...valueStyle, color: '#667085', fontSize: 12 }}>{cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}</p>
             </>
           ) : (
             <p style={valueStyle}>{cvsBusy ? `analyzing ${cvsContext}` : 'ready'}</p>
@@ -1354,7 +1360,7 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
   const c = features ? controlShare(features.threatAfter) : undefined;
   const segs = c
     ? [
-        { pct: c.exclusiveWhitePct, color: '#3b6fd4', label: `White ${c.exclusiveWhitePct}%` },
+        { pct: c.exclusiveWhitePct, color: 'var(--accent)', label: `White ${c.exclusiveWhitePct}%` },
         { pct: c.contestedPct, color: '#8a5cc4', label: `contested ${c.contestedPct}%` },
         { pct: c.exclusiveBlackPct, color: '#d43b3b', label: `Black ${c.exclusiveBlackPct}%` },
         { pct: c.neutralPct, color: '#e6e6e6', label: `neutral ${c.neutralPct}%` },
@@ -1362,11 +1368,11 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
     : [];
   return (
     <div style={{ width: 'min(456px, 100%)', marginTop: 6 }} title="Share of the 64 squares each side's pieces attack (contested = both).">
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666', marginBottom: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
         <span>Board control</span>
         {c && <span>center {c.centerWhite}–{c.centerBlack}</span>}
       </div>
-      <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', background: '#f0f0f0' }}>
+      <div style={{ display: 'flex', height: 12, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
         {segs.map((s, i) =>
           s.pct > 0 ? (
             <div key={i} title={s.label} style={{ width: `${s.pct}%`, background: s.color }} />
@@ -1375,13 +1381,13 @@ function ControlBar({ features }: { features?: PlyFeatures }) {
       </div>
       {c && (
         <div
-          style={{ display: 'flex', gap: 10, fontSize: 11, color: '#777', marginTop: 2, flexWrap: 'wrap' }}
+          style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--muted)', marginTop: 2, flexWrap: 'wrap' }}
           title={`Total reach (overlaps on contested): White ${c.whitePct}%, Black ${c.blackPct}%`}
         >
-          <span style={{ color: '#3b6fd4' }}>White {c.exclusiveWhitePct}%</span>
+          <span style={{ color: 'var(--accent)' }}>White {c.exclusiveWhitePct}%</span>
           <span style={{ color: '#8a5cc4' }}>contested {c.contestedPct}%</span>
           <span style={{ color: '#d43b3b' }}>Black {c.exclusiveBlackPct}%</span>
-          <span style={{ color: '#aaa' }}>neutral {c.neutralPct}%</span>
+          <span style={{ color: 'var(--muted)' }}>neutral {c.neutralPct}%</span>
         </div>
       )}
     </div>
@@ -1411,7 +1417,7 @@ function MiniBadges({ features }: { features?: PlyFeatures }) {
             borderRadius: 4,
             padding: '4px 6px',
             fontSize: 12,
-            background: '#fafafa',
+            background: 'var(--card2)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -1584,15 +1590,15 @@ function MoveHistory({
       <h4 style={{ margin: '0 0 4px' }}>Move history</h4>
       {branchLabel && (
         <div style={{ margin: '0 0 8px', display: 'grid', gap: 6 }}>
-          <div style={{ fontSize: 12, color: '#3b6fd4', fontWeight: 700 }}>{branchLabel}</div>
+          <div style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700 }}>{branchLabel}</div>
           {onBackToBranchSource && (
             <button
               onClick={onBackToBranchSource}
               title={branchSourceLabel ? `Return to ${branchSourceLabel}` : 'Return to the source line'}
               style={{
                 border: '1px solid #d0d5dd',
-                background: '#fff',
-                color: '#344054',
+                background: 'var(--card)',
+                color: 'var(--text)',
                 borderRadius: 6,
                 padding: '5px 8px',
                 fontSize: 12,
@@ -1613,7 +1619,7 @@ function MoveHistory({
               const isCurrentRow = view === (r.w?.i ?? -2) + 1 || view === (r.b?.i ?? -2) + 1;
               return (
                 <tr key={r.no} ref={isCurrentRow ? currentRef : undefined}>
-                  <td style={{ color: '#999', paddingRight: 6 }}>{r.no}.</td>
+                  <td style={{ color: 'var(--muted)', paddingRight: 6 }}>{r.no}.</td>
                   {cell(r.w)}
                   {cell(r.b)}
                 </tr>
@@ -1622,7 +1628,7 @@ function MoveHistory({
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>← → keys to step</div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>← → keys to step</div>
     </div>
   );
 }
