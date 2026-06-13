@@ -14,6 +14,7 @@ import time
 SF = 'f:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe'
 shard, out_path = sys.argv[1], sys.argv[2]
 depth = int(sys.argv[3]) if len(sys.argv) > 3 else 12
+hash_mb = int(sys.argv[4]) if len(sys.argv) > 4 else 256  # was hardcoded 64; 256 cuts TT overwrites at d20 (95GB free, trivial even x16 workers)
 
 done = 0
 try:
@@ -24,7 +25,7 @@ except FileNotFoundError:
     pass
 
 p = subprocess.Popen([SF], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
-p.stdin.write('uci\nsetoption name Threads value 1\nsetoption name Hash value 64\nisready\n')
+p.stdin.write(f'uci\nsetoption name Threads value 1\nsetoption name Hash value {hash_mb}\nisready\n')
 p.stdin.flush()
 while 'readyok' not in p.stdout.readline():
     pass
@@ -65,7 +66,7 @@ with open(shard, encoding='utf8') as fh:
         out.write(json.dumps({'fen': fen, 'res': j.get('res'), 'sfCp': cp,
                               'sfMate': mate, 'sfDepth': depth}) + '\n')
         n += 1
-        if n % 5000 == 0:
+        if n % 500 == 0:  # was 5000; tighter flush = a kill loses ~seconds of work, not ~25min (we got bitten by this)
             out.flush()
             rate = n / (time.time() - t0)
             print(f'{shard}: {done+n} labeled ({rate:.0f}/s)', flush=True)
