@@ -265,7 +265,7 @@ export function App() {
         .finally(() => {
           if (cvsEngineRunRef.current === run) setCvsEngineBusy(false);
         });
-    }, 150);
+    }, 60);
     return () => {
       window.clearTimeout(timer);
       if (cvsEngineRunRef.current === run) cvsEngineRunRef.current += 1;
@@ -904,7 +904,7 @@ export function App() {
         <>
       <div className="cvs-workspace">
         {/* Left: board + nav */}
-        <div style={{ ...cardStyle, width: '100%', maxWidth: 480, padding: 12 }}>
+        <div style={{ ...cardStyle, width: '100%', maxWidth: 480, padding: 12, boxSizing: 'border-box' }}>
           <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
           <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
             <Board2D

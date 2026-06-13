@@ -115,7 +115,7 @@ export function PlayMode({
         .then((r) => { if (!cancelled) { setCvsAnalysis(r); setCvsError(undefined); } })
         .catch((e) => { if (!cancelled) setCvsError(e instanceof Error ? e.message : String(e)); })
         .finally(() => { if (!cancelled) setCvsBusy(false); });
-    }, 150);
+    }, 60);
     return () => { cancelled = true; clearTimeout(t); };
   }, [fen, cvsHealth?.available, cvsHealth?.depth]);
 
