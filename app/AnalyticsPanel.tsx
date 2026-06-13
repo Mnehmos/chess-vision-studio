@@ -58,6 +58,8 @@ export function AnalyticsPanel({
   teachingProfile,
   teachingThemesJob,
   onComputeThemes,
+  onJumpTeaching,
+  teachingGameLabel,
 }: {
   entries: AnalyzedEntry[];
   features?: FeatureEntry[];
@@ -66,6 +68,10 @@ export function AnalyticsPanel({
   teachingProfile?: TeachingProfile | null;
   teachingThemesJob?: TeachingThemesJob;
   onComputeThemes?: () => void;
+  // Library-wide themes: examples may come from any game, so jumping needs the
+  // game key, and each example is tagged with a human-readable game label.
+  onJumpTeaching?: (gameKey: string, ply: number) => void;
+  teachingGameLabel?: (gameKey: string) => string;
 }) {
   const [scope, setScope] = useState<Scope>('game');
   const [reviewView, setReviewView] = useState<ReviewView>('coach');
@@ -145,7 +151,8 @@ export function AnalyticsPanel({
           profile={teachingProfile ?? null}
           job={teachingThemesJob}
           onCompute={onComputeThemes}
-          onJump={onJump}
+          onJump={onJumpTeaching ?? ((_key, ply) => onJump(ply))}
+          gameLabelOf={teachingGameLabel}
         />
       )}
 
@@ -1290,11 +1297,13 @@ function TeachingThemes({
   job,
   onCompute,
   onJump,
+  gameLabelOf,
 }: {
   profile: TeachingProfile | null;
   job?: TeachingThemesJob;
   onCompute: () => void;
-  onJump: (ply: number) => void;
+  onJump: (gameKey: string, ply: number) => void;
+  gameLabelOf?: (gameKey: string) => string;
 }) {
   const topics = profile
     ? (Object.keys(profile.byTopic) as TeachingTopicId[])
@@ -1320,7 +1329,8 @@ function TeachingThemes({
         <div>
           <Eyebrow>Teaching themes</Eyebrow>
           <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
-            Validated teaching topics across this game, from the engine facts.
+            Validated teaching topics across every analyzed game in your library, from the engine
+            facts.
           </div>
         </div>
         <button
@@ -1338,7 +1348,7 @@ function TeachingThemes({
           }}
         >
           {running
-            ? `Analyzing… ${job?.done ?? 0}/${job?.total ?? 0}`
+            ? `Analyzing… game ${job?.done ?? 0}/${job?.total ?? 0}`
             : profile
               ? 'Recompute'
               : 'Analyze teaching themes'}
@@ -1348,13 +1358,13 @@ function TeachingThemes({
       {!profile && !running && (
         <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 10 }}>
           Surface validated topics (allowed forks, missed material, pins, failed defenses, pawn
-          damage) for every move in this game.
+          damage) across every analyzed game in your library.
         </div>
       )}
 
       {profile && topics.length === 0 && !running && (
         <div style={{ color: 'var(--good)', fontSize: 13, marginTop: 10 }}>
-          No teaching topics detected in this game.
+          No teaching topics detected across your analyzed games.
         </div>
       )}
 
@@ -1410,11 +1420,11 @@ function TeachingThemes({
               <ol style={{ margin: '10px 0 0', paddingLeft: 22 }}>
                 {stats.examples.map((ex, i) => (
                   <li
-                    key={`${ex.ply}-${i}`}
+                    key={`${ex.gameKey}-${ex.ply}-${i}`}
                     style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}
                   >
                     <button
-                      onClick={() => onJump(ex.ply)}
+                      onClick={() => onJump(ex.gameKey, ex.ply)}
                       style={{
                         border: 0,
                         background: 'transparent',
@@ -1430,6 +1440,11 @@ function TeachingThemes({
                         <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: 11 }}>
                           {' '}
                           {ex.squares.join(',')}
+                        </span>
+                      ) : null}
+                      {gameLabelOf ? (
+                        <span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>
+                          {gameLabelOf(ex.gameKey)} · move {Math.floor((ex.ply + 1) / 2)}
                         </span>
                       ) : null}
                     </button>

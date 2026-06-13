@@ -14,6 +14,7 @@ const PUZZLE: Puzzle = {
       prompt: 'White allowed a fork. Find the punishment.',
       solutionUci: 'g5f3',
       acceptableUci: ['g5f3'],
+      requiredAvoidedFacts: [],
     },
     {
       kind: 'prevention',
@@ -22,6 +23,9 @@ const PUZZLE: Puzzle = {
       prompt: 'Find a move that avoids the fork.',
       solutionUci: 'g1h1',
       acceptableUci: ['g1h1'],
+      requiredAvoidedFacts: [
+        { factId: 'fork-g5f3', kind: 'fork', squares: ['g5', 'f3'], side: 'black' },
+      ],
     },
   ],
 };

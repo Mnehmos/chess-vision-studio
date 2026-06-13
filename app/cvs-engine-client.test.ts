@@ -18,7 +18,7 @@ describe('getTeachingFacts', () => {
       fenBefore: allowedFork.fenBefore,
       playedMoveUci: allowedFork.played.move.uci,
     });
-    expect(result.provenance.factsRegistryVersion).toBe(3);
+    expect(result.provenance.factsRegistryVersion).toBe(5);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/cvs-engine/facts',
       expect.objectContaining({ method: 'POST' }),
@@ -29,6 +29,23 @@ describe('getTeachingFacts', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ ...allowedFork, schemaVersion: 2 }), { status: 200 }),
     );
+    await expect(
+      getTeachingFacts({
+        schemaVersion: 1,
+        fenBefore: allowedFork.fenBefore,
+        playedMoveUci: allowedFork.played.move.uci,
+      }),
+    ).rejects.toThrow(/schema mismatch/);
+  });
+
+  it('rejects a legacy V1 response missing current fact collections', async () => {
+    const legacy = structuredClone(allowedFork) as unknown as Record<string, unknown>;
+    const before = legacy.before as Record<string, unknown>;
+    delete before.opponentAvailablePins;
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(legacy), { status: 200 }),
+    );
+
     await expect(
       getTeachingFacts({
         schemaVersion: 1,

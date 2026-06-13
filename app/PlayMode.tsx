@@ -2,41 +2,54 @@
 // a LIVE game you play (hot-seat). Drag-and-drop OR click-to-move, full legality
 // via chess.js, every mode-scoped overlay applied to the live position, a Facts
 // inspect card for any square, and — once the engine is loaded — a per-move
-// analysis (classification + What-Changed) plus the validated Control-Lens
-// coaching line and optional written commentary.
+// analysis (classification + What-Changed) plus deterministic teaching events
+// compiled from Stockfish judgment and Rust facts.
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Chess } from 'chess.js';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
 import { EngineComparisonPanel } from './EngineComparisonPanel';
-import { analyzeWithCvsEngine, type CvsEngineAnalysis, type CvsEngineHealth } from './cvs-engine-client';
-import { computeLedMap, type ModeId } from '../engine/led';
+import {
+  analyzeWithCvsEngine,
+  getTeachingFacts,
+  type CvsEngineAnalysis,
+  type CvsEngineHealth,
+} from './cvs-engine-client';
+import { TeachingLog, whiteEvalText, whiteEvalCp, hangingNote, type CoachTurn } from './TeachingLog';
+import { allSquares, computeLedMap, type ModeId } from '../engine/led';
 import { MODES, LED_CSS } from './modes';
 import { selectionArrows, lineArrows } from './annotate';
 import { AnnotationLegend } from './AnnotationLegend';
 import { analyzeMoveLive } from '../engine/analyze';
+import { sanLineToUci } from '../engine/adapters/uci-line';
 import { extractPlyFeatures, type PlyFeatures } from '../engine/features';
-import { computeControlLens, type Verdict } from '../engine/control-lens';
 import type { UciEngine } from '../engine/evaluation';
-import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
+import { compileTeachingEvents } from '../engine/teaching/compile';
+import { detectOpening } from '../engine/teaching/openings';
+import { describeMoveIdea, type MoveIdea } from '../engine/teaching/moveIdea';
+import type {
+  TeachingAnalysis,
+  TeachingEvent,
+  TeachingFactBundleV1,
+  TeachingFactsRequestV1,
+} from '../engine/teaching/types';
+import type { InsightCandidate, LedMap, MoveAnalysis, Square } from '../engine/types';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+// Engine-opponent search depth (Stockfish; CVS uses its configured depth) and a
+// short "thinking" beat so a human can read their own move's teaching before reply.
+const OPPONENT_DEPTH = 12;
+const OPPONENT_THINK_MS = 500;
+type Opponent = 'none' | 'cvs' | 'stockfish';
 
 type VerboseMove = { from: string; to: string; san: string; flags: string; promotion?: string };
-type HistEntry = { san: string; fen: string; from: Square; to: Square };
+type HistEntry = { san: string; fen: string; from: Square; to: Square; uci: string };
 const PROMO_PIECES = ['q', 'r', 'n', 'b'] as const;
 const PROMO_GLYPH: Record<string, Record<string, string>> = {
   w: { q: '♕', r: '♖', n: '♘', b: '♗' },
   b: { q: '♛', r: '♜', n: '♞', b: '♝' },
 };
-const VERDICT_COLOR: Record<Verdict, string> = {
-  satisfied: '#3f813f',
-  accepted_tradeoff: '#3b7fe2',
-  failed: '#e8923b',
-  violated: '#e23b3b',
-};
-
 function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
   try {
     return new Chess(fen).moves({ square: sq as never, verbose: true }) as unknown as VerboseMove[];
@@ -45,16 +58,84 @@ function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
   }
 }
 
+const TACTIC_TOPICS = new Set(['allowed_fork', 'allowed_pin', 'failed_defense', 'missed_hanging_piece']);
+
+function firstMotifMove(c: { status: string; items?: { moveUci: string }[] }): string | undefined {
+  return c.status === 'computed' ? c.items?.[0]?.moveUci : undefined;
+}
+
+function appliedFen(fen: string, uci: string | undefined): string | null {
+  if (!uci || uci.length < 4) return null;
+  try {
+    const board = new Chess(fen);
+    const moved = board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined });
+    return moved ? board.fen() : null;
+  } catch {
+    return null;
+  }
+}
+
+// The position right after the punishing move a callout names — the move we re-grade.
+// Fork/pin: apply the motif move. Failed defense: the refutation is already played.
+// Missed hanging: the capture the engine wanted is the best move.
+function tacticPositionAfter(event: TeachingEvent, facts: TeachingFactBundleV1): string | null {
+  switch (event.topicId) {
+    case 'allowed_fork':
+      return appliedFen(facts.played.fenAfter, firstMotifMove(facts.played.position.availableMotifs));
+    case 'allowed_pin':
+      return appliedFen(facts.played.fenAfter, firstMotifMove(facts.played.position.availablePins));
+    case 'failed_defense':
+      return facts.refutation?.fenAfter ?? null;
+    case 'missed_hanging_piece':
+      return facts.best?.fenAfter ?? null;
+    default:
+      return null;
+  }
+}
+
+// "A fork is exposed" doesn't make it good. Re-grade EVERY exposed tactic against the
+// engine: play its punishing move, evaluate, and attach the attacker's score so each
+// callout can show confirmed (winning) or refuted (not winning). attackerCp negates
+// the eval because the side to move after the punishing move is the victim. Returns
+// the teaching unchanged on any failure.
+async function validateExposedTactics(
+  teaching: TeachingAnalysis | null,
+  facts: TeachingFactBundleV1,
+  engine: UciEngine,
+  depth: number,
+): Promise<TeachingAnalysis | null> {
+  if (!teaching?.computed) return teaching;
+  const events = await Promise.all(
+    teaching.events.map(async (event) => {
+      if (!TACTIC_TOPICS.has(event.topicId)) return event;
+      const fen = tacticPositionAfter(event, facts);
+      if (!fen) return event;
+      try {
+        const ev = await engine.evaluate({ fen, depth });
+        if (ev.status === 'unavailable') return event;
+        const cp = typeof ev.mate === 'number' ? (ev.mate > 0 ? 100000 : -100000) : (ev.cp ?? 0);
+        return { ...event, engineCheck: { attackerCp: -cp, depth } };
+      } catch {
+        return event;
+      }
+    }),
+  );
+  return { ...teaching, events };
+}
+
 export function PlayMode({
   engine,
   engineReady = false,
   narrateMove,
   cvsHealth,
+  loadTeachingFacts = getTeachingFacts,
 }: {
   engine?: UciEngine | null;
   engineReady?: boolean;
   narrateMove?: (a: MoveAnalysis, features: PlyFeatures) => Promise<string>;
+  narrateTeaching?: (event: TeachingEvent) => Promise<string>;
   cvsHealth?: CvsEngineHealth;
+  loadTeachingFacts?: (request: TeachingFactsRequestV1) => Promise<TeachingFactBundleV1>;
 }) {
   const [fen, setFen] = useState(START_FEN);
   const [selected, setSelected] = useState<Square | null>(null);
@@ -71,11 +152,22 @@ export function PlayMode({
 
   // Live coaching state for the move just played.
   const [lastAnalysis, setLastAnalysis] = useState<MoveAnalysis | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
   const [coachText, setCoachText] = useState('');
   const [explaining, setExplaining] = useState(false);
   const [debug, setDebug] = useState(false); // dev overlay: artifact identity + eval status
+  const [teachingAnalysis, setTeachingAnalysis] = useState<TeachingAnalysis | null>(null);
+  const [teachingFocus, setTeachingFocus] = useState<TeachingEvent | null>(null);
   const analyzeIdRef = useRef(0); // cancels stale analyses when you move/undo fast
+
+  // Engine opponent: off by default (you play both sides). When set, the engine
+  // plays whichever side you don't, replying after each of your moves.
+  const [opponent, setOpponent] = useState<Opponent>('none');
+  const [playerSide, setPlayerSide] = useState<'w' | 'b'>('w');
+  const [thinking, setThinking] = useState(false);
+  const opponentSeqRef = useRef(0); // cancels a pending engine reply on undo/new game
+  // Running coaching dialogue (vs an engine opponent): one entry per move.
+  const [coachLog, setCoachLog] = useState<CoachTurn[]>([]);
+  const coachScrollRef = useRef<HTMLDivElement | null>(null);
 
   const status = useMemo(() => {
     const c = new Chess(fen);
@@ -89,6 +181,27 @@ export function PlayMode({
     const check = c.inCheck() ? ' — check' : '';
     return { text: `${sideToMove} to move${check}`, over: false, tone: check ? '#b54708' : 'var(--text)' };
   }, [fen]);
+
+  // Whose move it is from the human's seat — true when there's no engine opponent
+  // or it's the human's colour to move. Gates manual moves so you can't play the
+  // engine's pieces, and tells the opponent effect when to reply.
+  const humanToMove = useMemo(
+    () => opponent === 'none' || (new Chess(fen).turn() as 'w' | 'b') === playerSide,
+    [opponent, fen, playerSide],
+  );
+
+  // Keep the coaching dialogue pinned to the newest turn as it grows.
+  useEffect(() => {
+    const el = coachScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [coachLog]);
+
+  // The named opening for the current line — only while still in book, so the card
+  // doesn't keep claiming "London System" deep into a tactical middlegame.
+  const currentOpening = useMemo(() => {
+    const found = detectOpening(history.map((h) => h.san));
+    return found?.inBook ? found : null;
+  }, [history]);
 
   // Legal destinations of the picked-up piece — for click-to-move acceptance.
   const targets = useMemo(
@@ -123,8 +236,15 @@ export function PlayMode({
   // live to the current position. 'legal' doubles as the move-target hint; the
   // 'What Changed' lens uses the live MoveAnalysis of the move you just played.
   const ledMap = useMemo(
-    () => computeLedMap(mode, { fen, selectedSquare: selected ?? undefined, analysis: liveAnalysis ?? undefined }),
-    [mode, fen, selected, liveAnalysis],
+    () =>
+      teachingFocus
+        ? teachingLedMap(teachingFocus)
+        : computeLedMap(mode, {
+            fen,
+            selectedSquare: selected ?? undefined,
+            analysis: liveAnalysis ?? undefined,
+          }),
+    [mode, fen, selected, liveAnalysis, teachingFocus],
   );
 
   // Validated coaching for the played move: hazard diff → control action.
@@ -135,17 +255,13 @@ export function PlayMode({
         : null,
     [liveAnalysis],
   );
-  const lens = useMemo(
-    () => (liveAnalysis && featuresOfLast ? computeControlLens(featuresOfLast, liveAnalysis) : null),
-    [liveAnalysis, featuresOfLast],
-  );
-
   const last = history[history.length - 1];
 
   // The full annotation suite, live: focus mode spotlights one tactic; otherwise
   // the played-move arrow (follow move) + the selected piece's attack/defend/
   // cascade arrows + numbered threat lines from the move's analysis.
   const arrows = useMemo<Arrow[]>(() => {
+    if (teachingFocus) return teachingEventArrows(teachingFocus);
     if (focused) return lineArrows(fen, focused, false);
     const out: Arrow[] = [];
     if (followMove && last) out.push({ from: last.from, to: last.to, color: ARROW.move, move: true });
@@ -160,7 +276,7 @@ export function PlayMode({
       for (const ins of threats) out.push(...lineArrows(fen, ins, ins !== top));
     }
     return out;
-  }, [fen, selected, liveAnalysis, showThreats, showAllThreats, cascade, focused, followMove, last]);
+  }, [fen, selected, liveAnalysis, showThreats, showAllThreats, cascade, focused, teachingFocus, followMove, last]);
 
   function applyMove(from: Square, to: Square, promotion?: string) {
     const before = fen;
@@ -173,36 +289,140 @@ export function PlayMode({
     }
     if (!m) return;
     const san = m.san;
-    setHistory((h) => [...h, { san, fen: c.fen(), from, to }]);
+    const uci = `${from}${to}${promotion ?? ''}`;
+    const ply = history.length; // 0-based index of THIS move
+    const mover: 'w' | 'b' = ply % 2 === 0 ? 'w' : 'b';
+    const who: 'you' | 'coach' = opponent === 'none' || mover === playerSide ? 'you' : 'coach';
+    const logging = true; // always keep the running teaching log — off-mode too
+    const opening = detectOpening([...history.map((h) => h.san), san]);
+
+    setHistory((h) => [...h, { san, fen: c.fen(), from, to, uci }]);
     setFen(c.fen());
     setSelected(followMove ? to : null); // "follow move" — broadcast the move just made
     setFocused(null);
     setPromo(null);
     setCoachText('');
+    setTeachingAnalysis(null);
+    setTeachingFocus(null);
+    if (logging) {
+      setCoachLog((log) => [
+        ...log,
+        { ply, who, side: mover, san, teaching: null, idea: null, summary: '', evalText: '', evalCp: null, opening, status: 'analyzing' },
+      ]);
+    }
 
-    // Kick a live analysis of the move (free, local). Latest-wins via the seq ref.
+    // Settle this ply's dialogue entry. Keyed by ply and NOT gated by the live-board
+    // latest-wins guard, so every move in the conversation keeps its own teaching.
+    const settleTurn = (
+      a: MoveAnalysis | null,
+      teaching: TeachingAnalysis | null,
+      idea: MoveIdea | null,
+      hazardNote: string | undefined,
+    ) => {
+      if (!logging) return;
+      setCoachLog((log) =>
+        log.map((turn) =>
+          turn.ply === ply
+            ? {
+                ...turn,
+                teaching,
+                idea,
+                hazardNote,
+                summary: a?.topExplanation ?? '',
+                evalText: a ? whiteEvalText(a, mover) : '',
+                evalCp: a ? whiteEvalCp(a, mover) : null,
+                classification: a?.classification,
+                cpLoss: a?.cpLoss,
+                betterMove: a?.evalBefore.pv[0],
+                status: 'done',
+              }
+            : turn,
+        ),
+      );
+    };
+
+    // Kick a live analysis of the move (free, local). Latest-wins via the seq ref
+    // for the live board; the log entry settles per-ply regardless.
     const id = ++analyzeIdRef.current;
     if (engine && engineReady) {
-      setAnalyzing(true);
       setLastAnalysis(null);
       analyzeMoveLive(engine, before, san)
-        .then((a) => {
-          if (analyzeIdRef.current === id) {
-            setLastAnalysis(a);
-            setAnalyzing(false);
+        .then(async (a) => {
+          if (analyzeIdRef.current === id) setLastAnalysis(a);
+          let teaching: TeachingAnalysis | null = null;
+          let idea: MoveIdea | null = null;
+          let hazardNote: string | undefined;
+          if (cvsHealth?.available) {
+            const request = teachingRequestForLiveMove(before, uci, a);
+            if (request) {
+              try {
+                const facts = await loadTeachingFacts(request);
+                teaching = compileTeachingEvents({ analysis: a, facts });
+                idea = describeMoveIdea(facts); // fork / pin / winning capture
+                if (engine) {
+                  // Re-grade an exposed fork/pin against the engine — a tactic that's
+                  // refuted at depth must not read as won material.
+                  teaching = await validateExposedTactics(teaching, facts, engine, a.evalAfter.depth);
+                }
+                // Surface a hanging piece the compiler didn't name (it's in the facts).
+                hazardNote = hangingNote(facts, teaching);
+              } catch {
+                // A failed facts fetch leaves this ply's teaching empty, never wrong.
+              }
+            }
           }
+          if (analyzeIdRef.current === id && teaching) setTeachingAnalysis(teaching);
+          settleTurn(a, teaching, idea, hazardNote);
         })
-        .catch(() => {
-          if (analyzeIdRef.current === id) setAnalyzing(false);
-        });
+        .catch(() => settleTurn(null, null, null, undefined));
     } else {
       setLastAnalysis(null);
-      setAnalyzing(false);
+      settleTurn(null, null, null, undefined);
     }
   }
 
+  // Engine opponent reply: when it's the opponent's turn, think briefly then play
+  // the engine's best move through the same applyMove path (so it gets analyzed and
+  // taught like any move). A sequence ref + fen dependency cancel a stale reply
+  // when you undo, start a new game, or change settings mid-think.
+  useEffect(() => {
+    if (opponent === 'none' || status.over || humanToMove) return;
+    const canPlay = opponent === 'cvs' ? !!cvsHealth?.available : !!(engine && engineReady);
+    if (!canPlay) return;
+    const seq = ++opponentSeqRef.current;
+    const moveFen = fen;
+    let cancelled = false;
+    setThinking(true);
+    (async () => {
+      try {
+        await new Promise<void>((resolve) => setTimeout(resolve, OPPONENT_THINK_MS));
+        if (cancelled || opponentSeqRef.current !== seq) return;
+        const uci =
+          opponent === 'cvs' && cvsHealth?.available
+            ? (await analyzeWithCvsEngine(moveFen, cvsHealth.depth)).uci
+            : engine && engineReady
+              ? await engine.bestMove(moveFen, OPPONENT_DEPTH)
+              : null;
+        if (cancelled || opponentSeqRef.current !== seq) return;
+        if (uci && uci.length >= 4 && uci !== '(none)' && uci !== '0000') {
+          applyMove(uci.slice(0, 2) as Square, uci.slice(2, 4) as Square, uci.slice(4) || undefined);
+        }
+      } catch {
+        // Leave it the opponent's turn; the human can switch the opponent off or
+        // start a new game. Never fabricate a move.
+      } finally {
+        if (!cancelled && opponentSeqRef.current === seq) setThinking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // applyMove is a stable per-render closure; fen/turn changes drive re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fen, opponent, playerSide, humanToMove, status.over, cvsHealth?.available, cvsHealth?.depth, engine, engineReady]);
+
   function tryMove(from: Square, to: Square) {
-    if (status.over) return;
+    if (status.over || !humanToMove) return; // not your turn vs an engine opponent
     const matches = legalMovesFrom(fen, from).filter((m) => m.to === to);
     if (!matches.length) return; // illegal — no state change
     if (matches.every((m) => m.promotion)) {
@@ -223,6 +443,7 @@ export function PlayMode({
     if (selected === sq) {
       setSelected(null);
       setFocused(null);
+      setTeachingFocus(null);
       return;
     }
     // Otherwise inspect ANY square on demand — your piece, the opponent's, or
@@ -230,34 +451,55 @@ export function PlayMode({
     // Starting a new inspection drops any focused-insight spotlight (it was painting
     // a prior selection's tactic, not this square).
     setFocused(null);
+    setTeachingFocus(null);
     setSelected(sq);
   }
 
   function resetCoach() {
     analyzeIdRef.current++; // cancel any in-flight analysis
     setLastAnalysis(null);
-    setAnalyzing(false);
     setCoachText('');
     setFocused(null);
+    setTeachingAnalysis(null);
+    setTeachingFocus(null);
   }
 
   function undo() {
     if (!history.length) return;
-    const next = history.slice(0, -1);
+    opponentSeqRef.current += 1; // cancel any pending engine reply
+    setThinking(false);
+    let next = history.slice(0, -1);
+    // vs an engine opponent, also take back the engine's reply so it's your move.
+    if (opponent !== 'none' && next.length) {
+      const sideToMove = new Chess(next[next.length - 1].fen).turn();
+      if (sideToMove !== playerSide) next = next.slice(0, -1);
+    }
     setHistory(next);
     setFen(next.length ? next[next.length - 1].fen : START_FEN);
     setSelected(null);
     setPromo(null);
+    setCoachLog((log) => log.filter((turn) => turn.ply < next.length)); // drop undone turns
     resetCoach();
   }
 
   function newGame() {
+    opponentSeqRef.current += 1; // cancel any pending engine reply
+    setThinking(false);
     setFen(START_FEN);
     setHistory([]);
     setSelected(null);
     setPromo(null);
     setMode('legal');
+    setCoachLog([]);
     resetCoach();
+  }
+
+  // Pick the side you play; flips the board to your view and starts fresh so the
+  // engine can open if you chose Black.
+  function choosePlayerSide(side: 'w' | 'b') {
+    setPlayerSide(side);
+    setFlipped(side === 'b');
+    newGame();
   }
 
   async function explain() {
@@ -300,6 +542,58 @@ export function PlayMode({
               New game
             </button>
           </div>
+        </div>
+
+        {/* Engine opponent: play vs CVS or Stockfish, or leave off to play both sides. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', marginRight: 2 }}>Opponent</span>
+          {(['none', 'cvs', 'stockfish'] as Opponent[]).map((o) => {
+            const disabled =
+              o === 'cvs' ? !cvsHealth?.available : o === 'stockfish' ? !engineReady : false;
+            const label = o === 'none' ? 'Off (both sides)' : o === 'cvs' ? 'CVS' : 'Stockfish';
+            return (
+              <button
+                key={o}
+                data-testid={`opponent-${o}`}
+                disabled={disabled}
+                onClick={() => setOpponent(o)}
+                title={
+                  disabled
+                    ? o === 'cvs'
+                      ? 'Rust engine unavailable'
+                      : 'Stockfish not loaded'
+                    : undefined
+                }
+                style={o === opponent ? modeBtnActive : disabled ? modeBtnDisabled : modeBtn}
+              >
+                {label}
+              </button>
+            );
+          })}
+          {opponent !== 'none' && (
+            <>
+              <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8, marginRight: 2 }}>
+                You play
+              </span>
+              {(['w', 'b'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => choosePlayerSide(s)}
+                  style={s === playerSide ? modeBtnActive : modeBtn}
+                >
+                  {s === 'w' ? 'White' : 'Black'}
+                </button>
+              ))}
+              {thinking && (
+                <span
+                  data-testid="opponent-thinking"
+                  style={{ fontSize: 11, color: 'var(--accent)', marginLeft: 6 }}
+                >
+                  Engine thinking…
+                </span>
+              )}
+            </>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -412,8 +706,24 @@ export function PlayMode({
         </p>
       </div>
 
-      {/* ── Right column: Facts · Coach · Moves ─────────────────────────── */}
+      {/* ── Right column: Teaching (board-level) · Facts · Engine · Moves ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: '1 1 320px', minWidth: 280, maxWidth: 480 }}>
+        <TeachingLog
+          log={coachLog}
+          title={opponent === 'none' ? 'Teaching' : `Teaching · vs ${opponent === 'cvs' ? 'CVS' : 'Stockfish'}`}
+          opening={currentOpening}
+          bothSides={opponent === 'none'}
+          coachName={opponent === 'cvs' ? 'CVS' : 'Stockfish'}
+          thinking={thinking}
+          latestPly={history.length - 1}
+          focusedId={teachingFocus?.id ?? null}
+          scrollRef={coachScrollRef}
+          onShow={(event) => {
+            setTeachingFocus(event);
+            if (event) setFocused(null);
+          }}
+        />
+
         <FactsPanel
           fen={fen}
           selected={selected ?? undefined}
@@ -433,42 +743,12 @@ export function PlayMode({
             cvsBusy={cvsBusy}
             cvsError={cvsError}
             cvsContext="current board"
-            cvsPlayedUci={history.length ? `${history[history.length - 1].from}${history[history.length - 1].to}` : undefined}
+            cvsPlayedUci={last?.uci}
           />
         )}
 
         <div style={{ ...card, padding: 12 }}>
-          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Coach</strong>
-          {!engineReady ? (
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
-              Engine not loaded — inspect-only. The overlays and Facts still work.
-            </p>
-          ) : analyzing ? (
-            <p style={{ fontSize: 13, color: 'var(--text-soft)', marginTop: 6 }}>Analyzing your move…</p>
-          ) : lens ? (
-            <div style={{ marginTop: 6 }}>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '1px 8px',
-                  borderRadius: 10,
-                  background: VERDICT_COLOR[lens.verdict],
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-              >
-                {lens.verdict.replace(/_/g, ' ')}
-              </span>
-              <p style={{ fontSize: 13, color: 'var(--text)', margin: '4px 0 0', lineHeight: 1.5 }}>{lens.teachingLine}</p>
-            </div>
-          ) : (
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
-              Make a move — I’ll explain what it controlled.
-            </p>
-          )}
-
+          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Commentary</strong>
           {narrateMove ? (
             <>
               <button
@@ -552,12 +832,57 @@ export function PlayMode({
               {lastAnalysis?.evalAfter.status ?? (lastAnalysis ? 'ok' : '—')}
               {lastAnalysis?.evalAfter.reason ? ` (${lastAnalysis.evalAfter.reason})` : ''}
             </div>
-            <div>coach verdict: {lens ? lens.verdict : '—'}</div>
+            <div>teaching events: {teachingAnalysis?.computed ? teachingAnalysis.events.length : '—'}</div>
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function teachingRequestForLiveMove(
+  fenBefore: string,
+  playedMoveUci: string,
+  analysis: MoveAnalysis,
+): TeachingFactsRequestV1 | null {
+  const bestLine = sanLineToUci(fenBefore, analysis.evalBefore.pv);
+  const refutationLine = sanLineToUci(analysis.positionAfter, analysis.evalAfter.pv);
+  if (analysis.evalBefore.pv.length !== bestLine.length) return null;
+  if (analysis.evalAfter.pv.length !== refutationLine.length) return null;
+  return {
+    schemaVersion: 1,
+    fenBefore,
+    playedMoveUci,
+    ...(bestLine[0] ? { bestMoveUci: bestLine[0] } : {}),
+    ...(refutationLine[0] ? { refutationUci: refutationLine[0] } : {}),
+    ...(bestLine.length ? { principalVariationUci: bestLine } : {}),
+    options: { includeMotifOpportunities: true, includeCounterfactual: true },
+  };
+}
+
+function teachingEventArrows(event: TeachingEvent): Arrow[] {
+  const out: Arrow[] = [];
+  const add = (uci: string, color: string, extra?: Partial<Arrow>) => {
+    if (uci.length < 4) return;
+    out.push({
+      from: uci.slice(0, 2) as Square,
+      to: uci.slice(2, 4) as Square,
+      color,
+      ...extra,
+    });
+  };
+  add(event.playedMove, ARROW.move, { move: true });
+  if (event.punishment) add(event.punishment.move, ARROW.attack, { label: '!' });
+  if (event.correction) add(event.correction.move, ARROW.defend, { dashed: true });
+  return out;
+}
+
+function teachingLedMap(event: TeachingEvent): LedMap {
+  const squares = {} as LedMap['squares'];
+  for (const square of allSquares()) squares[square] = 'off';
+  for (const square of event.squares) squares[square as Square] = 'orange';
+  for (const actor of event.actors) squares[actor.square as Square] = 'purple';
+  return { mode: 'teaching', squares };
 }
 
 function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {

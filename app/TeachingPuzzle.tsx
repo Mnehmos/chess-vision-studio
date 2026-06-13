@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { allSquares } from '../engine/led';
 import type { LedColor, LedMap, Square } from '../engine/types';
-import { isPuzzleSolution, type TeachingPuzzle as Puzzle } from '../engine/teaching/puzzle';
+import {
+  isPuzzleSolution,
+  type PuzzleStage,
+  type TeachingPuzzle as Puzzle,
+} from '../engine/teaching/puzzle';
 import { Board2D } from './Board2D';
 
 const CARD: React.CSSProperties = {
@@ -33,12 +37,36 @@ function applyUci(fen: string, uci: string): string | null {
   }
 }
 
+function canonicalDropUci(fen: string, from: Square, to: Square): string | null {
+  try {
+    const chess = new Chess(fen);
+    const candidates = chess.moves({ square: from as never, verbose: true }) as unknown as {
+      to: string;
+      promotion?: string;
+    }[];
+    const matching = candidates.filter((move) => move.to === to);
+    if (matching.length === 0) return null;
+    const selected = matching.find((move) => move.promotion === 'q') ?? matching[0];
+    return `${from}${to}${selected.promotion ?? ''}`;
+  } catch {
+    return null;
+  }
+}
+
 // Interactive two-stage lesson. The solver drags the solution move on a real
 // board (same Board2D + onPieceDrop the analysis view uses); a correct move
 // advances the stage. Grading is the pure isPuzzleSolution.
-export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: () => void }) {
+export function TeachingPuzzle({
+  puzzle,
+  onClose,
+  gradeAlternative,
+}: {
+  puzzle: Puzzle;
+  onClose: () => void;
+  gradeAlternative?: (stage: PuzzleStage, uci: string) => Promise<boolean>;
+}) {
   const [stageIndex, setStageIndex] = useState(0);
-  const [status, setStatus] = useState<'solving' | 'wrong' | 'solved'>('solving');
+  const [status, setStatus] = useState<'solving' | 'checking' | 'wrong' | 'solved'>('solving');
   const [selected, setSelected] = useState<Square | undefined>(undefined);
   // The position AFTER the solved move, so the board shows the completed move
   // instead of snapping the piece back.
@@ -69,12 +97,28 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
     );
   }
 
-  const onDrop = (from: Square, to: Square) => {
-    if (isPuzzleSolution(stage, `${from}${to}`)) {
-      // Complete the move: apply the canonical solution and show the new position.
-      const after = applyUci(stage.fen, stage.solutionUci);
-      const fromSq = stage.solutionUci.slice(0, 2) as Square;
-      const toSq = stage.solutionUci.slice(2, 4) as Square;
+  const onDrop = async (from: Square, to: Square) => {
+    if (status === 'checking' || status === 'solved') return;
+    const uci = canonicalDropUci(stage.fen, from, to);
+    if (!uci) {
+      setStatus('wrong');
+      return;
+    }
+
+    let solved = isPuzzleSolution(stage, uci);
+    if (!solved && stage.kind === 'prevention' && gradeAlternative) {
+      setStatus('checking');
+      try {
+        solved = await gradeAlternative(stage, uci);
+      } catch {
+        solved = false;
+      }
+    }
+
+    if (solved) {
+      const after = applyUci(stage.fen, uci);
+      const fromSq = uci.slice(0, 2) as Square;
+      const toSq = uci.slice(2, 4) as Square;
       setResultFen(after ?? null);
       setMoved({ from: fromSq, to: toSq });
       setStatus('solved');
@@ -111,14 +155,15 @@ export function TeachingPuzzle({ puzzle, onClose }: { puzzle: Puzzle; onClose: (
       <Board2D
         fen={boardFen}
         ledMap={ledMap}
-        selected={status === 'solved' ? undefined : selected}
-        legalDots={status === 'solved' ? undefined : legalDots}
+        selected={status === 'solved' || status === 'checking' ? undefined : selected}
+        legalDots={status === 'solved' || status === 'checking' ? undefined : legalDots}
         onSelect={(sq) => setSelected((cur) => (cur === sq ? undefined : sq))}
         orientation={stage.sideToMove}
-        draggable={status !== 'solved'}
+        draggable={status === 'solving' || status === 'wrong'}
         onPieceDrop={onDrop}
       />
       <div style={{ marginTop: 8, fontSize: 13, minHeight: 22, display: 'flex', gap: 8, alignItems: 'center' }}>
+        {status === 'checking' && <span style={{ color: 'var(--muted)' }}>Checking alternative...</span>}
         {status === 'wrong' && <span style={{ color: 'var(--bad)' }}>Not quite — try again.</span>}
         {status === 'solved' && <span style={{ color: '#3fbf5f' }}>✓ Correct!</span>}
         {status === 'solved' &&

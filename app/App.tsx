@@ -57,19 +57,30 @@ import type {
   TeachingFactsRequestV1,
 } from '../engine/teaching/types';
 import { compileTeachingEvents } from '../engine/teaching/compile';
-import { buildTeachingPuzzle } from '../engine/teaching/puzzle';
+import {
+  buildTeachingPuzzle,
+  isAlternativePuzzleSolution,
+  type PuzzleStage,
+} from '../engine/teaching/puzzle';
 import {
   buildTeachingProfile,
   classifyPhase,
   type TeachingProfile,
   type TeachingSample,
 } from '../engine/teaching/profile';
-import { buildTeachingRecord, isRecordFresh, type TeachingRecordV1 } from '../engine/teaching/record';
+import {
+  buildTeachingRecord,
+  isRecordFresh,
+  teachingStockfishSettings,
+  type TeachingRecordV1,
+} from '../engine/teaching/record';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
-import { TeachingPanel } from './TeachingPanel';
+import { TeachingLog, whiteEvalText, whiteEvalCp, hangingNote, type CoachTurn } from './TeachingLog';
+import { bookOpening } from '../engine/teaching/openings';
+import { describeMoveIdea, type MoveIdea } from '../engine/teaching/moveIdea';
 import { TeachingPuzzle } from './TeachingPuzzle';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
-import { narrate } from '../llm/narrate';
+import { narrate, narrateTeachingPlan } from '../llm/narrate';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -595,6 +606,47 @@ export function App() {
     [teachingFacts, analysis],
   );
 
+  // What the played move accomplishes (fork/pin/winning capture) — shown when the
+  // move wasn't a mistake, so strong moves aren't reported as "no teaching topic".
+  const teachingIdea = useMemo<MoveIdea | null>(
+    () => (teachingFacts ? describeMoveIdea(teachingFacts) : null),
+    [teachingFacts],
+  );
+
+  // The teaching log for Analyze: one turn per analyzed move up to the current view,
+  // built from the SAME shape Play uses. Every move carries its summary + White-eval;
+  // the move you're standing on (view-1) carries the full rich teaching (events/idea)
+  // since that's the position whose Rust facts are loaded.
+  const analyzeLog = useMemo<CoachTurn[]>(() => {
+    const sans = plies.map((p) => p.san);
+    const turns: CoachTurn[] = [];
+    for (let i = 0; i < view; i += 1) {
+      const a = analyses.get(i);
+      if (!a) continue;
+      const side: 'w' | 'b' = i % 2 === 0 ? 'w' : 'b';
+      const current = i === view - 1;
+      turns.push({
+        ply: i,
+        who: 'you',
+        side,
+        san: plies[i]?.san ?? '',
+        classification: a.classification,
+        cpLoss: a.cpLoss,
+        betterMove: a.evalBefore.pv[0],
+        teaching: current ? teachingAnalysis : null,
+        idea: current ? teachingIdea : null,
+        hazardNote: current && teachingFacts ? hangingNote(teachingFacts, teachingAnalysis) : undefined,
+        summary: a.topExplanation,
+        evalText: whiteEvalText(a, side),
+        evalCp: whiteEvalCp(a, side),
+        opening: bookOpening(sans.slice(0, i + 1)),
+        status: 'done',
+      });
+    }
+    return turns;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plies, analyses, view, teachingAnalysis, teachingIdea, cacheVersion]);
+
   // The engine PositionFacts matching the board right now — Square facts reads the
   // inspected piece's attackers/defenders/SEE from here (matched by piece placement).
   const engineSquareFacts = useMemo<PositionFacts | null>(() => {
@@ -618,12 +670,44 @@ export function App() {
     [puzzleEvent, teachingFacts],
   );
 
-  // Teaching themes are per-game; drop them (and cancel any running pass) on switch.
-  useEffect(() => {
-    teachingThemesRunRef.current += 1;
-    setTeachingThemes(null);
-    setTeachingThemesJob({ running: false, done: 0, total: 0 });
-  }, [currentGameKey]);
+  const gradePuzzleAlternative = async (stage: PuzzleStage, uci: string): Promise<boolean> => {
+    const engine = engineRef.current;
+    if (!analysis || !engine || stage.requiredAvoidedFacts.length === 0) return false;
+
+    try {
+      const candidate = new Chess(stage.fen);
+      const move = candidate.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.slice(4) || undefined,
+      });
+      if (!move) return false;
+
+      const [candidateBundle, candidateAfterEval] = await Promise.all([
+        getTeachingFacts({
+          schemaVersion: 1,
+          fenBefore: stage.fen,
+          playedMoveUci: uci,
+          options: { includeMotifOpportunities: true, includeCounterfactual: false },
+        }),
+        engine.evaluate({ fen: candidate.fen(), depth: analysis.evalBefore.depth }),
+      ]);
+
+      return isAlternativePuzzleSolution(
+        stage,
+        uci,
+        candidateBundle.played,
+        analysis.evalBefore,
+        candidateAfterEval,
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  // Teaching themes are LIBRARY-wide (aggregated across every analyzed game), so a
+  // game switch must NOT drop them — the profile persists until a new PGN is loaded
+  // (loadPgn) or the user recomputes. Switching games only navigates examples.
 
   // Shared corpus pass: fetch Rust facts for a game's analyzed plies, build a full
   // teaching record per ply, and cache it (gameKey -> plyIndex -> record). Reused by
@@ -649,7 +733,9 @@ export function App() {
       // Recompute when uncached OR when the cached record is stale (older compiler/
       // schema) — the versioned cache never serves stale topics.
       const cached = cache.get(i);
-      if (a && !(cached && isRecordFresh(cached))) tasks.push({ ply: i, record: p, analysis: a });
+      if (a && !(cached && isRecordFresh(cached, teachingStockfishSettings(a)))) {
+        tasks.push({ ply: i, record: p, analysis: a });
+      }
     });
     let done = 0;
     let cursor = 0;
@@ -685,37 +771,72 @@ export function App() {
     return cache;
   };
 
-  // On-demand teaching themes: compute (or reuse cached) records for the current
-  // game, then aggregate their committed events into a profile.
+  // On-demand teaching themes — LIBRARY-wide: compute (or reuse cached) records for
+  // EVERY analyzed game, then aggregate all committed events into one cross-game
+  // profile. This is the player profile ("across your games you allowed N forks"),
+  // not just the active game. Records are cached + persisted per game, so a second
+  // run only touches games analyzed since the last pass.
   const runTeachingThemes = async () => {
     if (teachingThemesJob.running || !cvsEngineHealth.available) return;
     const runId = ++teachingThemesRunRef.current;
-    const gameKey = currentGameKey;
-    if (![...analyses.keys()].some((i) => plies[i])) return;
-    setTeachingThemesJob({ running: true, done: 0, total: 0 });
-    const records = await computeTeachingRecords(
-      gameKey,
-      plies,
-      analyses,
-      teachingThemesRunRef,
-      runId,
-      (done, total) => {
-        if (teachingThemesRunRef.current === runId) {
-          setTeachingThemesJob({ running: true, done, total });
-        }
-      },
-    );
-    if (teachingThemesRunRef.current !== runId) return;
+    // Every game with at least one analyzed ply is in scope.
+    const jobs = games
+      .map((game) => {
+        const key = gameCacheKey(game);
+        return { game, key, analyses: analysisCacheRef.current.get(key) };
+      })
+      .filter(
+        (j): j is { game: ParsedGame; key: string; analyses: Map<number, MoveAnalysis> } =>
+          !!j.analyses && [...j.analyses.keys()].some((i) => j.game.plies[i]),
+      );
+    if (jobs.length === 0) return;
+    setTeachingThemesJob({ running: true, done: 0, total: jobs.length });
     const samples: TeachingSample[] = [];
-    plies.forEach((p, i) => {
-      const rec = records.get(i);
-      if (rec) {
-        const phase = classifyPhase(i, p.fenBefore);
-        for (const event of rec.events) samples.push({ event, gameKey, ply: p.ply, phase });
-      }
-    });
+    for (let g = 0; g < jobs.length; g += 1) {
+      if (teachingThemesRunRef.current !== runId) return;
+      const job = jobs[g];
+      const records = await computeTeachingRecords(
+        job.key,
+        job.game.plies,
+        job.analyses,
+        teachingThemesRunRef,
+        runId,
+      );
+      if (teachingThemesRunRef.current !== runId) return;
+      job.game.plies.forEach((p, i) => {
+        const rec = records.get(i);
+        if (rec) {
+          const phase = classifyPhase(i, p.fenBefore);
+          for (const event of rec.events) samples.push({ event, gameKey: job.key, ply: p.ply, phase });
+        }
+      });
+      setTeachingThemesJob({ running: true, done: g + 1, total: jobs.length });
+    }
+    if (teachingThemesRunRef.current !== runId) return;
     setTeachingThemes(buildTeachingProfile(samples));
     setTeachingThemesJob((job) => ({ ...job, running: false }));
+  };
+
+  // Jump to a teaching example that may live in another game: switch to that game
+  // (loading its analyses) and surface the position on the board.
+  const jumpToTeachingExample = (gameKey: string, ply: number) => {
+    const idx = games.findIndex((game) => gameCacheKey(game) === gameKey);
+    if (idx < 0) return;
+    const target = games[idx];
+    if (idx !== gameIndex) selectGame(idx);
+    setView(Math.max(0, Math.min(target.plies.length, ply)));
+    setTab('board');
+  };
+
+  // A human-readable tag for an example's source game (cross-game profiles list
+  // examples from many games). Prefers "White–Black", falls back to the label.
+  const teachingGameLabel = (gameKey: string): string => {
+    const game = games.find((g) => gameCacheKey(g) === gameKey);
+    if (!game) return 'Unknown game';
+    const white = game.headers.White ?? '';
+    const black = game.headers.Black ?? '';
+    if (white || black) return `${white || '?'}–${black || '?'}`;
+    return game.label ?? 'Game';
   };
 
   // LED: a focused teaching event or insight overrides the mode overlay.
@@ -804,6 +925,10 @@ export function App() {
       // Keep analysisCacheRef: it's keyed by content, so re-importing the same games
       // reuses their persisted analyses. Feature cache is cheap/derived — drop it.
       featureCacheRef.current = new Map();
+      // The teaching profile is library-wide; a new library invalidates it.
+      teachingThemesRunRef.current += 1;
+      setTeachingThemes(null);
+      setTeachingThemesJob({ running: false, done: 0, total: 0 });
       setGames(g);
       setGameIndex(0);
       resetViewState(analysisCacheRef.current.get(gameCacheKey(g[0])) ?? new Map());
@@ -1349,6 +1474,9 @@ export function App() {
             engine={engineState === 'ready' ? engineRef.current : null}
             engineReady={engineState === 'ready'}
             narrateMove={hasKey ? (a, f) => narrate(commentaryClient()!, a, f) : undefined}
+            narrateTeaching={
+              hasKey ? (event) => narrateTeachingPlan(commentaryClient()!, event.plan) : undefined
+            }
             cvsHealth={cvsEngineHealth}
           />
         ) : (
@@ -1465,8 +1593,26 @@ export function App() {
                 <Legend modeId={modeId} />
               </div>
 
-              {/* Middle: facts + mate-line card */}
+              {/* Middle: Teaching (board-level) · facts · engine */}
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <TeachingLog
+                  log={analyzeLog}
+                  title="Teaching"
+                  opening={bookOpening(plies.slice(0, view).map((p) => p.san))}
+                  bothSides
+                  latestPly={view - 1}
+                  focusedId={teachingFocus?.id ?? null}
+                  onShow={setTeachingFocus}
+                  onPractice={setPuzzleEvent}
+                  emptyHint="Step through the game — each move is taught here, newest at the bottom."
+                />
+                {teachingPuzzle && (
+                  <TeachingPuzzle
+                    puzzle={teachingPuzzle}
+                    onClose={() => setPuzzleEvent(null)}
+                    gradeAlternative={gradePuzzleAlternative}
+                  />
+                )}
                 <FactsPanel
                   fen={fen}
                   selected={selected}
@@ -1476,17 +1622,6 @@ export function App() {
                   onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
                   enginePosition={engineSquareFacts}
                 />
-                <TeachingPanel
-                  analysis={teachingAnalysis}
-                  busy={teachingFactsBusy}
-                  error={teachingFactsError}
-                  focusedId={teachingFocus?.id ?? null}
-                  onShow={setTeachingFocus}
-                  onPractice={setPuzzleEvent}
-                />
-                {teachingPuzzle && (
-                  <TeachingPuzzle puzzle={teachingPuzzle} onClose={() => setPuzzleEvent(null)} />
-                )}
                 <EngineComparisonPanel
                   stockfishState={engineState}
                   stockfishAnalysis={analysis}
@@ -1562,6 +1697,8 @@ export function App() {
                 teachingProfile={teachingThemes}
                 teachingThemesJob={teachingThemesJob}
                 onComputeThemes={cvsEngineHealth.available ? runTeachingThemes : undefined}
+                onJumpTeaching={jumpToTeachingExample}
+                teachingGameLabel={teachingGameLabel}
               />
             )}
           </>

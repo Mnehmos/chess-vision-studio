@@ -2,11 +2,17 @@
 // Play mode enforces legality via chess.js: legal moves apply, illegal moves are
 // no-ops, and the game-over state is detected. Click-to-move is exercised here;
 // drag-and-drop funnels through the same tryMove() path.
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import allowedForkFixture from '../fixtures/teaching-facts/v1/allowed-fork.json';
+import type { UciEngine } from '../engine/evaluation';
+import type { TeachingFactBundleV1 } from '../engine/teaching/types';
 import { PlayMode } from './PlayMode';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe('PlayMode — legal chess', () => {
   it('starts at the initial position with White to move', () => {
@@ -97,6 +103,93 @@ describe('PlayMode — legal chess', () => {
     expect(panel).toBeTruthy();
     expect(panel!.textContent).toContain('positionAfter===fen');
     expect(panel!.textContent).toContain('analysis.positionId');
+  });
+
+  it('compiles Rust facts into deterministic teaching cards after a live move', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          fen: '',
+          uci: null,
+          scoreCp: 0,
+          mate: null,
+          pv: [],
+          depth: 1,
+          nodes: 0,
+          qNodes: 0,
+          ttHits: 0,
+          timeMs: 0,
+        }),
+      })),
+    );
+    const engine = {
+      evaluate: vi.fn(async ({ fen }: { fen: string }) =>
+        fen.includes(' b ')
+          ? { cp: 200, depth: 14, pv: ['e5'] }
+          : { cp: 0, depth: 14, pv: ['e4'] },
+      ),
+      dispose: vi.fn(),
+    } as unknown as UciEngine;
+    const loadTeachingFacts = vi.fn(async () =>
+      structuredClone(allowedForkFixture as unknown as TeachingFactBundleV1),
+    );
+    const { container } = render(
+      <PlayMode
+        engine={engine}
+        engineReady
+        cvsHealth={{ ok: true, available: true }}
+        loadTeachingFacts={loadTeachingFacts}
+      />,
+    );
+
+    fireEvent.click(container.querySelector('[data-square="e2"]')!);
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+
+    await waitFor(() => expect(loadTeachingFacts).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(container.querySelector('[data-testid="teaching-card"]')).toBeTruthy());
+    expect(container.textContent).toContain('Allowed Fork');
+  });
+
+  it('vs an engine opponent, builds a running dialogue — your move persists when the coach replies', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ fen: '', uci: null, scoreCp: 0, mate: null, pv: [], depth: 1, nodes: 0, qNodes: 0, ttHits: 0, timeMs: 0 }),
+      })),
+    );
+    const engine = {
+      evaluate: vi.fn(async ({ fen }: { fen: string }) =>
+        fen.includes(' b ') ? { cp: 200, depth: 14, pv: ['e5'] } : { cp: 0, depth: 14, pv: ['e4'] },
+      ),
+      bestMove: vi.fn(async () => 'e7e5'), // the coach's reply
+      dispose: vi.fn(),
+    } as unknown as UciEngine;
+    const loadTeachingFacts = vi.fn(async () =>
+      structuredClone(allowedForkFixture as unknown as TeachingFactBundleV1),
+    );
+    const { container } = render(
+      <PlayMode engine={engine} engineReady cvsHealth={{ ok: true, available: true }} loadTeachingFacts={loadTeachingFacts} />,
+    );
+
+    fireEvent.click(container.querySelector('[data-testid="opponent-stockfish"]')!); // engine opponent on; you stay White
+    fireEvent.click(container.querySelector('[data-square="e2"]')!);
+    fireEvent.click(container.querySelector('[data-square="e4"]')!);
+
+    // Dialogue appears with your move and its native teaching headline.
+    await waitFor(() => expect(container.querySelector('[data-testid="teaching-log"]')).toBeTruthy());
+    await waitFor(() => expect(container.textContent).toContain('allowed a knight fork'));
+
+    // The coach replies — now TWO turns, and YOUR move's teaching is still on screen.
+    await waitFor(() => expect(container.querySelectorAll('[data-testid="coach-turn"]').length).toBe(2), {
+      timeout: 3000,
+    });
+    expect(engine.bestMove).toHaveBeenCalled();
+    expect(container.textContent).toContain('You');
+    expect(container.textContent).toContain('Stockfish');
+    expect(container.textContent).toContain('allowed a knight fork'); // persisted, not overwritten
   });
 
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
