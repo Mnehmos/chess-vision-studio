@@ -4,15 +4,15 @@ import type { MoveAnalysis } from '../../types';
 import type { TeachingFactBundleV1 } from '../types';
 import { compileTeachingEvents } from '../compile';
 
-// Fixture: after the neutral a1b1, Black's Bc8-g4 pins Nf3 to Kd1 (absolute). The
-// best move h2h3 covers g4 and prevents it; g4 is the Stockfish refutation.
+// Fixture: Ke1-d1 steps behind Nf3, newly allowing Black's Bc8-g4 absolute pin.
+// The best move h2h3 covers g4 and prevents it; Bg4 is the refutation.
 const FACTS = allowedPinFixture as unknown as TeachingFactBundleV1;
 
 function makeAnalysis(overrides: Partial<MoveAnalysis> = {}): MoveAnalysis {
   return {
     positionBefore: FACTS.fenBefore,
     positionAfter: FACTS.played.fenAfter,
-    move: 'Rb1',
+    move: 'Kd1',
     classification: 'mistake',
     evalBefore: { cp: 0, depth: 14, pv: ['h3'] },
     evalAfter: { cp: -150, depth: 14, pv: ['Bg4'] },
@@ -49,6 +49,34 @@ describe('allowed_pin compiler', () => {
     expect(ev.plan.cause).toContain('pins the knight on f3 to the king on d1');
     expect(ev.plan.consequence).toContain('pinned to the king and cannot move');
     expect(ev.plan.correction).toContain('h3');
+  });
+
+  it('rejects a pin opportunity that already existed before the move', () => {
+    const facts = cloneFacts();
+    facts.before.opponentAvailablePins = JSON.parse(
+      JSON.stringify(facts.played.position.availablePins),
+    );
+    const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
+    if (!result.computed) throw new Error('expected computed');
+    expect(result.events.some((e) => e.topicId === 'allowed_pin')).toBe(false);
+  });
+
+  it('continues past an ineligible sorted pin to a supported candidate', () => {
+    const facts = cloneFacts();
+    delete (facts as { refutation?: unknown }).refutation;
+    if (!facts.best) throw new Error('fixture requires best facts');
+    facts.best.position.availablePins = { status: 'computed', items: [] };
+    if (facts.played.position.availablePins.status !== 'computed') throw new Error('pins required');
+    const valid = facts.played.position.availablePins.items[0];
+    const decoy = { ...structuredClone(valid), moveUci: 'a1a2' };
+    facts.played.position.availablePins.items = [decoy, valid];
+    facts.before.opponentAvailablePins = { status: 'computed', items: [decoy] };
+
+    const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
+    if (!result.computed) throw new Error('expected computed');
+    expect(result.events.find((event) => event.topicId === 'allowed_pin')?.punishment?.move).toBe(
+      valid.moveUci,
+    );
   });
 
   it('emits no pin when the played position has none', () => {

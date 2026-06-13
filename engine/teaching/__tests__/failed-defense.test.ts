@@ -62,7 +62,7 @@ describe('failed_defense compiler', () => {
   it('does not fire when the best move also leaves the piece hanging', () => {
     const facts = cloneFacts();
     if (facts.best) {
-      facts.best.position.pieces = JSON.parse(JSON.stringify(facts.played.position.pieces));
+      facts.best.position.hazards = JSON.parse(JSON.stringify(facts.played.position.hazards));
     }
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
     if (!result.computed) throw new Error('expected computed');
@@ -71,11 +71,42 @@ describe('failed_defense compiler', () => {
 
   it('does not fire when the hazard did not pre-exist', () => {
     const facts = cloneFacts();
-    const before = facts.before.pieces.find((p) => p.id === 'white-rook-c2');
-    if (before) before.attacked = false;
+    if (facts.before.hazards.status === 'computed') {
+      facts.before.hazards.items = facts.before.hazards.items.filter(
+        (hazard) => hazard.id !== 'losing-material-white-rook-c2',
+      );
+    }
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
     if (!result.computed) throw new Error('expected computed');
     expect(result.events.some((e) => e.topicId === 'failed_defense')).toBe(false);
+  });
+
+  it('supports a persisted fork threat without inventing piece-loss details', () => {
+    const facts = cloneFacts();
+    const forkHazard = {
+      id: 'fork-threat-white-g5f3',
+      kind: 'fork_threat',
+      side: 'white' as const,
+      squares: ['e1', 'f3', 'g1'],
+      magnitudeCp: 500,
+      moveUci: 'g5f3',
+    };
+    facts.before.hazards = { status: 'computed', items: [forkHazard] };
+    facts.played.position.hazards = { status: 'computed', items: [forkHazard] };
+    if (facts.best) facts.best.position.hazards = { status: 'computed', items: [] };
+    if (facts.refutation) {
+      facts.refutation.move = { uci: 'g5f3', from: 'g5', to: 'f3' };
+    }
+    const result = compileTeachingEvents({
+      analysis: makeAnalysis({ evalAfter: { cp: -500, depth: 14, pv: ['Nf3+'] } }),
+      facts,
+    });
+    if (!result.computed) throw new Error('expected computed');
+    const event = result.events.find((candidate) => candidate.topicId === 'failed_defense');
+    expect(event?.mechanism).toBe('defense');
+    expect(event?.targets).toEqual([]);
+    expect(event?.plan.headline).toContain('failed to answer the fork threat');
+    expect(event?.proof.validators).toContain('fork_validation');
   });
 
   it('produces byte-stable output for identical input', () => {

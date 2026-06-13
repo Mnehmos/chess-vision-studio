@@ -37,7 +37,7 @@ export const TOPIC_REGISTRY: Record<TeachingTopicId, TopicMeta> = {
     id: 'failed_defense',
     family: 'defense',
     displayName: 'Failed Defense',
-    mechanisms: ['only_defender', 'king_attack', 'hanging_piece'],
+    mechanisms: ['defense', 'only_defender', 'king_attack', 'hanging_piece'],
   },
   pawn_structure_damage: {
     id: 'pawn_structure_damage',
@@ -57,6 +57,7 @@ const WHITELIST: { action: TeachingAction; mechanism: TeachingMechanism; topicId
   { action: 'failed_to_answer', mechanism: 'only_defender', topicId: 'failed_defense' },
   { action: 'failed_to_answer', mechanism: 'king_attack', topicId: 'failed_defense' },
   { action: 'failed_to_answer', mechanism: 'hanging_piece', topicId: 'failed_defense' },
+  { action: 'failed_to_answer', mechanism: 'defense', topicId: 'failed_defense' },
   { action: 'worsened', mechanism: 'doubled_pawn', topicId: 'pawn_structure_damage' },
   { action: 'worsened', mechanism: 'isolated_pawn', topicId: 'pawn_structure_damage' },
   { action: 'created', mechanism: 'doubled_pawn', topicId: 'pawn_structure_damage' },

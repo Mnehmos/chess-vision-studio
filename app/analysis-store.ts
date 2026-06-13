@@ -3,16 +3,20 @@
 // wrapper, zero deps. If IndexedDB is unavailable (SSR/tests/privacy mode) every op
 // fails soft: load resolves to an empty Map, save/clear resolve void — never throws.
 import type { MoveAnalysis } from '../engine/types';
-import { isRecordFresh, type TeachingRecordV1 } from '../engine/teaching/record';
+import {
+  isRecordFresh,
+  teachingCacheKey,
+  type TeachingRecordV1,
+} from '../engine/teaching/record';
 
 export type AnalysisCache = Map<string, Map<number, MoveAnalysis>>; // gameKey -> (plyIndex -> analysis)
 export type TeachingCache = Map<string, Map<number, TeachingRecordV1>>; // gameKey -> (plyIndex -> record)
 
 const DB_NAME = 'chess-vision-studio';
-// v2 adds the `teaching` store: per-ply teaching corpus records, the durable
-// local training-data store. Stale records (validator/registry/compiler change)
-// are filtered on load via isRecordFresh, not on write.
-const DB_VERSION = 2;
+// v3 keys every teaching row by game + ply + the complete teaching signature.
+// v2 grouped rows only by game and cannot prove Stockfish-setting freshness, so
+// the upgrade deliberately recreates that cache store.
+const DB_VERSION = 3;
 const STORE = 'analyses';
 const STORE_TEACHING = 'teaching';
 
@@ -23,7 +27,10 @@ interface StoredRecord {
 
 interface StoredTeachingRecord {
   key: string;
-  records: Array<[number, TeachingRecordV1]>;
+  gameKey: string;
+  ply: number;
+  savedAt: number;
+  record: TeachingRecordV1;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -37,12 +44,13 @@ function openDb(): Promise<IDBDatabase> {
       return;
     }
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (event) => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
-      if (!db.objectStoreNames.contains(STORE_TEACHING)) {
-        db.createObjectStore(STORE_TEACHING, { keyPath: 'key' });
+      if ((event as IDBVersionChangeEvent).oldVersion < 3 && db.objectStoreNames.contains(STORE_TEACHING)) {
+        db.deleteObjectStore(STORE_TEACHING);
       }
+      if (!db.objectStoreNames.contains(STORE_TEACHING)) db.createObjectStore(STORE_TEACHING, { keyPath: 'key' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
@@ -106,9 +114,15 @@ export async function loadTeachingCache(): Promise<TeachingCache> {
     const records = await reqToPromise(
       tx.objectStore(STORE_TEACHING).getAll() as IDBRequest<StoredTeachingRecord[]>,
     );
-    for (const rec of records) {
-      const fresh = rec.records.filter(([, r]) => isRecordFresh(r));
-      if (fresh.length) cache.set(rec.key, new Map(fresh));
+    records.sort((a, b) => a.savedAt - b.savedAt);
+    for (const stored of records) {
+      if (!isRecordFresh(stored.record)) continue;
+      let game = cache.get(stored.gameKey);
+      if (!game) {
+        game = new Map();
+        cache.set(stored.gameKey, game);
+      }
+      game.set(stored.ply, stored.record);
     }
   } catch {
     // Fail soft — return whatever we have.
@@ -124,9 +138,28 @@ export async function saveGameTeaching(
   try {
     const db = await openDb();
     const tx = db.transaction(STORE_TEACHING, 'readwrite');
-    const record: StoredTeachingRecord = { key, records: [...records.entries()] };
-    await reqToPromise(tx.objectStore(STORE_TEACHING).put(record));
+    const store = tx.objectStore(STORE_TEACHING);
+    const savedAt = Date.now();
+    for (const [ply, record] of records) {
+      const stored: StoredTeachingRecord = {
+        key: teachingCacheKey(record),
+        gameKey: key,
+        ply,
+        savedAt,
+        record,
+      };
+      store.put(stored);
+    }
+    await transactionDone(tx);
   } catch {
     // Fail soft — persistence is an optimization, not a requirement.
   }
+}
+
+function transactionDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
+    tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+  });
 }

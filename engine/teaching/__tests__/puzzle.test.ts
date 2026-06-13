@@ -5,7 +5,13 @@ import pawnFixture from '../../../fixtures/teaching-facts/v1/pawn-structure-dama
 import type { MoveAnalysis } from '../../types';
 import type { TeachingEvent, TeachingFactBundleV1 } from '../types';
 import { compileTeachingEvents } from '../compile';
-import { buildTeachingPuzzle, isPuzzleSolution, type PuzzleStage } from '../puzzle';
+import {
+  buildTeachingPuzzle,
+  candidateLossFromBest,
+  isAlternativePuzzleSolution,
+  isPuzzleSolution,
+  type PuzzleStage,
+} from '../puzzle';
 
 function analysis(over: Partial<MoveAnalysis>): MoveAnalysis {
   return {
@@ -54,6 +60,7 @@ describe('buildTeachingPuzzle', () => {
     expect(prevent.sideToMove).toBe('white');
     expect(prevent.solutionUci).toBe('g1h1');
     expect(prevent.prompt).toContain('avoids the fork');
+    expect(prevent.requiredAvoidedFacts).toEqual(event.correction?.avoidedFacts);
   });
 
   it('builds a find-the-capture stage for a missed hanging piece', () => {
@@ -69,7 +76,7 @@ describe('buildTeachingPuzzle', () => {
     expect(puzzle.stages).toHaveLength(1);
     expect(puzzle.stages[0].kind).toBe('prevention');
     expect(puzzle.stages[0].fen).toBe(facts.fenBefore);
-    expect(puzzle.stages[0].solutionUci).toBe('e2e4');
+    expect(puzzle.stages[0].solutionUci).toBe('f3e5');
     expect(puzzle.stages[0].prompt).toContain('wins the free piece');
   });
 
@@ -92,6 +99,7 @@ describe('isPuzzleSolution', () => {
     prompt: 'Find the punishment.',
     solutionUci: 'g5f3',
     acceptableUci: ['g5f3'],
+    requiredAvoidedFacts: [],
   };
 
   it('accepts the solution move and rejects others', () => {
@@ -102,5 +110,67 @@ describe('isPuzzleSolution', () => {
   it('matches a promotion solution from a bare from-to drop', () => {
     const promo: PuzzleStage = { ...stage, solutionUci: 'e7e8q', acceptableUci: ['e7e8q'] };
     expect(isPuzzleSolution(promo, 'e7e8')).toBe(true);
+  });
+});
+
+describe('isAlternativePuzzleSolution', () => {
+  it('accepts a prevention that removes the committed fact within tolerance', () => {
+    const facts = allowedForkFixture as unknown as TeachingFactBundleV1;
+    const event = primary(
+      facts,
+      analysis({ move: 'Re1', evalBefore: { cp: 20, depth: 14, pv: ['Kh1'] } }),
+    );
+    const puzzle = buildTeachingPuzzle(event, facts);
+    const stage = puzzle?.stages.find((candidate) => candidate.kind === 'prevention');
+    expect(stage).toBeDefined();
+    if (!stage) return;
+
+    const candidateFacts = structuredClone(facts.played);
+    candidateFacts.move.uci = 'g1f1';
+    candidateFacts.position.availableMotifs = { status: 'computed', items: [] };
+
+    expect(
+      isAlternativePuzzleSolution(
+        stage,
+        'g1f1',
+        candidateFacts,
+        { cp: 20, depth: 14, pv: [] },
+        { cp: -10, depth: 14, pv: [] },
+      ),
+    ).toBe(true);
+
+    candidateFacts.position.availableMotifs = structuredClone(
+      facts.played.position.availableMotifs,
+    );
+    expect(
+      isAlternativePuzzleSolution(
+        stage,
+        'g1f1',
+        candidateFacts,
+        { cp: 20, depth: 14, pv: [] },
+        { cp: -10, depth: 14, pv: [] },
+      ),
+    ).toBe(false);
+  });
+
+  it('normalizes the post-move opponent evaluation and rejects unavailable scores', () => {
+    expect(
+      candidateLossFromBest(
+        { cp: 20, depth: 14, pv: [] },
+        { cp: -10, depth: 14, pv: [] },
+      ),
+    ).toBe(10);
+    expect(
+      candidateLossFromBest(
+        { cp: 20, depth: 14, pv: [] },
+        { cp: 80, depth: 14, pv: [] },
+      ),
+    ).toBe(100);
+    expect(
+      candidateLossFromBest(
+        { cp: 20, depth: 14, pv: [] },
+        { depth: 14, pv: [], status: 'unavailable' },
+      ),
+    ).toBeNull();
   });
 });

@@ -197,24 +197,39 @@ function detectAllowedFork(input: CompileInput): TeachingEvent[] {
   const mover: Side = facts.before.sideToMove;
   const opponent: Side = mover === 'white' ? 'black' : 'white';
 
-  const playedMotifs = facts.played.position.availableMotifs;
-  if (playedMotifs.status !== 'computed' || playedMotifs.items.length === 0) return [];
+  const playedMotifs = computedItems(facts.played.position.availableMotifs);
+  if (!playedMotifs || playedMotifs.length === 0) return [];
 
-  const bestMotifs = facts.best?.position.availableMotifs;
-  const bestForks = bestMotifs && bestMotifs.status === 'computed' ? bestMotifs.items : null;
-  const bestAvoids = bestForks !== null && bestForks.length === 0;
+  const beforeMotifs = computedItems(facts.before.opponentAvailableMotifs);
+  if (!beforeMotifs) return [];
+
+  const bestForks = computedItems(facts.best?.position.availableMotifs);
 
   const refutationUci = facts.refutation?.move.uci;
-  // Prefer the fork the engine actually plays as the punishment; else the heaviest.
-  const forks = [...playedMotifs.items].sort(
-    (a, b) => b.materialGain - a.materialGain || a.moveUci.localeCompare(b.moveUci),
-  );
-  const fork = forks.find((f) => f.moveUci === refutationUci) ?? forks[0];
+  // Filter through causal gates first, then prefer the engine refutation and weight.
+  const forks = playedMotifs
+    .filter((candidate) => {
+      const isNew = !beforeMotifs.some((before) => before.moveUci === candidate.moveUci);
+      const matchesRefutation = candidate.moveUci === refutationUci;
+      const avoidedByBest =
+        bestForks !== null && !bestForks.some((best) => best.moveUci === candidate.moveUci);
+      return isNew && (matchesRefutation || avoidedByBest);
+    })
+    .sort(
+      (a, b) =>
+        Number(b.moveUci === refutationUci) - Number(a.moveUci === refutationUci) ||
+        b.materialGain - a.materialGain ||
+        a.moveUci.localeCompare(b.moveUci),
+    );
+  const fork = forks[0];
   if (!fork) return [];
+
+  // "Allowed" requires a newly available opportunity, not merely a tactic that
+  // was already present before the played move.
+  const bestAvoids = bestForks !== null && !bestForks.some((candidate) => candidate.moveUci === fork.moveUci);
 
   const refutationMatch = fork.moveUci === refutationUci;
   // No move-causation evidence → do not claim the move "allowed" it.
-  if (!refutationMatch && !bestAvoids) return [];
 
   const attribution = refutationMatch ? 'proven_refutation' : 'counterfactual_supported';
   const badge = refutationMatch ? 'engine_line' : 'counterfactual_supported';
@@ -226,7 +241,13 @@ function detectAllowedFork(input: CompileInput): TeachingEvent[] {
     ...new Set([fork.forkingPiece.square, ...fork.targets.map((t) => t.square)]),
   ].sort();
   const forkRef: FactRef = { factId: `fork-${fork.moveUci}`, kind: 'fork', squares, side: opponent };
-  const plan = renderAllowedFork({ playedLabel, bestLabel, fork, opponentName });
+  const plan = renderAllowedFork({
+    playedLabel,
+    bestLabel,
+    fork,
+    opponentName,
+    materialProven: refutationMatch,
+  });
   const saliency = scoreAllowedFork({
     classification: analysis.classification,
     materialGain: fork.materialGain,
@@ -250,7 +271,10 @@ function detectAllowedFork(input: CompileInput): TeachingEvent[] {
     actors: [fork.forkingPiece],
     targets: fork.targets,
     squares,
-    consequence: { cpLoss: analysis.cpLoss, materialLoss: fork.materialGain / 100 },
+    consequence: {
+      cpLoss: analysis.cpLoss,
+      ...(refutationMatch ? { materialLoss: fork.materialGain / 100 } : {}),
+    },
     punishment: { move: fork.moveUci, line: [fork.moveUci] },
     ...(correction ? { correction } : {}),
     proof: { validators: ['fork_validation'], evidence: [forkRef], attribution, badge },
@@ -268,8 +292,7 @@ function detectMissedHangingPiece(input: CompileInput): TeachingEvent[] {
   const { facts, analysis } = input;
   const mover: Side = facts.before.sideToMove;
   const cls = analysis.classification;
-  // A genuinely best/excellent move did not "miss" anything.
-  if (cls === 'best' || cls === 'excellent') return [];
+  if (!MISTAKE_BAND.has(cls)) return [];
 
   const bestUci = facts.best?.move.uci;
   if (!bestUci) return [];
@@ -285,6 +308,19 @@ function detectMissedHangingPiece(input: CompileInput): TeachingEvent[] {
   if (!target || target.see.status !== 'computed') return [];
   const capture = target.see.value.bestCaptureUci;
   if (!capture || facts.played.move.uci === capture) return [];
+
+  // The opponent's continuation must remove or neutralize the opportunity. If
+  // the same target is still safely capturable after the refutation, calling the
+  // first move a "miss" would overstate the evidence.
+  const continuation = facts.refutation?.position;
+  if (!continuation) return [];
+  const remainsAvailable = continuation.pieces.some(
+    (piece) =>
+      piece.id === target.id &&
+      piece.see.status === 'computed' &&
+      piece.see.value.losing,
+  );
+  if (remainsAvailable) return [];
 
   const scoreCp = target.see.value.scoreCp ?? 0;
   const squares = [target.square];
@@ -340,51 +376,67 @@ function detectFailedDefense(input: CompileInput): TeachingEvent[] {
   const mover: Side = facts.before.sideToMove;
   const opponent: Side = mover === 'white' ? 'black' : 'white';
   const cls = analysis.classification;
-  if (cls === 'best' || cls === 'excellent') return [];
+  if (!MISTAKE_BAND.has(cls)) return [];
   const refutation = facts.refutation;
-  if (!refutation) return [];
+  if (!refutation || !facts.best) return [];
+  const beforeHazards = computedItems(facts.before.hazards);
+  const afterHazards = computedItems(facts.played.position.hazards);
+  const bestHazards = computedItems(facts.best.position.hazards);
+  if (!beforeHazards || !afterHazards || !bestHazards) return [];
 
-  // A mover piece left hanging after the move, on the square the refutation hits.
+  const supportedKinds = new Set([
+    'losing_material',
+    'fork_threat',
+    'pin_constraint',
+    'king_pressure',
+    'mate_threat',
+  ]);
+  const hazard = beforeHazards.find(
+    (candidate) =>
+      candidate.side === mover &&
+      supportedKinds.has(candidate.kind) &&
+      candidate.moveUci === refutation.move.uci &&
+      afterHazards.some((after) => after.id === candidate.id) &&
+      !bestHazards.some((best) => best.id === candidate.id),
+  );
+  if (!hazard) return [];
+
   const target = facts.played.position.pieces.find(
-    (p) =>
-      p.side === mover &&
-      p.square === refutation.move.to &&
-      p.see.status === 'computed' &&
-      p.see.value.losing,
+    (piece) => piece.side === mover && piece.square === refutation.move.to,
   );
-  if (!target || target.see.status !== 'computed') return [];
-
-  // The hazard pre-existed: the same piece was already attacked before the move.
-  const before = facts.before.pieces.find((p) => p.id === target.id);
-  if (!before || !before.attacked) return [];
-
-  // A legal defense existed: the best move leaves the piece safe on that square.
-  const bestPieces = facts.best?.position.pieces;
-  if (!bestPieces) return [];
-  const bestStillHanging = bestPieces.some(
-    (p) =>
-      p.side === mover &&
-      p.square === target.square &&
-      p.see.status === 'computed' &&
-      p.see.value.losing,
+  const actor = facts.played.position.pieces.find(
+    (piece) => piece.side === opponent && piece.square === refutation.move.from,
   );
-  if (bestStillHanging) return [];
-
-  const scoreCp = target.see.value.scoreCp ?? 0;
-  const squares = [target.square];
+  const scoreCp = hazard.magnitudeCp ?? 0;
+  const squares = [...hazard.squares].sort();
   const refutationLabel = analysis.evalAfter?.pv?.[0] ?? refutation.move.uci;
   const evidence: FactRef = {
-    factId: `hanging-${target.id}`,
-    kind: 'hanging_piece',
+    factId: hazard.id,
+    kind: hazard.kind,
     squares,
     side: mover,
   };
+  const mechanism =
+    hazard.kind === 'losing_material'
+      ? 'hanging_piece'
+      : hazard.kind === 'king_pressure' || hazard.kind === 'mate_threat'
+        ? 'king_attack'
+        : 'defense';
+  const hazardLabel =
+    hazard.kind === 'fork_threat'
+      ? 'the fork threat'
+      : hazard.kind === 'pin_constraint'
+        ? 'the pin threat'
+        : hazard.kind === 'mate_threat'
+          ? 'the mate threat'
+          : 'the king pressure';
   const plan = renderFailedDefense({
     playedLabel: playedMoveLabel(analysis, facts.played.move.uci),
     bestLabel: bestMoveLabel(analysis),
     refutationLabel,
-    pieceType: target.pieceType,
-    square: target.square,
+    pieceType: hazard.kind === 'losing_material' ? target?.pieceType : undefined,
+    square: hazard.kind === 'losing_material' ? target?.square : undefined,
+    hazardLabel,
     opponentName: opponent === 'white' ? 'White' : 'Black',
   });
   const saliency = scoreFailedDefense({ classification: cls, scoreCp });
@@ -394,19 +446,23 @@ function detectFailedDefense(input: CompileInput): TeachingEvent[] {
     topicId: 'failed_defense',
     family: 'defense',
     action: 'failed_to_answer',
-    mechanism: 'hanging_piece',
+    mechanism,
     side: mover,
     playedMove: facts.played.move.uci,
-    actors: [],
-    targets: [toPieceRef(target)],
+    actors: actor ? [toPieceRef(actor)] : [],
+    targets: target ? [toPieceRef(target)] : [],
     squares,
-    consequence: { cpLoss: analysis.cpLoss, materialLoss: scoreCp / 100 },
+    consequence: {
+      cpLoss: analysis.cpLoss,
+      ...(hazard.kind === 'losing_material' ? { materialLoss: scoreCp / 100 } : {}),
+      ...(hazard.kind === 'mate_threat' ? { mateIn: 1 } : {}),
+    },
     punishment: { move: refutation.move.uci, line: [refutation.move.uci] },
     correction: facts.best
       ? { move: facts.best.move.uci, avoidedFacts: [evidence], createdFacts: [] }
       : undefined,
     proof: {
-      validators: ['see', 'attack_map', 'legal_move_generation'],
+      validators: validatorsForHazard(hazard.kind),
       evidence: [evidence],
       attribution: 'proven_refutation',
       badge: 'engine_line',
@@ -426,25 +482,42 @@ function detectAllowedPin(input: CompileInput): TeachingEvent[] {
   const mover: Side = facts.before.sideToMove;
   const opponent: Side = mover === 'white' ? 'black' : 'white';
 
-  const playedPins = facts.played.position.availablePins;
-  if (playedPins.status !== 'computed' || playedPins.items.length === 0) return [];
+  const playedPins = computedItems(facts.played.position.availablePins);
+  if (!playedPins || playedPins.length === 0) return [];
 
-  const bestPins = facts.best?.position.availablePins;
-  const bestList = bestPins && bestPins.status === 'computed' ? bestPins.items : null;
-  const bestAvoids = bestList !== null && bestList.length === 0;
+  const beforePins = computedItems(facts.before.opponentAvailablePins);
+  if (!beforePins) return [];
+
+  const bestList = computedItems(facts.best?.position.availablePins);
 
   const refutationUci = facts.refutation?.move.uci;
-  // Prefer the pin the engine punishes with; absolute pins outrank relative.
-  const pins = [...playedPins.items].sort(
-    (a, b) =>
-      Number(b.kind === 'absolute') - Number(a.kind === 'absolute') ||
-      a.moveUci.localeCompare(b.moveUci),
-  );
-  const pin = pins.find((p) => p.moveUci === refutationUci) ?? pins[0];
+  // Filter through causal gates first, then prefer the refutation and absolute pins.
+  const pins = playedPins
+    .filter((candidate) => {
+      const isNew = !beforePins.some((before) => before.moveUci === candidate.moveUci);
+      const matchesRefutation = candidate.moveUci === refutationUci;
+      const avoidedByBest =
+        bestList !== null && !bestList.some((best) => best.moveUci === candidate.moveUci);
+      return (
+        isNew &&
+        (matchesRefutation || avoidedByBest) &&
+        (matchesRefutation || candidate.pinnedImmobile)
+      );
+    })
+    .sort(
+      (a, b) =>
+        Number(b.moveUci === refutationUci) - Number(a.moveUci === refutationUci) ||
+        Number(b.kind === 'absolute') - Number(a.kind === 'absolute') ||
+        a.moveUci.localeCompare(b.moveUci),
+    );
+  const pin = pins[0];
   if (!pin) return [];
 
+  const bestAvoids = bestList !== null && !bestList.some((candidate) => candidate.moveUci === pin.moveUci);
+
   const refutationMatch = pin.moveUci === refutationUci;
-  if (!refutationMatch && !bestAvoids) return [];
+  // A relative pin needs a concrete engine-line consequence. An absolute pin's
+  // proven immobility is itself a measurable restriction.
 
   const attribution = refutationMatch ? 'proven_refutation' : 'counterfactual_supported';
   const badge = refutationMatch ? 'engine_line' : 'counterfactual_supported';
@@ -491,10 +564,31 @@ function detectAllowedPin(input: CompileInput): TeachingEvent[] {
   return [event];
 }
 
-function damagingItems(collection: FactCollection<StructureDelta>, side: Side): StructureDelta[] {
-  return collection.status === 'computed'
+function damagingItems(collection: FactCollection<StructureDelta> | undefined, side: Side): StructureDelta[] {
+  return collection?.status === 'computed'
     ? collection.items.filter((d) => d.side === side && DAMAGE_KINDS.includes(d.kind))
     : [];
+}
+
+function computedItems<T>(collection: FactCollection<T> | null | undefined): T[] | null {
+  return collection?.status === 'computed' ? collection.items : null;
+}
+
+function validatorsForHazard(kind: string): string[] {
+  switch (kind) {
+    case 'losing_material':
+      return ['legal_move_generation', 'capture_opportunities', 'see'];
+    case 'fork_threat':
+      return ['legal_move_generation', 'fork_validation'];
+    case 'pin_constraint':
+      return ['legal_move_generation', 'pin_validation'];
+    case 'mate_threat':
+      return ['legal_move_generation', 'king_safety'];
+    case 'king_pressure':
+      return ['attack_map', 'king_safety'];
+    default:
+      return [];
+  }
 }
 
 function playedMoveLabel(analysis: MoveAnalysis, uci: string): string {

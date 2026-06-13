@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import allowedForkFixture from '../../../fixtures/teaching-facts/v1/allowed-fork.json';
 import type { MoveAnalysis } from '../../types';
 import type { TeachingFactBundleV1 } from '../types';
-import { buildTeachingRecord, TEACHING_COMPILER_VERSION } from '../record';
+import {
+  buildTeachingRecord,
+  isRecordFresh,
+  recordSignature,
+  teachingCacheKey,
+  teachingStockfishSettings,
+  TEACHING_COMPILER_VERSION,
+} from '../record';
 
 const FACTS = allowedForkFixture as unknown as TeachingFactBundleV1;
 
@@ -31,7 +38,7 @@ describe('buildTeachingRecord', () => {
   });
 
   it('carries the Rust fact bundle and committed teaching', () => {
-    expect(record.facts.provenance.factsRegistryVersion).toBe(3);
+    expect(record.facts.provenance.factsRegistryVersion).toBe(5);
     expect(record.primaryTopicId).toBe('allowed_fork');
     expect(record.events.some((e) => e.topicId === 'allowed_fork')).toBe(true);
     expect(record.primaryPlan?.headline).toContain('fork');
@@ -44,10 +51,30 @@ describe('buildTeachingRecord', () => {
 
   it('stamps full provenance (schema/registry/compiler/engine/depth)', () => {
     expect(record.provenance.teachingSchemaVersion).toBe(1);
-    expect(record.provenance.factsRegistryVersion).toBe(3);
+    expect(record.provenance.factsRegistryVersion).toBe(5);
     expect(record.provenance.compilerVersion).toBe(TEACHING_COMPILER_VERSION);
     expect(record.provenance.engine).toBe('cvs-bitboard-core');
     expect(record.provenance.sfDepth).toBe(20);
+    expect(record.provenance.sfSettings).toEqual({
+      beforeDepth: 20,
+      afterDepth: 20,
+      deepCheckDepth: null,
+    });
     expect(record.outcome).toBeNull();
+  });
+
+  it('keys cache rows by game, ply, schema, registry, compiler, and Stockfish settings', () => {
+    expect(recordSignature(record.provenance)).toBe('t1.r5.c2.b20.a20.dx');
+    expect(teachingCacheKey(record)).toBe('g1|p14|t1.r5.c2.b20.a20.dx');
+  });
+
+  it('rejects stale registry and Stockfish settings', () => {
+    expect(isRecordFresh(record, teachingStockfishSettings(analysis))).toBe(true);
+    expect(
+      isRecordFresh(record, { beforeDepth: 18, afterDepth: 18, deepCheckDepth: null }),
+    ).toBe(false);
+    const stale = structuredClone(record);
+    stale.provenance.factsRegistryVersion = 4;
+    expect(isRecordFresh(stale)).toBe(false);
   });
 });

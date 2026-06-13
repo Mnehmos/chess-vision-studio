@@ -1,4 +1,12 @@
-import type { Side, TeachingEvent, TeachingFactBundleV1, TeachingTopicId } from './types';
+import type { Eval } from '../types';
+import type {
+  FactRef,
+  MoveStateFacts,
+  Side,
+  TeachingEvent,
+  TeachingFactBundleV1,
+  TeachingTopicId,
+} from './types';
 
 // Deepline-style two-stage lessons built from a committed teaching event:
 //   Stage 1 — find the punishment (from the position after the mistake)
@@ -15,6 +23,7 @@ export interface PuzzleStage {
   prompt: string;
   solutionUci: string;
   acceptableUci: string[];
+  requiredAvoidedFacts: FactRef[];
 }
 
 export interface TeachingPuzzle {
@@ -47,6 +56,7 @@ export function buildTeachingPuzzle(
       prompt: `${moverName} allowed a ${noun}. Find the punishment.`,
       solutionUci: event.punishment.move,
       acceptableUci: [event.punishment.move],
+      requiredAvoidedFacts: [],
     });
   }
 
@@ -63,6 +73,7 @@ export function buildTeachingPuzzle(
       prompt,
       solutionUci: event.correction.move,
       acceptableUci: [event.correction.move],
+      requiredAvoidedFacts: [...event.correction.avoidedFacts],
     });
   }
 
@@ -77,4 +88,70 @@ export function isPuzzleSolution(stage: PuzzleStage, uci: string): boolean {
   return stage.acceptableUci.some(
     (sol) => sol === uci || (sol.length === 5 && sol.slice(0, 4) === uci.slice(0, 4)),
   );
+}
+
+// Accept an engine-checked alternative prevention only when it removes every
+// deterministic fact the committed event says the correction must avoid and
+// remains close enough to the engine's best evaluation.
+export function isAlternativePuzzleSolution(
+  stage: PuzzleStage,
+  uci: string,
+  candidateFacts: MoveStateFacts,
+  bestEval: Eval,
+  candidateAfterEval: Eval,
+  toleranceCp = 50,
+): boolean {
+  if (stage.kind !== 'prevention' || stage.requiredAvoidedFacts.length === 0) return false;
+  if (candidateFacts.move.uci !== uci) return false;
+  if (stage.requiredAvoidedFacts.some((fact) => factStillPresent(fact, candidateFacts))) {
+    return false;
+  }
+
+  const loss = candidateLossFromBest(bestEval, candidateAfterEval);
+  return loss !== null && loss <= toleranceCp;
+}
+
+// bestEval is from the mover's perspective before the move. candidateAfterEval
+// is from the opponent's perspective after it, so negate the latter first.
+export function candidateLossFromBest(bestEval: Eval, candidateAfterEval: Eval): number | null {
+  if (bestEval.status === 'unavailable' || candidateAfterEval.status === 'unavailable') return null;
+  if (bestEval.cp === undefined || candidateAfterEval.cp === undefined) return null;
+  return Math.max(0, bestEval.cp + candidateAfterEval.cp);
+}
+
+function factStillPresent(fact: FactRef, candidate: MoveStateFacts): boolean {
+  if (fact.kind === 'fork') {
+    const motifs = candidate.position.availableMotifs;
+    if (motifs.status !== 'computed') return true;
+    const moveUci = fact.factId.startsWith('fork-') ? fact.factId.slice(5) : '';
+    return motifs.items.some((motif) => motif.kind === 'fork' && motif.moveUci === moveUci);
+  }
+
+  if (fact.kind === 'pin') {
+    const pins = candidate.position.availablePins;
+    if (pins.status !== 'computed') return true;
+    const moveUci = fact.factId.startsWith('pin-') ? fact.factId.slice(4) : '';
+    return pins.items.some((pin) => pin.moveUci === moveUci);
+  }
+
+  if (
+    fact.kind === 'losing_material' ||
+    fact.kind === 'fork_threat' ||
+    fact.kind === 'pin_constraint' ||
+    fact.kind === 'king_pressure' ||
+    fact.kind === 'mate_threat'
+  ) {
+    const hazards = candidate.position.hazards;
+    if (hazards.status !== 'computed') return true;
+    return hazards.items.some((hazard) => hazard.id === fact.factId);
+  }
+
+  if (fact.kind === 'doubled' || fact.kind === 'isolated' || fact.kind === 'passed') {
+    const structures = candidate.deltas.createdStructures;
+    if (structures.status !== 'computed') return true;
+    return structures.items.some((structure) => structure.factId === fact.factId);
+  }
+
+  // Unknown evidence cannot be safely declared absent.
+  return true;
 }

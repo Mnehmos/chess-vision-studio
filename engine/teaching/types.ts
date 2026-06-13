@@ -1,4 +1,5 @@
 export const TEACHING_FACTS_SCHEMA_VERSION = 1 as const;
+export const TEACHING_FACTS_REGISTRY_VERSION = 5 as const;
 
 export interface TeachingFactsRequestV1 {
   schemaVersion: 1;
@@ -30,8 +31,12 @@ export interface PositionFacts {
   pawnStructure: PawnStructureFacts;
   kingSafety: FactCollection<KingSafetyFact>;
   availableCaptures: FactCollection<CaptureOpportunity>;
+  opponentAvailableCaptures: FactCollection<CaptureOpportunity>;
   availableMotifs: FactCollection<MotifOpportunity>;
   availablePins: FactCollection<PinOpportunity>;
+  opponentAvailableMotifs: FactCollection<MotifOpportunity>;
+  opponentAvailablePins: FactCollection<PinOpportunity>;
+  hazards: FactCollection<HazardFact>;
 }
 
 export interface MoveStateFacts {
@@ -144,10 +149,21 @@ export interface PawnChainFact {
 export interface KingSafetyFact {
   side: Side;
   kingSquare: string;
+  inCheck: boolean;
+  attackers: PieceRef[];
+  pressuredSquares: string[];
+  legalEscapeSquares: FactCollection<string>;
 }
 
 export interface CaptureOpportunity {
   moveUci: string;
+  attacker: PieceRef;
+  victim: PieceRef;
+  victimSquare: string;
+  seeCp: number;
+  givesCheck: boolean;
+  capturingPieceSurvives: boolean;
+  highestValueSafeCapture: boolean;
 }
 
 export interface MotifOpportunity {
@@ -178,6 +194,8 @@ export interface HazardFact {
   kind: string;
   side: Side;
   squares: string[];
+  magnitudeCp?: number;
+  moveUci?: string;
 }
 
 export interface FactsProvenance {
@@ -199,11 +217,43 @@ export function isTeachingFactBundleV1(value: unknown): value is TeachingFactBun
   return (
     bundle.schemaVersion === TEACHING_FACTS_SCHEMA_VERSION &&
     typeof bundle.fenBefore === 'string' &&
-    !!bundle.before &&
-    !!bundle.played &&
+    isPositionFactsShape(bundle.before) &&
+    isMoveStateFactsShape(bundle.played) &&
+    (!bundle.best || isMoveStateFactsShape(bundle.best)) &&
+    (!bundle.refutation || isMoveStateFactsShape(bundle.refutation)) &&
     !!bundle.provenance &&
     Array.isArray(bundle.errors)
   );
+}
+
+function isMoveStateFactsShape(value: unknown): value is MoveStateFacts {
+  if (!value || typeof value !== 'object') return false;
+  const moveState = value as Partial<MoveStateFacts>;
+  return !!moveState.move && typeof moveState.fenAfter === 'string' && isPositionFactsShape(moveState.position);
+}
+
+function isPositionFactsShape(value: unknown): value is PositionFacts {
+  if (!value || typeof value !== 'object') return false;
+  const position = value as Partial<PositionFacts>;
+  return (
+    (position.sideToMove === 'white' || position.sideToMove === 'black') &&
+    Array.isArray(position.pieces) &&
+    isFactCollection(position.kingSafety) &&
+    isFactCollection(position.availableCaptures) &&
+    isFactCollection(position.opponentAvailableCaptures) &&
+    isFactCollection(position.availableMotifs) &&
+    isFactCollection(position.availablePins) &&
+    isFactCollection(position.opponentAvailableMotifs) &&
+    isFactCollection(position.opponentAvailablePins) &&
+    isFactCollection(position.hazards)
+  );
+}
+
+function isFactCollection(value: unknown): value is FactCollection<unknown> {
+  if (!value || typeof value !== 'object') return false;
+  const collection = value as Partial<FactCollection<unknown>>;
+  if (collection.status === 'computed') return Array.isArray(collection.items);
+  return collection.status === 'uncomputed' || collection.status === 'unavailable';
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -243,6 +293,7 @@ export type TeachingMechanism =
   | 'fork'
   | 'pin'
   | 'hanging_piece'
+  | 'defense'
   | 'only_defender'
   | 'king_attack'
   | 'doubled_pawn'
@@ -314,6 +365,10 @@ export interface TeachingEvent {
   consequence: TeachingConsequence;
   punishment?: { move: string; line: string[] };
   correction?: { move: string; avoidedFacts: FactRef[]; createdFacts: FactRef[] };
+  // App-side engine re-grade of the exposed tactic's own punishing move: attackerCp
+  // is the tactic-player's score after it (centipawns). Lets the UI confirm (winning)
+  // or refute (not winning) a fork/pin/defense callout the engine doesn't endorse.
+  engineCheck?: { attackerCp: number; depth: number };
   proof: {
     validators: string[];
     evidence: FactRef[];

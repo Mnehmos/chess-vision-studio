@@ -473,6 +473,8 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     proc.busy = true;
     send(
       proc,
+      'ucinewgame',
+      'setoption name Clear Hash',
       `position fen ${req.fen}`,
       req.movetimeMs ? `go movetime ${req.movetimeMs}` : `go depth ${req.depth}`,
     );
@@ -606,7 +608,8 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     }
     pool = pool.filter((p) => !p.child.killed);
     if (pool.length < POOL_SIZE) pool.push(createSf(cfg));
-    return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
+    const load = (proc: SfProcess) => proc.queue.length + (proc.busy ? 1 : 0);
+    return pool.reduce((best, proc) => (load(proc) < load(best) ? proc : best), pool[0]);
   };
 
   const request = (

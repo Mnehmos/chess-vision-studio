@@ -49,6 +49,7 @@ export function renderAllowedFork(params: {
   bestLabel?: string;
   fork: MotifOpportunity;
   opponentName: string;
+  materialProven: boolean;
 }): ExplanationPlan {
   const { fork, opponentName } = params;
   const plan: ExplanationPlan = {
@@ -58,11 +59,13 @@ export function renderAllowedFork(params: {
       fork.targets,
     )}.`,
   };
-  const won = bestWinnableTarget(fork);
-  if (fork.kingTarget && won) {
-    plan.consequence = `${opponentName} gives check, so ${pieceLabel(won)} cannot be saved.`;
-  } else if (won) {
-    plan.consequence = `${opponentName} wins ${pieceLabel(won)}.`;
+  if (params.materialProven) {
+    const won = bestWinnableTarget(fork);
+    if (fork.kingTarget && won) {
+      plan.consequence = `${opponentName} gives check, so ${pieceLabel(won)} cannot be saved.`;
+    } else if (won) {
+      plan.consequence = `${opponentName} wins ${pieceLabel(won)}.`;
+    }
   }
   if (params.bestLabel) {
     plan.correction = `${params.bestLabel} prevents the fork.`;
@@ -99,17 +102,26 @@ export function renderFailedDefense(params: {
   playedLabel: string;
   bestLabel?: string;
   refutationLabel: string;
-  pieceType: string;
-  square: string;
+  pieceType?: string;
+  square?: string;
+  hazardLabel?: string;
   opponentName: string;
 }): ExplanationPlan {
+  const pieceHazard = params.pieceType && params.square;
+  const hazardLabel = params.hazardLabel ?? 'the threat';
   const plan: ExplanationPlan = {
     topic: 'Failed Defense',
-    headline: `${params.playedLabel} left the ${params.pieceType} on ${params.square} hanging.`,
-    cause: `${params.opponentName} answers with ${params.refutationLabel}, winning the ${params.pieceType}.`,
+    headline: pieceHazard
+      ? `${params.playedLabel} left the ${params.pieceType} on ${params.square} hanging.`
+      : `${params.playedLabel} failed to answer ${hazardLabel}.`,
+    cause: pieceHazard
+      ? `${params.opponentName} answers with ${params.refutationLabel}, winning the ${params.pieceType}.`
+      : `${params.opponentName} answers with ${params.refutationLabel}, exploiting ${hazardLabel}.`,
   };
   if (params.bestLabel) {
-    plan.correction = `${params.bestLabel} saves the ${params.pieceType}.`;
+    plan.correction = pieceHazard
+      ? `${params.bestLabel} saves the ${params.pieceType}.`
+      : `${params.bestLabel} neutralizes ${hazardLabel}.`;
   }
   return plan;
 }

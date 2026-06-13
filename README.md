@@ -13,8 +13,9 @@ your machine. There is no hosted account system yet.
 ## Teaching Facts Protocol
 
 The development server exposes `POST /api/cvs-engine/facts`, backed by the Rust
-engine's versioned `TeachingFactBundleV1` protocol. Analyze mode currently renders
-the raw response in a temporary developer panel while the contract stabilizes.
+engine's versioned `TeachingFactBundleV1` protocol. Analyze mode compiles those
+facts with Stockfish grades into evidence-gated teaching cards, board overlays,
+and practice puzzles; the raw response remains available in the debug panel.
 See [docs/TEACHING_FACTS_PROTOCOL.md](docs/TEACHING_FACTS_PROTOCOL.md).
 
 ## What You Get
@@ -29,7 +30,8 @@ See [docs/TEACHING_FACTS_PROTOCOL.md](docs/TEACHING_FACTS_PROTOCOL.md).
 - Dataset review for pasted Chess.com or Lichess PGNs, cached locally in the
   browser.
 - Optional coach narration through a server-side OpenAI dev proxy. The narrator
-  explains validated analysis data; it is not allowed to invent tactics.
+  explains validated analysis data, while teaching-card narration receives only
+  the committed explanation plan. Neither path is allowed to invent tactics.
 
 ## Stockfish And CVS Engine
 

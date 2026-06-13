@@ -2,11 +2,10 @@
 
 `TeachingFactBundleV1` is the versioned boundary between the Rust chess core and
 Chess Vision Studio's teaching compiler. Rust emits deterministic chess facts.
-The application decides which facts form a teaching topic and how to present them.
+The application combines those facts with Stockfish grades, classifies teaching
+topics, and renders committed explanation plans.
 
-Milestone 1 implements pieces, geometric attackers and defenders, legal SEE
-capture status, doubled/isolated/passed pawns, pawn islands, move validation, and
-played/best/refutation branches. It does not emit topic names or coaching prose.
+The current additive contract is schema version 1, facts registry version 5.
 
 ## Request
 
@@ -22,7 +21,7 @@ Send one JSON line to `analyze --serve`:
   "refutationUci": "d8h4",
   "principalVariationUci": ["g1f3", "d7d5"],
   "options": {
-    "includeMotifOpportunities": false,
+    "includeMotifOpportunities": true,
     "includeCounterfactual": true
   }
 }
@@ -46,8 +45,8 @@ interface TeachingFactBundleV1 {
   provenance: {
     engine: 'cvs-bitboard-core';
     engineCommit?: string;
-    factsRegistryVersion: 1;
-    validators: ValidatorType[];
+    factsRegistryVersion: 5;
+    validators: string[];
   };
   errors: FactError[];
 }
@@ -65,18 +64,125 @@ interface PositionFacts {
   pawnStructure: PawnStructureFacts;
   kingSafety: FactCollection<KingSafetyFact>;
   availableCaptures: FactCollection<CaptureOpportunity>;
+  opponentAvailableCaptures: FactCollection<CaptureOpportunity>;
   availableMotifs: FactCollection<MotifOpportunity>;
+  availablePins: FactCollection<PinOpportunity>;
+  opponentAvailableMotifs: FactCollection<MotifOpportunity>;
+  opponentAvailablePins: FactCollection<PinOpportunity>;
+  hazards: FactCollection<HazardFact>;
 }
 ```
 
+`available*` collections describe legal opportunities for `sideToMove`.
+`opponentAvailable*` collections are symmetric analysis probes for the other side.
+An opposite-side probe is `unavailable` when the real side to move is in check,
+because granting the checking side another turn would create an illegal state.
+En-passant is cleared for opposite-side probes.
+
 Each piece includes its stable reference, square, geometric attackers and
 defenders, counts, loose/attacked flags, only-defender relationships, and SEE
-status. SEE is computed only when the piece can legally be captured by the side to
-move. Otherwise it is `unavailable`; it is never guessed by flipping the turn.
+status. SEE is computed only for a legal capture; unavailable states are never
+guessed by flipping the turn.
 
-Pawn structure contains named squares for doubled, isolated, and passed pawns and
-for pawn islands. Future structure families are present as explicit uncomputed
-collections.
+Pawn structure includes doubled, isolated, passed, island, open-file,
+semi-open-file, king-shield, and pawn-chain facts. Move branches include computed
+created and removed structure deltas.
+
+## Captures and King Safety
+
+Registry v5 exposes structured legal captures and king-safety facts:
+
+```ts
+interface CaptureOpportunity {
+  moveUci: string;
+  attacker: PieceRef;
+  victim: PieceRef;
+  victimSquare: string;
+  seeCp: number;
+  givesCheck: boolean;
+  capturingPieceSurvives: boolean;
+  highestValueSafeCapture: boolean;
+}
+
+interface KingSafetyFact {
+  side: 'white' | 'black';
+  kingSquare: string;
+  inCheck: boolean;
+  attackers: PieceRef[];
+  pressuredSquares: string[];
+  legalEscapeSquares: FactCollection<string>;
+}
+```
+
+Capture ordering and flags are deterministic. Legal escape squares are computed
+symmetrically when the requested side can be probed legally.
+
+## Motifs and Pins
+
+When `options.includeMotifOpportunities` is true, each position view includes
+validated fork and pin opportunities for both sides. When false or absent, those
+collections are `uncomputed` with reason `not_requested`.
+
+```ts
+interface MotifOpportunity {
+  kind: 'fork';
+  validator: 'fork_validation';
+  moveUci: string;
+  forkingPiece: PieceRef;
+  targets: PieceRef[];
+  givesCheck: boolean;
+  kingTarget: boolean;
+  materialGain: number;
+}
+
+interface PinOpportunity {
+  kind: 'absolute' | 'relative';
+  validator: 'pin_validation';
+  moveUci: string;
+  pinner: PieceRef;
+  pinned: PieceRef;
+  anchor: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  pinnedImmobile: boolean;
+}
+```
+
+Fork validation was introduced in registry v2, pin validation in v3, and
+opponent-side motif/pin probes in v4.
+
+## Hazards and Move Deltas
+
+When motif opportunities are requested and symmetric probes are available,
+registry v5 derives stable hazards from validated lower-level facts:
+
+```ts
+interface HazardFact {
+  id: string;
+  kind:
+    | 'losing_material'
+    | 'fork_threat'
+    | 'pin_constraint'
+    | 'king_pressure'
+    | 'mate_threat';
+  side: 'white' | 'black';
+  squares: string[];
+  magnitudeCp?: number;
+  moveUci?: string;
+}
+
+interface MoveFactDeltas {
+  createdHazards: FactCollection<HazardFact>;
+  removedHazards: FactCollection<HazardFact>;
+  worsenedHazards: FactCollection<HazardFact>;
+  createdStructures: FactCollection<StructureDelta>;
+  removedStructures: FactCollection<StructureDelta>;
+}
+```
+
+Hazards summarize facts; they do not grade a move or claim causation. If the
+symmetric position probe cannot be performed, hazards and hazard deltas are
+explicitly unavailable.
 
 ## Computed, Uncomputed, and Unavailable
 
@@ -90,12 +196,12 @@ type FactCollection<T> =
 ```
 
 `computed` with an empty list means the validator ran and found none. `uncomputed`
-means that validator is outside the current registry/version. `unavailable` means
-the validator exists but cannot answer for this state. These states must not be
-collapsed into zero, `false`, or an empty list.
+means the validator was not requested or is outside the current registry.
+`unavailable` means the validator exists but cannot answer for this state. These
+states must not be collapsed into zero, `false`, or an empty list.
 
 A scalar fact uses the equivalent `FactValue<T>` union. A boolean inside a
-`computed` value is a real deterministic result.
+`computed` value is a deterministic result.
 
 ## Identity and Conventions
 
@@ -103,30 +209,34 @@ A scalar fact uses the equivalent `FactValue<T>` union. A boolean inside a
 - Moves use legal long UCI: `e2e4`, `e7e8q`.
 - Sides are `white` and `black`.
 - Piece types are lowercase names.
-- Piece IDs are stable within a position and use
-  `<side>-<piece>-<square>`, for example `white-knight-f3`.
+- Piece IDs use `<side>-<piece>-<square>`, such as `white-knight-f3`.
 - Fact IDs describe their complete current identity. They are not array indexes.
 - Arrays are serialized in stable lexical order where identity matters.
 
 ## Proof and Validators
 
-V1 validator names are:
+Registry v5 provenance may list:
 
-- `legal_move_generation`: branch and PV move legality.
+- `legal_move_generation`: branch, PV, capture, and reply legality.
 - `attack_map`: attackers, defenders, loose pieces, and only defenders.
-- `see`: legal capture material consequence, in centipawns.
-- `pawn_structure`: doubled, isolated, passed, and island facts.
+- `see`: legal capture material consequence in centipawns.
+- `capture_opportunities`: structured legal capture candidates.
+- `king_safety`: check state, king-zone pressure, and legal escapes.
+- `pawn_structure`: pawn and king-shield structure facts and deltas.
+- `fork_validation`: validated fork opportunities.
+- `pin_validation`: validated pin opportunities.
 
-The engine returns validator provenance but no causal attribution. Future teaching
-events may reference these facts as evidence; they may not claim a named tactic
-unless the corresponding Rust validator exists.
+The engine returns validator provenance but no causal attribution. Application
+teaching events must cite the validators that support their evidence and must fail
+closed when a required collection is missing, uncomputed, or unavailable.
 
 ## Responsibility Boundary
 
-Rust owns legal board truth, relationships, SEE, structural facts, and fact
-provenance. Stockfish grades moves and supplies best lines. The application owns
-topic classification, causal gates, teaching vocabulary, UI, aggregation, and
-optional narration. An LLM receives committed teaching plans only.
+Rust owns legal board truth, relationships, SEE, captures, motifs, pins, king
+safety, structural facts, hazards, deltas, and provenance. Stockfish grades moves
+and supplies best lines. The application owns topic classification, causal gates,
+teaching vocabulary, UI, aggregation, and optional narration. An LLM teaching
+narrator receives only a committed `ExplanationPlan`.
 
 ## Golden Fixtures
 
@@ -138,16 +248,15 @@ optional narration. An LLM receives committed teaching plans only.
 - `failed-defense.json`
 - `pawn-structure-damage.json`
 
-The filenames identify future vertical-slice scenarios. V1 fixtures contain facts,
-not committed topic classifications. Rust regenerates and byte-compares them in
-`tests/facts_protocol.rs`; the application consumes mirrored copies in its contract
-tests.
+Rust regenerates and byte-compares them in `tests/facts_protocol.rs`. The
+application consumes mirrored copies in contract and compiler tests.
 
 ## Versioning Policy
 
-- Additive optional fields may be introduced without changing `schemaVersion`.
-- Renaming fields, changing side/square conventions, changing tagged-union
-  semantics, or changing required fields requires a new schema version.
+- Additive fields may retain `schemaVersion` and increment `factsRegistryVersion`.
+- Renaming fields, changing conventions or tagged-union semantics, or changing
+  required fields requires a new schema version.
 - Changes to fact meaning or validator behavior increment `factsRegistryVersion`.
-- Consumers must reject unknown schema versions and must not load cached teaching
-  output generated under an incompatible schema or registry version.
+- Consumers reject unknown schema versions and incomplete current-registry shapes.
+- Cached teaching output is valid only for its schema, facts registry, compiler,
+  and engine settings provenance.

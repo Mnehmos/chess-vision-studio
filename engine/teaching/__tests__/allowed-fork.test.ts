@@ -4,15 +4,15 @@ import type { MoveAnalysis } from '../../types';
 import type { TeachingFactBundleV1 } from '../types';
 import { compileTeachingEvents } from '../compile';
 
-// Fixture: after the quiet e2e4, Black's g5f3+ forks Kg1 + Re1 (gain 500). The
-// best move Kg1-h1 sidesteps it, and g5f3 is the Stockfish refutation.
+// Fixture: Ra1-e1 creates the rook as a second target for Black's Ng5-f3+ fork.
+// The best move Kg1-h1 sidesteps it, and g5f3 is the Stockfish refutation.
 const FACTS = allowedForkFixture as unknown as TeachingFactBundleV1;
 
 function makeAnalysis(overrides: Partial<MoveAnalysis> = {}): MoveAnalysis {
   return {
     positionBefore: FACTS.fenBefore,
     positionAfter: FACTS.played.fenAfter,
-    move: 'e4',
+    move: 'Re1',
     classification: 'blunder',
     evalBefore: { cp: 0, depth: 14, pv: ['Kh1'] },
     evalAfter: { cp: -500, depth: 14, pv: ['Nf3+'] },
@@ -61,11 +61,20 @@ describe('allowed_fork compiler', () => {
     expect(result.primaryEvent?.topicId).toBe('allowed_fork');
   });
 
-  it('does not fire pawn_structure_damage for the pawn push (relocated, not new)', () => {
-    // e2e4 relocates the lone isolated e-pawn; it is not new structural damage.
+  it('does not emit an unrelated structural event', () => {
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts: FACTS });
     if (!result.computed) throw new Error('expected computed');
     expect(result.events.some((e) => e.topicId === 'pawn_structure_damage')).toBe(false);
+  });
+
+  it('rejects a fork opportunity that already existed before the move', () => {
+    const facts = cloneFacts();
+    facts.before.opponentAvailableMotifs = JSON.parse(
+      JSON.stringify(facts.played.position.availableMotifs),
+    );
+    const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
+    if (!result.computed) throw new Error('expected computed');
+    expect(result.events.some((e) => e.topicId === 'allowed_fork')).toBe(false);
   });
 
   it('emits no fork when the played position has none', () => {
@@ -88,6 +97,17 @@ describe('allowed_fork compiler', () => {
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
     if (!result.computed) throw new Error('expected computed');
     expect(result.events.some((e) => e.topicId === 'allowed_fork')).toBe(false);
+  });
+
+  it('does not claim material is forced from counterfactual evidence alone', () => {
+    const facts = cloneFacts();
+    delete (facts as { refutation?: unknown }).refutation;
+    const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
+    if (!result.computed) throw new Error('expected computed');
+    const fork = result.events.find((event) => event.topicId === 'allowed_fork');
+    expect(fork?.proof.attribution).toBe('counterfactual_supported');
+    expect(fork?.consequence.materialLoss).toBeUndefined();
+    expect(fork?.plan.consequence).toBeUndefined();
   });
 
   it('produces byte-stable output for identical input', () => {

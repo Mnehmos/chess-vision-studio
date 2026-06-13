@@ -1,10 +1,16 @@
 // Verifies the CLAMP (Invariant 8): the LLM is shown only validated MoveAnalysis
 // facts — never the raw board — and the system prompt forbids inventing tactics.
 import { describe, it, expect } from 'vitest';
-import { factsBlock, buildNarrationMessages } from '../narrate';
+import {
+  buildNarrationMessages,
+  buildTeachingNarrationMessages,
+  factsBlock,
+  narrateTeachingPlan,
+} from '../narrate';
 import { batchNarrate } from '../batch';
 import type { ChatClient } from '../openai';
 import type { MoveAnalysis } from '../../engine/types';
+import type { ExplanationPlan } from '../../engine/teaching/types';
 import type {
   PlyFeatures,
   LegalFeatureSummary,
@@ -151,5 +157,38 @@ describe('batchNarrate — concurrent per-ply calls', () => {
     expect(out.map((r) => r.ply)).toEqual([1, 2, 3]); // order preserved
     expect(out.filter((r) => r.narration).length).toBe(2);
     expect(out.find((r) => r.error)?.error).toContain('rate limit');
+  });
+});
+
+describe('teaching narration - committed plan only', () => {
+  const plan: ExplanationPlan = {
+    topic: 'Allowed fork',
+    headline: 'Re1 allowed ...Nf3.',
+    cause: 'The knight attacks two targets from f3.',
+    correction: 'Kh1 avoids the fork.',
+  };
+
+  it('serializes only the committed ExplanationPlan', () => {
+    const messages = buildTeachingNarrationMessages(plan);
+    expect(messages[1].content).toBe(JSON.stringify(plan));
+    expect(messages[1].content).not.toContain(ANALYSIS.positionBefore);
+    expect(messages[0].content.toLowerCase()).toContain('do not infer');
+  });
+
+  it('sends the plan-clamped messages to the client', async () => {
+    let received = '';
+    const client: ChatClient = {
+      model: 'mock',
+      async chat(messages) {
+        received = messages[1].content;
+        return 'Re1 allowed the fork, while Kh1 avoids it.';
+      },
+      async ping() {
+        return 'OK';
+      },
+    };
+
+    await expect(narrateTeachingPlan(client, plan)).resolves.toContain('Kh1');
+    expect(received).toBe(JSON.stringify(plan));
   });
 });

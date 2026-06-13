@@ -14,7 +14,7 @@ describe('TeachingFactBundleV1 Rust fixtures', () => {
       expect(isTeachingFactBundleV1(fixture)).toBe(true);
       const bundle = fixture as TeachingFactBundleV1;
       expect(bundle.provenance.engine).toBe('cvs-bitboard-core');
-      expect(bundle.provenance.factsRegistryVersion).toBe(3);
+      expect(bundle.provenance.factsRegistryVersion).toBe(5);
       expect(bundle.before.pieces.every((piece) => /^[a-h][1-8]$/.test(piece.square))).toBe(true);
       expect(bundle.played.move.uci).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
     }
@@ -40,6 +40,7 @@ describe('TeachingFactBundleV1 Rust fixtures', () => {
     expect(fork?.kind).toBe('fork');
     expect(fork?.kingTarget).toBe(true);
     expect(fork?.targets.map((t) => t.id).sort()).toEqual(['white-king-g1', 'white-rook-e1']);
+    expect(bundle.before.opponentAvailableMotifs).toEqual({ status: 'computed', items: [] });
     // the best move's counterfactual avoids it
     expect(bundle.best?.position.availableMotifs.status).toBe('computed');
   });
@@ -54,6 +55,7 @@ describe('TeachingFactBundleV1 Rust fixtures', () => {
     expect(pin?.pinned.id).toBe('white-knight-f3');
     expect(pin?.anchor.id).toBe('white-king-d1');
     expect(pin?.pinnedImmobile).toBe(true);
+    expect(bundle.before.opponentAvailablePins).toEqual({ status: 'computed', items: [] });
     expect(bundle.best?.position.availablePins.status).toBe('computed');
   });
 });

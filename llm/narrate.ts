@@ -5,6 +5,7 @@
 import type { InsightCandidate, MoveAnalysis } from '../engine/types';
 import { controlShare, type PlyFeatures } from '../engine/features';
 import { threatLines, shieldLines } from '../engine/threats';
+import type { ExplanationPlan } from '../engine/teaching/types';
 import type { ChatClient, ChatMessage } from './openai';
 
 const SYSTEM = `You are a chess coach for a 300-1400 rated player. You will be given
@@ -33,6 +34,18 @@ HARD RULES:
 - If the move was solid/best with nothing important changed, say so in Summary and keep
   the other sections to one line each ("- none"). BUT never call a move uneventful if it
   promotes, gives check, or delivers mate — name that event (it is in the Engine summary).`;
+
+const TEACHING_SYSTEM = `You are rewriting a deterministic chess teaching plan for a
+300-1400 rated player. The plan is already the complete set of allowed claims.
+
+Write one concise paragraph in plain English. Preserve the plan's meaning and name
+only the moves, pieces, squares, causes, consequences, corrections, and caveats that
+are explicitly present in the plan.
+
+HARD RULES:
+- Use only the provided plan. Do not infer from chess knowledge or invent facts.
+- Do not add a tactic, evaluation, move, piece, square, threat, or recommendation.
+- Omit absent fields. If the plan is sparse, keep the answer sparse.`;
 
 /** Render the validated facts as a compact, unambiguous block for the LLM. */
 export function factsBlock(a: MoveAnalysis, features?: PlyFeatures): string {
@@ -149,6 +162,20 @@ export function buildNarrationMessages(a: MoveAnalysis, features?: PlyFeatures):
   ];
 }
 
+export function buildTeachingNarrationMessages(plan: ExplanationPlan): ChatMessage[] {
+  return [
+    { role: 'system', content: TEACHING_SYSTEM },
+    { role: 'user', content: JSON.stringify(plan) },
+  ];
+}
+
 export async function narrate(client: ChatClient, a: MoveAnalysis, features?: PlyFeatures): Promise<string> {
   return client.chat(buildNarrationMessages(a, features));
+}
+
+export async function narrateTeachingPlan(
+  client: ChatClient,
+  plan: ExplanationPlan,
+): Promise<string> {
+  return client.chat(buildTeachingNarrationMessages(plan));
 }

@@ -4,7 +4,7 @@ import type { MoveAnalysis } from '../../types';
 import type { TeachingFactBundleV1 } from '../types';
 import { compileTeachingEvents } from '../compile';
 
-// Fixture: White's Re2 can win Black's undefended queen on e4 (Rxe4 = best), but
+// Fixture: White's Nf3 can win Black's undefended queen on e5 (Nxe5 = best), but
 // White played Kf1 (e1f1) instead — a missed free queen.
 const FACTS = missedFixture as unknown as TeachingFactBundleV1;
 
@@ -14,8 +14,8 @@ function makeAnalysis(overrides: Partial<MoveAnalysis> = {}): MoveAnalysis {
     positionAfter: FACTS.played.fenAfter,
     move: 'Kf1',
     classification: 'blunder',
-    evalBefore: { cp: 0, depth: 14, pv: ['Rxe4'] },
-    evalAfter: { cp: -900, depth: 14, pv: ['Qxe2'] },
+    evalBefore: { cp: 0, depth: 14, pv: ['Nxe5'] },
+    evalAfter: { cp: -900, depth: 14, pv: ['Qb2'] },
     cpLoss: 9,
     rankedInsights: [],
     topExplanation: '',
@@ -40,13 +40,13 @@ describe('missed_hanging_piece compiler', () => {
     expect(ev.mechanism).toBe('hanging_piece');
     expect(ev.side).toBe('white');
     expect(ev.proof.attribution).toBe('counterfactual_supported');
-    expect(ev.targets.map((t) => t.id)).toEqual(['black-queen-e4']);
-    expect(ev.actors.map((a) => a.id)).toEqual(['white-rook-e2']);
-    expect(ev.correction?.move).toBe('e2e4');
+    expect(ev.targets.map((t) => t.id)).toEqual(['black-queen-e5']);
+    expect(ev.actors.map((a) => a.id)).toEqual(['white-knight-f3']);
+    expect(ev.correction?.move).toBe('f3e5');
     expect(ev.consequence.materialLoss).toBe(9);
     expect(ev.plan.headline).toContain('free queen');
     expect(ev.plan.cause).toContain('undefended');
-    expect(ev.plan.correction).toContain('Rxe4');
+    expect(ev.plan.correction).toContain('Nxe5');
   });
 
   it('does not fire on a best/excellent move', () => {
@@ -60,7 +60,7 @@ describe('missed_hanging_piece compiler', () => {
 
   it('does not fire when the played move is itself the capture', () => {
     const facts = cloneFacts();
-    facts.played.move.uci = 'e2e4';
+    facts.played.move.uci = 'f3e5';
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
     if (!result.computed) throw new Error('expected computed');
     expect(result.events.some((e) => e.topicId === 'missed_hanging_piece')).toBe(false);
@@ -69,6 +69,16 @@ describe('missed_hanging_piece compiler', () => {
   it('does not fire when the best move is not the capture', () => {
     const facts = cloneFacts();
     if (facts.best) facts.best.move.uci = 'e1d1';
+    const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
+    if (!result.computed) throw new Error('expected computed');
+    expect(result.events.some((e) => e.topicId === 'missed_hanging_piece')).toBe(false);
+  });
+
+  it('does not call the capture missed when it remains safely available', () => {
+    const facts = cloneFacts();
+    const target = facts.before.pieces.find((piece) => piece.id === 'black-queen-e5');
+    if (!target || !facts.refutation) throw new Error('fixture missing target/refutation');
+    facts.refutation.position.pieces.push(JSON.parse(JSON.stringify(target)));
     const result = compileTeachingEvents({ analysis: makeAnalysis(), facts });
     if (!result.computed) throw new Error('expected computed');
     expect(result.events.some((e) => e.topicId === 'missed_hanging_piece')).toBe(false);

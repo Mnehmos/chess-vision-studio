@@ -65,6 +65,26 @@ describe('teaching compiler — hard negatives (no false topics)', () => {
     expect(topicsOf(facts, analysis({ move: 'Rb1' }))).not.toContain('allowed_pin');
   });
 
+  it('legacy V1 facts missing newer collections fail closed instead of throwing', () => {
+    const facts = clone(allowedPinFixture);
+    const positions = [
+      facts.before,
+      facts.played.position,
+      facts.best?.position,
+      facts.refutation?.position,
+    ].filter(Boolean);
+    for (const position of positions) {
+      const legacy = position as unknown as Record<string, unknown>;
+      delete legacy.opponentAvailableCaptures;
+      delete legacy.opponentAvailableMotifs;
+      delete legacy.opponentAvailablePins;
+      delete legacy.hazards;
+    }
+
+    expect(() => topicsOf(facts, analysis({ move: 'Rb1' }))).not.toThrow();
+    expect(topicsOf(facts, analysis({ move: 'Rb1' }))).not.toContain('allowed_pin');
+  });
+
   it('missed_hanging_piece: a hanging piece the engine does NOT take is not "missed"', () => {
     const facts = clone(missedFixture);
     if (facts.best) facts.best.move.uci = 'e1d1'; // best is not the capture
@@ -76,8 +96,10 @@ describe('teaching compiler — hard negatives (no false topics)', () => {
   it('failed_defense: a piece that is defended after the move is not "failed"', () => {
     const facts = clone(failedFixture);
     // the rook is attacked but no longer SEE-losing → adequately defended
-    for (const p of facts.played.position.pieces) {
-      if (p.id === 'white-rook-c2') p.see = { status: 'computed', value: { losing: false } };
+    if (facts.played.position.hazards.status === 'computed') {
+      facts.played.position.hazards.items = facts.played.position.hazards.items.filter(
+        (hazard) => hazard.id !== 'losing-material-white-rook-c2',
+      );
     }
     expect(topicsOf(facts, analysis({ move: 'Kf2' }))).not.toContain('failed_defense');
   });

@@ -106,8 +106,27 @@
         "reason": "not_in_milestone_1"
       },
       "kingShieldMissing": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "side": "white",
+            "kingSquare": "e1",
+            "missingSquares": [
+              "d2",
+              "e2",
+              "f2"
+            ]
+          },
+          {
+            "side": "black",
+            "kingSquare": "e8",
+            "missingSquares": [
+              "d7",
+              "e7",
+              "f7"
+            ]
+          }
+        ]
       },
       "pawnChains": {
         "status": "uncomputed",
@@ -115,20 +134,103 @@
       }
     },
     "kingSafety": {
-      "status": "uncomputed",
-      "reason": "not_in_milestone_1"
+      "status": "computed",
+      "items": [
+        {
+          "side": "white",
+          "kingSquare": "e1",
+          "inCheck": false,
+          "attackers": [],
+          "pressuredSquares": [],
+          "legalEscapeSquares": {
+            "status": "computed",
+            "items": [
+              "d1",
+              "d2",
+              "e2",
+              "f1",
+              "f2"
+            ]
+          }
+        },
+        {
+          "side": "black",
+          "kingSquare": "e8",
+          "inCheck": false,
+          "attackers": [],
+          "pressuredSquares": [],
+          "legalEscapeSquares": {
+            "status": "computed",
+            "items": [
+              "d7",
+              "d8",
+              "e7",
+              "f7",
+              "f8"
+            ]
+          }
+        }
+      ]
     },
     "availableCaptures": {
-      "status": "uncomputed",
-      "reason": "not_in_milestone_1"
+      "status": "computed",
+      "items": []
+    },
+    "opponentAvailableCaptures": {
+      "status": "computed",
+      "items": [
+        {
+          "moveUci": "b3c2",
+          "attacker": {
+            "id": "black-bishop-b3",
+            "side": "black",
+            "pieceType": "bishop",
+            "square": "b3"
+          },
+          "victim": {
+            "id": "white-rook-c2",
+            "side": "white",
+            "pieceType": "rook",
+            "square": "c2"
+          },
+          "victimSquare": "c2",
+          "seeCp": 500,
+          "givesCheck": false,
+          "capturingPieceSurvives": true,
+          "highestValueSafeCapture": true
+        }
+      ]
     },
     "availableMotifs": {
-      "status": "uncomputed",
-      "reason": "not_requested"
+      "status": "computed",
+      "items": []
     },
     "availablePins": {
-      "status": "uncomputed",
-      "reason": "not_requested"
+      "status": "computed",
+      "items": []
+    },
+    "opponentAvailableMotifs": {
+      "status": "computed",
+      "items": []
+    },
+    "opponentAvailablePins": {
+      "status": "computed",
+      "items": []
+    },
+    "hazards": {
+      "status": "computed",
+      "items": [
+        {
+          "id": "losing-material-white-rook-c2",
+          "kind": "losing_material",
+          "side": "white",
+          "squares": [
+            "c2"
+          ],
+          "magnitudeCp": 500,
+          "moveUci": "b3c2"
+        }
+      ]
     }
   },
   "played": {
@@ -259,8 +361,27 @@
           "reason": "not_in_milestone_1"
         },
         "kingShieldMissing": {
-          "status": "uncomputed",
-          "reason": "not_in_milestone_1"
+          "status": "computed",
+          "items": [
+            {
+              "side": "white",
+              "kingSquare": "f2",
+              "missingSquares": [
+                "e3",
+                "f3",
+                "g3"
+              ]
+            },
+            {
+              "side": "black",
+              "kingSquare": "e8",
+              "missingSquares": [
+                "d7",
+                "e7",
+                "f7"
+              ]
+            }
+          ]
         },
         "pawnChains": {
           "status": "uncomputed",
@@ -268,34 +389,120 @@
         }
       },
       "kingSafety": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "side": "white",
+            "kingSquare": "f2",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "e1",
+                "e2",
+                "e3",
+                "f1",
+                "f3",
+                "g1",
+                "g2",
+                "g3"
+              ]
+            }
+          },
+          {
+            "side": "black",
+            "kingSquare": "e8",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "d7",
+                "d8",
+                "e7",
+                "f7",
+                "f8"
+              ]
+            }
+          }
+        ]
       },
       "availableCaptures": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "moveUci": "b3c2",
+            "attacker": {
+              "id": "black-bishop-b3",
+              "side": "black",
+              "pieceType": "bishop",
+              "square": "b3"
+            },
+            "victim": {
+              "id": "white-rook-c2",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "c2"
+            },
+            "victimSquare": "c2",
+            "seeCp": 500,
+            "givesCheck": false,
+            "capturingPieceSurvives": true,
+            "highestValueSafeCapture": true
+          }
+        ]
+      },
+      "opponentAvailableCaptures": {
+        "status": "computed",
+        "items": []
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
       },
       "availablePins": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailableMotifs": {
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailablePins": {
+        "status": "computed",
+        "items": []
+      },
+      "hazards": {
+        "status": "computed",
+        "items": [
+          {
+            "id": "losing-material-white-rook-c2",
+            "kind": "losing_material",
+            "side": "white",
+            "squares": [
+              "c2"
+            ],
+            "magnitudeCp": 500,
+            "moveUci": "b3c2"
+          }
+        ]
       }
     },
     "deltas": {
       "createdHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "removedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "worsenedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "createdStructures": {
         "status": "computed",
@@ -419,8 +626,27 @@
           "reason": "not_in_milestone_1"
         },
         "kingShieldMissing": {
-          "status": "uncomputed",
-          "reason": "not_in_milestone_1"
+          "status": "computed",
+          "items": [
+            {
+              "side": "white",
+              "kingSquare": "e1",
+              "missingSquares": [
+                "d2",
+                "e2",
+                "f2"
+              ]
+            },
+            {
+              "side": "black",
+              "kingSquare": "e8",
+              "missingSquares": [
+                "d7",
+                "e7",
+                "f7"
+              ]
+            }
+          ]
         },
         "pawnChains": {
           "status": "uncomputed",
@@ -428,34 +654,193 @@
         }
       },
       "kingSafety": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "side": "white",
+            "kingSquare": "e1",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [
+              "d1"
+            ],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "d2",
+                "e2",
+                "f1",
+                "f2"
+              ]
+            }
+          },
+          {
+            "side": "black",
+            "kingSquare": "e8",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "d7",
+                "d8",
+                "e7",
+                "f7",
+                "f8"
+              ]
+            }
+          }
+        ]
       },
       "availableCaptures": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailableCaptures": {
+        "status": "computed",
+        "items": [
+          {
+            "moveUci": "c3b3",
+            "attacker": {
+              "id": "white-rook-c3",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "c3"
+            },
+            "victim": {
+              "id": "black-bishop-b3",
+              "side": "black",
+              "pieceType": "bishop",
+              "square": "b3"
+            },
+            "victimSquare": "b3",
+            "seeCp": 330,
+            "givesCheck": false,
+            "capturingPieceSurvives": true,
+            "highestValueSafeCapture": true
+          }
+        ]
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
       },
       "availablePins": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailableMotifs": {
+        "status": "computed",
+        "items": [
+          {
+            "kind": "fork",
+            "validator": "fork_validation",
+            "moveUci": "c3e3",
+            "forkingPiece": {
+              "id": "white-rook-e3",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "e3"
+            },
+            "targets": [
+              {
+                "id": "black-bishop-b3",
+                "side": "black",
+                "pieceType": "bishop",
+                "square": "b3"
+              },
+              {
+                "id": "black-king-e8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "e8"
+              }
+            ],
+            "givesCheck": true,
+            "kingTarget": true,
+            "materialGain": 300
+          }
+        ]
+      },
+      "opponentAvailablePins": {
+        "status": "computed",
+        "items": []
+      },
+      "hazards": {
+        "status": "computed",
+        "items": [
+          {
+            "id": "fork-threat-black-c3e3",
+            "kind": "fork_threat",
+            "side": "black",
+            "squares": [
+              "b3",
+              "e3",
+              "e8"
+            ],
+            "magnitudeCp": 300,
+            "moveUci": "c3e3"
+          },
+          {
+            "id": "losing-material-black-bishop-b3",
+            "kind": "losing_material",
+            "side": "black",
+            "squares": [
+              "b3"
+            ],
+            "magnitudeCp": 330,
+            "moveUci": "c3b3"
+          }
+        ]
       }
     },
     "deltas": {
       "createdHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "id": "fork-threat-black-c3e3",
+            "kind": "fork_threat",
+            "side": "black",
+            "squares": [
+              "b3",
+              "e3",
+              "e8"
+            ],
+            "magnitudeCp": 300,
+            "moveUci": "c3e3"
+          },
+          {
+            "id": "losing-material-black-bishop-b3",
+            "kind": "losing_material",
+            "side": "black",
+            "squares": [
+              "b3"
+            ],
+            "magnitudeCp": 330,
+            "moveUci": "c3b3"
+          }
+        ]
       },
       "removedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "id": "losing-material-white-rook-c2",
+            "kind": "losing_material",
+            "side": "white",
+            "squares": [
+              "c2"
+            ],
+            "magnitudeCp": 500,
+            "moveUci": "b3c2"
+          }
+        ]
       },
       "worsenedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "createdStructures": {
         "status": "computed",
@@ -555,8 +940,27 @@
           "reason": "not_in_milestone_1"
         },
         "kingShieldMissing": {
-          "status": "uncomputed",
-          "reason": "not_in_milestone_1"
+          "status": "computed",
+          "items": [
+            {
+              "side": "white",
+              "kingSquare": "f2",
+              "missingSquares": [
+                "e3",
+                "f3",
+                "g3"
+              ]
+            },
+            {
+              "side": "black",
+              "kingSquare": "e8",
+              "missingSquares": [
+                "d7",
+                "e7",
+                "f7"
+              ]
+            }
+          ]
         },
         "pawnChains": {
           "status": "uncomputed",
@@ -564,34 +968,99 @@
         }
       },
       "kingSafety": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "side": "white",
+            "kingSquare": "f2",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "e1",
+                "e2",
+                "e3",
+                "f1",
+                "f3",
+                "g1",
+                "g2",
+                "g3"
+              ]
+            }
+          },
+          {
+            "side": "black",
+            "kingSquare": "e8",
+            "inCheck": false,
+            "attackers": [],
+            "pressuredSquares": [],
+            "legalEscapeSquares": {
+              "status": "computed",
+              "items": [
+                "d7",
+                "d8",
+                "e7",
+                "f7",
+                "f8"
+              ]
+            }
+          }
+        ]
       },
       "availableCaptures": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailableCaptures": {
+        "status": "computed",
+        "items": []
       },
       "availableMotifs": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
       },
       "availablePins": {
-        "status": "uncomputed",
-        "reason": "not_requested"
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailableMotifs": {
+        "status": "computed",
+        "items": []
+      },
+      "opponentAvailablePins": {
+        "status": "computed",
+        "items": []
+      },
+      "hazards": {
+        "status": "computed",
+        "items": []
       }
     },
     "deltas": {
       "createdHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "removedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": [
+          {
+            "id": "losing-material-white-rook-c2",
+            "kind": "losing_material",
+            "side": "white",
+            "squares": [
+              "c2"
+            ],
+            "magnitudeCp": 500,
+            "moveUci": "b3c2"
+          }
+        ]
       },
       "worsenedHazards": {
-        "status": "uncomputed",
-        "reason": "not_in_milestone_1"
+        "status": "computed",
+        "items": []
       },
       "createdStructures": {
         "status": "computed",
@@ -605,12 +1074,16 @@
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 3,
+    "factsRegistryVersion": 5,
     "validators": [
       "legal_move_generation",
       "attack_map",
       "see",
-      "pawn_structure"
+      "capture_opportunities",
+      "king_safety",
+      "pawn_structure",
+      "fork_validation",
+      "pin_validation"
     ]
   },
   "errors": []
