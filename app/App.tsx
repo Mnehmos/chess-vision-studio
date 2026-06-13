@@ -651,7 +651,7 @@ export function App() {
             }
           },
         }) as unknown as UciEngine;
-      const STREAMS = 3; // server serializes; a few in-flight keep the pipe full
+      const STREAMS = 12; // backend pools rust procs now — keep them all fed
       setDatasetJob((prev) => ({ ...prev, currentGame: 'CVS engine (native) working…' }));
       let done = 0;
       let next = 0;

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { existsSync, readFileSync } from 'node:fs';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createInterface, type Interface } from 'node:readline';
+import { cpus } from 'node:os';
 
 /**
  * Dev-server OpenAI proxy. The key stays in .env (plain OPENAI_API_KEY, server-side)
@@ -77,7 +78,12 @@ interface CvsEngineProcess {
 }
 
 function cvsEngineProxy(env: Record<string, string>): Plugin {
-  let current: CvsEngineProcess | null = null;
+  // The rust engine is a serial stdin->stdout subprocess (one FEN at a time).
+  // A least-loaded POOL of them parallelizes bulk analysis across cores while
+  // staying 100% rust. Light use stays at one process; bulk fans out.
+  let pool: CvsEngineProcess[] = [];
+  let poolKey = '';
+  const POOL_SIZE = Math.max(2, Math.min(8, (cpus().length || 4) - 2));
 
   const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
     res.statusCode = status;
@@ -86,19 +92,20 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
   };
 
   const dispose = () => {
-    const proc = current;
-    current = null;
-    if (!proc) return;
-    for (const pending of proc.queue.splice(0)) {
-      clearTimeout(pending.timer);
-      pending.reject(new Error('CVS Engine process stopped'));
-    }
-    try {
-      proc.child.stdin.write('quit\n');
-      proc.child.kill();
-      proc.rl.close();
-    } catch {
-      // Already gone.
+    const procs = pool;
+    pool = [];
+    for (const proc of procs) {
+      for (const pending of proc.queue.splice(0)) {
+        clearTimeout(pending.timer);
+        pending.reject(new Error('CVS Engine process stopped'));
+      }
+      try {
+        proc.child.stdin.write('quit\n');
+        proc.child.kill();
+        proc.rl.close();
+      } catch {
+        // Already gone.
+      }
     }
   };
 
@@ -152,10 +159,7 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
     return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags };
   };
 
-  const spawnEngine = (requestedDepth?: number): CvsEngineProcess => {
-    const cfg = configFor(requestedDepth);
-    if (current && current.depth === cfg.depth && current.argsKey === cfg.argsKey && !current.child.killed) return current;
-    dispose();
+  const createProc = (cfg: ReturnType<typeof configFor>): CvsEngineProcess => {
     const child = spawn(cfg.exe, cfg.args, { cwd: process.cwd(), stdio: 'pipe' });
     const rl = createInterface({ input: child.stdout });
     const proc: CvsEngineProcess = { child, rl, depth: cfg.depth, argsKey: cfg.argsKey, queue: [], stderr: [] };
@@ -175,15 +179,28 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
       }
     });
     child.on('close', (code) => {
-      if (current === proc) current = null;
+      pool = pool.filter((p) => p !== proc);
       const suffix = proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : '';
       for (const pending of proc.queue.splice(0)) {
         clearTimeout(pending.timer);
         pending.reject(new Error(`CVS Engine exited with code ${code}${suffix}`));
       }
     });
-    current = proc;
     return proc;
+  };
+
+  // Live process for this config, dispatched to the shortest queue. Grows one
+  // process per call up to POOL_SIZE; a depth/flag change rebuilds the pool.
+  const acquireEngine = (requestedDepth?: number): CvsEngineProcess => {
+    const cfg = configFor(requestedDepth);
+    const key = `${cfg.depth}:${cfg.argsKey}`;
+    if (key !== poolKey) {
+      dispose();
+      poolKey = key;
+    }
+    pool = pool.filter((p) => !p.child.killed);
+    if (pool.length < POOL_SIZE) pool.push(createProc(cfg));
+    return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
   };
 
   const requestEngine = (proc: CvsEngineProcess, line: string): Promise<string> =>
@@ -236,7 +253,7 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
             const cfg = configFor(body.depth);
             if (!existsSync(cfg.exe)) return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
             if (cfg.missing.length) return json(res, 503, { error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}` });
-            const proc = spawnEngine(cfg.depth);
+            const proc = acquireEngine(cfg.depth);
             const line = body.movetimeMs ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}` : fen;
             const out = await requestEngine(proc, line);
             let parsed: unknown;
