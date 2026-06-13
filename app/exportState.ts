@@ -6,6 +6,7 @@ import { renderInsight } from '../engine/explain';
 import { extractPlyFeatures, controlShare, type PlyFeatures } from '../engine/features';
 import type { ParsedGame, PlyRecord } from '../engine/position';
 import type { InsightCandidate, LedMap, MoveAnalysis, Square } from '../engine/types';
+import type { TeachingRecordV1 } from '../engine/teaching/record';
 import { ARROW, type Arrow } from './BoardArrows';
 
 export interface BoardExportInput {
@@ -21,6 +22,7 @@ export interface BoardExportInput {
   arrows: Arrow[];
   analyses: Map<number, MoveAnalysis>; // per-ply analysis (index = ply-1)
   commentary: Map<number, string>; // per-ply coach text (index = ply-1)
+  teaching?: Map<number, TeachingRecordV1>; // per-ply teaching corpus record (index = ply-1)
   annotations: { showThreats: boolean; showAllThreats: boolean; cascade: boolean; followMove: boolean };
   exportedAt: string; // ISO timestamp (caller supplies — keeps this pure)
 }
@@ -89,6 +91,13 @@ function featuresBlock(features: PlyFeatures | null) {
   };
 }
 
+// Per-ply teaching corpus record. unknown != none: a ply with no committed record
+// is reported explicitly, never as an absent/empty field.
+function teachingBlock(record: TeachingRecordV1 | undefined, requested: boolean) {
+  if (record) return { computed: true as const, ...record };
+  return { computed: false as const, reason: requested ? 'no_committed_record' : 'not_requested' };
+}
+
 /** Assemble a complete JSON snapshot: the current on-screen view + every ply's analysis. */
 export function buildBoardExport(input: BoardExportInput) {
   const {
@@ -104,6 +113,7 @@ export function buildBoardExport(input: BoardExportInput) {
     arrows,
     analyses,
     commentary,
+    teaching,
     annotations,
     exportedAt,
   } = input;
@@ -119,6 +129,7 @@ export function buildBoardExport(input: BoardExportInput) {
       plyCount: plies.length,
       analyzedPlies: analyses.size,
       commentedPlies: commentary.size,
+      teachingRecords: teaching ? teaching.size : 0,
     },
     // The literal on-screen state for the ply currently displayed.
     current: {
@@ -161,6 +172,7 @@ export function buildBoardExport(input: BoardExportInput) {
         fenAfter: p.fenAfter,
         analysis: a ? analysisBlock(a) : null,
         features,
+        teaching: teachingBlock(teaching?.get(i), !!teaching),
         coachCommentary: commentary.get(i) ?? null,
       };
     }),

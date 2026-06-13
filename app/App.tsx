@@ -59,6 +59,7 @@ import {
   type TeachingProfile,
   type TeachingSample,
 } from '../engine/teaching/profile';
+import { buildTeachingRecord, type TeachingRecordV1 } from '../engine/teaching/record';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
 import { TeachingPanel } from './TeachingPanel';
 import { TeachingPuzzle } from './TeachingPuzzle';
@@ -153,6 +154,11 @@ export function App() {
     total: 0,
   });
   const teachingThemesRunRef = useRef(0);
+  // Per-ply teaching corpus records (gameKey -> ply -> record), the shared
+  // substrate for export, themes, and aggregation. Persists across game switches.
+  const teachingRecordCacheRef = useRef<Map<string, Map<number, TeachingRecordV1>>>(new Map());
+  const teachingExportRunRef = useRef(0);
+  const [exporting, setExporting] = useState(false);
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const cvsEngineRunRef = useRef(0);
@@ -606,53 +612,92 @@ export function App() {
     setTeachingThemesJob({ running: false, done: 0, total: 0 });
   }, [currentGameKey]);
 
-  // On-demand dataset teaching pass: fetch Rust facts for every analyzed ply of the
-  // current game, compile committed events, and aggregate into a teaching profile.
-  // Bridge-bound, so it is gated behind a button and concurrency-capped.
-  const runTeachingThemes = async () => {
-    if (teachingThemesJob.running || !cvsEngineHealth.available) return;
-    const runId = ++teachingThemesRunRef.current;
-    const gameKey = currentGameKey;
+  // Shared corpus pass: fetch Rust facts for a game's analyzed plies, build a full
+  // teaching record per ply, and cache it (gameKey -> plyIndex -> record). Reused by
+  // export, themes, and aggregation; the cache makes re-runs free. Bridge-bound +
+  // concurrency-capped; bails if a newer pass on the same runRef supersedes it.
+  const computeTeachingRecords = async (
+    gameKey: string,
+    recordPlies: PlyRecord[],
+    analysesMap: Map<number, MoveAnalysis>,
+    runRef: { current: number },
+    runId: number,
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<Map<number, TeachingRecordV1>> => {
+    let records = teachingRecordCacheRef.current.get(gameKey);
+    if (!records) {
+      records = new Map<number, TeachingRecordV1>();
+      teachingRecordCacheRef.current.set(gameKey, records);
+    }
+    const cache = records;
     const tasks: { ply: number; record: PlyRecord; analysis: MoveAnalysis }[] = [];
-    plies.forEach((p, i) => {
-      const a = analyses.get(i);
-      if (a) tasks.push({ ply: p.ply, record: p, analysis: a });
+    recordPlies.forEach((p, i) => {
+      const a = analysesMap.get(i);
+      if (a && !cache.has(i)) tasks.push({ ply: i, record: p, analysis: a });
     });
-    if (tasks.length === 0) return;
-    setTeachingThemesJob({ running: true, done: 0, total: tasks.length });
-    const samples: TeachingSample[] = [];
     let done = 0;
     let cursor = 0;
     const worker = async () => {
       while (cursor < tasks.length) {
         const t = tasks[cursor++];
-        if (!t || teachingThemesRunRef.current !== runId) return;
+        if (!t || runRef.current !== runId) return;
         const request = factsRequestForPly(t.record, t.analysis);
         if (request) {
           try {
             const facts = await getTeachingFacts(request);
-            const compiled = compileTeachingEvents({ analysis: t.analysis, facts });
-            if (compiled.computed) {
-              const phase = classifyPhase(t.ply, t.record.fenBefore);
-              for (const event of compiled.events) {
-                samples.push({ event, gameKey, ply: t.ply, phase });
-              }
-            }
+            cache.set(
+              t.ply,
+              buildTeachingRecord({
+                gameKey,
+                ply: t.ply,
+                san: t.record.san,
+                analysis: t.analysis,
+                facts,
+              }),
+            );
           } catch {
             // Skip a ply whose facts request fails — never count it as "no mistake".
           }
         }
         done += 1;
-        if (teachingThemesRunRef.current === runId) {
-          setTeachingThemesJob((job) => ({ ...job, done }));
-        }
+        onProgress?.(done, tasks.length);
       }
     };
     await Promise.all(Array.from({ length: 4 }, () => worker()));
-    if (teachingThemesRunRef.current === runId) {
-      setTeachingThemes(buildTeachingProfile(samples));
-      setTeachingThemesJob((job) => ({ ...job, running: false }));
-    }
+    return cache;
+  };
+
+  // On-demand teaching themes: compute (or reuse cached) records for the current
+  // game, then aggregate their committed events into a profile.
+  const runTeachingThemes = async () => {
+    if (teachingThemesJob.running || !cvsEngineHealth.available) return;
+    const runId = ++teachingThemesRunRef.current;
+    const gameKey = currentGameKey;
+    if (![...analyses.keys()].some((i) => plies[i])) return;
+    setTeachingThemesJob({ running: true, done: 0, total: 0 });
+    const records = await computeTeachingRecords(
+      gameKey,
+      plies,
+      analyses,
+      teachingThemesRunRef,
+      runId,
+      (done, total) => {
+        if (teachingThemesRunRef.current === runId) {
+          setTeachingThemesJob({ running: true, done, total });
+        }
+      },
+    );
+    if (teachingThemesRunRef.current !== runId) return;
+    const samples: TeachingSample[] = [];
+    plies.forEach((p, i) => {
+      const rec = records.get(i);
+      if (rec) {
+        const phase = classifyPhase(i, p.fenBefore);
+        for (const event of rec.events) samples.push({ event, gameKey, ply: p.ply, phase });
+      }
+    });
+    setTeachingThemes(buildTeachingProfile(samples));
+    setTeachingThemesJob((job) => ({ ...job, running: false }));
   };
 
   // LED: a focused teaching event or insight overrides the mode overlay.
@@ -1095,26 +1140,46 @@ export function App() {
 
   // Export the on-screen view + the full per-ply analysis (move, classification,
   // ranked insights, features, board control, coach) for EVERY ply as JSON.
-  const exportAnalysis = () => {
-    downloadJson(
-      boardExportFilename(currentGame),
-      buildBoardExport({
-        game: currentGame,
-        plies,
-        view,
-        fen,
-        modeId,
-        selected,
-        focused,
-        moveLabel,
-        ledMap,
-        arrows,
-        analyses,
-        commentary,
-        annotations: { showThreats, showAllThreats, cascade, followMove },
-        exportedAt: new Date().toISOString(),
-      }),
-    );
+  const exportAnalysis = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Build the teaching corpus records for analyzed plies (cached after first run)
+      // so the export carries the full per-ply training rows when the bridge is up.
+      let teaching: Map<number, TeachingRecordV1> | undefined;
+      if (cvsEngineHealth.available) {
+        const runId = ++teachingExportRunRef.current;
+        teaching = await computeTeachingRecords(
+          currentGameKey,
+          plies,
+          analyses,
+          teachingExportRunRef,
+          runId,
+        );
+      }
+      downloadJson(
+        boardExportFilename(currentGame),
+        buildBoardExport({
+          game: currentGame,
+          plies,
+          view,
+          fen,
+          modeId,
+          selected,
+          focused,
+          moveLabel,
+          ledMap,
+          arrows,
+          analyses,
+          commentary,
+          teaching,
+          annotations: { showThreats, showAllThreats, cascade, followMove },
+          exportedAt: new Date().toISOString(),
+        }),
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -1346,7 +1411,8 @@ export function App() {
                 <Nav view={view} total={plies.length} setView={setView} />
                 <button
                   onClick={exportAnalysis}
-                  title="Download the full analysis (every ply: move, classification, insights, features, board control, coach) + the current view as JSON"
+                  disabled={exporting}
+                  title="Download every ply (move, classification, insights, features, board control, coach) PLUS the deterministic teaching record per ply (Rust facts, committed topics, explanation, puzzle, provenance) as a JSON training corpus."
                   style={{
                     width: '100%',
                     marginTop: 8,
@@ -1357,10 +1423,11 @@ export function App() {
                     padding: '6px 10px',
                     fontSize: 13,
                     fontWeight: 600,
-                    cursor: 'pointer',
+                    cursor: exporting ? 'default' : 'pointer',
+                    opacity: exporting ? 0.7 : 1,
                   }}
                 >
-                  ⬇ Export JSON (all plies)
+                  {exporting ? '⏳ Building teaching records…' : '⬇ Export JSON + teaching corpus'}
                 </button>
                 <MiniBadges features={currentFeatures} />
                 <ControlBar features={currentFeatures} />
