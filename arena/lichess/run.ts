@@ -187,7 +187,20 @@ export async function runBot(
           // 12s cap: the budget formula (time/30 + 0.8*inc) governs normal
           // moves; the old 4s cap silently starved us at 5+3 and slower TCs
           // (eubos game RqWLhgpt: ~7-8s/move available, never spent >4).
-          void playSession(client, gameId, botId, picker, { maxMoveMs: 12_000 })
+          // Watchdog: an orphaned per-game stream (seen after a 502 / "terminated"
+          // event-stream reconnect) can leave playSession awaiting forever, which
+          // strands `active` at 1 and silently blocks the bot-ladder — observed:
+          // game NQaya5i9 froze the ladder for 11h. Cap the wait so a stuck game
+          // always clears `active` and re-kicks the ladder. Generous (default 90m,
+          // env CVS_GAME_WATCHDOG_MS) so no real-time TC trips it; a correspondence
+          // game idle past the cap is released back to active play.
+          const watchdogMs = Number(process.env.CVS_GAME_WATCHDOG_MS ?? 5_400_000);
+          let wd: ReturnType<typeof setTimeout> | undefined;
+          const watchdog = new Promise<never>((_, reject) => {
+            wd = setTimeout(() => reject(new Error(`watchdog ${watchdogMs}ms — game stream orphaned`)), watchdogMs);
+            wd.unref?.();
+          });
+          void Promise.race([playSession(client, gameId, botId, picker, { maxMoveMs: 12_000 }), watchdog])
             .then(async (res) => {
               active.delete(gameId);
               log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
@@ -203,7 +216,9 @@ export async function runBot(
             .catch((e) => {
               active.delete(gameId);
               log(`game ${gameId} error: ${String(e)}`);
-            });
+              void maybeChallengeBot(); // re-kick the ladder after a watchdog/abort too
+            })
+            .finally(() => clearTimeout(wd));
         }
         // 'gameFinish' needs no handling: the per-game stream ends on its own.
       }
