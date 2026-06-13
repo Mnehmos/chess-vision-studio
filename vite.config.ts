@@ -311,6 +311,7 @@ interface SfResult {
 interface SfPending {
   fen: string;
   depth: number;
+  movetimeMs?: number;
   resolve: (r: SfResult) => void;
   reject: (e: Error) => void;
   timer: NodeJS.Timeout;
@@ -347,8 +348,13 @@ function stockfishProxy(env: Record<string, string>): Plugin {
   const sfConfig = () => {
     const exe = env.CVS_SF_EXE?.trim() || 'F:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe';
     const depthRaw = Number(env.CVS_SF_DEPTH ?? 12);
-    const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(24, Math.round(depthRaw))) : 12;
-    return { exe, depth };
+    const depth = Number.isFinite(depthRaw) ? Math.max(1, Math.min(30, Math.round(depthRaw))) : 12;
+    // Default 1 thread: matches CVS rust's single-threaded search for a fair
+    // equal-threads comparison, and lets many processes run in parallel for
+    // batch throughput. Override via CVS_SF_THREADS for deep single-position.
+    const threads = Math.max(1, Math.min(32, Number(env.CVS_SF_THREADS ?? 1) || 1));
+    const hash = Math.max(16, Number(env.CVS_SF_HASH ?? 128) || 128);
+    return { exe, depth, threads, hash };
   };
 
   const send = (proc: SfProcess, ...cmds: string[]) => {
@@ -360,7 +366,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     const req = proc.queue.shift() as SfPending;
     proc.current = req;
     proc.busy = true;
-    send(proc, `position fen ${req.fen}`, `go depth ${req.depth}`);
+    send(proc, `position fen ${req.fen}`, req.movetimeMs ? `go movetime ${req.movetimeMs}` : `go depth ${req.depth}`);
   };
 
   const finish = (proc: SfProcess, bestmove: string) => {
@@ -381,7 +387,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     const proc: SfProcess = { child, rl, ready: false, busy: false, queue: [], current: null, stderr: [] };
     rl.on('line', (line) => {
       if (line.includes('uciok')) {
-        send(proc, 'setoption name Threads value 1', 'setoption name Hash value 64', 'isready');
+        send(proc, `setoption name Threads value ${cfg.threads}`, `setoption name Hash value ${cfg.hash}`, 'isready');
         return;
       }
       if (line.includes('readyok')) {
@@ -442,7 +448,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
   };
 
   const acquireSf = (cfg: ReturnType<typeof sfConfig>): SfProcess => {
-    const key = `${cfg.exe}:${cfg.depth}`;
+    const key = `${cfg.exe}:${cfg.depth}:${cfg.threads}:${cfg.hash}`;
     if (key !== poolKey) {
       dispose();
       poolKey = key;
@@ -452,14 +458,14 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     return pool.reduce((best, p) => (p.queue.length < best.queue.length ? p : best), pool[0]);
   };
 
-  const request = (proc: SfProcess, fen: string, depth: number): Promise<SfResult> =>
+  const request = (proc: SfProcess, fen: string, depth: number, movetimeMs?: number): Promise<SfResult> =>
     new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const ix = proc.queue.findIndex((p) => p.resolve === resolve);
         if (ix >= 0) proc.queue.splice(ix, 1);
         reject(new Error('Stockfish request timed out'));
       }, 30_000);
-      proc.queue.push({ fen, depth, resolve, reject, timer, best: null });
+      proc.queue.push({ fen, depth, movetimeMs, resolve, reject, timer, best: null });
       pump(proc);
     });
 
@@ -483,14 +489,15 @@ function stockfishProxy(env: Record<string, string>): Plugin {
       });
       server.middlewares.use('/api/stockfish/analyze', (req, res) => {
         if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
-        readJsonBody<{ fen?: string; depth?: number }>(req)
+        readJsonBody<{ fen?: string; depth?: number; movetimeMs?: number }>(req)
           .then(async (body) => {
             const fen = body.fen?.trim();
             if (!fen) return json(res, 400, { error: 'fen is required' });
             const cfg = sfConfig();
             if (!existsSync(cfg.exe)) return json(res, 503, { error: 'Native Stockfish not found', exe: cfg.exe });
-            const depth = body.depth ? Math.max(1, Math.min(24, Math.round(body.depth))) : cfg.depth;
-            const out = await request(acquireSf(cfg), fen, depth);
+            const depth = body.depth ? Math.max(1, Math.min(30, Math.round(body.depth))) : cfg.depth;
+            const movetimeMs = body.movetimeMs ? Math.max(10, Math.min(10_000, Math.round(body.movetimeMs))) : undefined;
+            const out = await request(acquireSf(cfg), fen, depth, movetimeMs);
             return json(res, 200, out);
           })
           .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
