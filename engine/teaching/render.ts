@@ -64,6 +64,29 @@ export function renderAllowedFork(params: {
   return plan;
 }
 
+// Render the Missed Hanging Piece plan: what was missed, why it was free, and the
+// winning capture. Cause names "undefended" only when the piece truly has no
+// defender; the correction names the capture only when a best move is known.
+export function renderMissedHangingPiece(params: {
+  playedLabel: string;
+  bestLabel?: string;
+  pieceType: string;
+  square: string;
+  undefended: boolean;
+}): ExplanationPlan {
+  const plan: ExplanationPlan = {
+    topic: 'Missed Hanging Piece',
+    headline: `${params.playedLabel} missed a free ${params.pieceType}.`,
+    cause: params.undefended
+      ? `The ${params.pieceType} on ${params.square} is undefended.`
+      : `The ${params.pieceType} on ${params.square} can be won for material.`,
+  };
+  if (params.bestLabel) {
+    plan.correction = `${params.bestLabel} wins the ${params.pieceType}.`;
+  }
+  return plan;
+}
+
 export type PawnDamageMode = 'causally_supported' | 'accepted_tradeoff' | 'descriptive';
 
 function listSquares(sqs: string[]): string {

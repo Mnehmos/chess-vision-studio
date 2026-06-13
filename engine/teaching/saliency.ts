@@ -43,6 +43,16 @@ export function scoreAllowedFork(params: {
   return round3(Math.min(0.6 + material + king + refute + sev, 1));
 }
 
+// Missed material is high-saliency; scale by how much was on offer (centipawns).
+export function scoreMissedHangingPiece(params: {
+  classification: Classification;
+  scoreCp: number;
+}): number {
+  const material = Math.min(Math.max(params.scoreCp, 0) / 900, 1) * 0.3;
+  const sev = (CLASSIFICATION_WEIGHT[params.classification] ?? 0.1) * 0.1;
+  return round3(Math.min(0.6 + material + sev, 1));
+}
+
 function round3(n: number): number {
   return Math.round(n * 1000) / 1000;
 }

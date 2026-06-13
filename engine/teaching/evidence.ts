@@ -1,4 +1,10 @@
-import type { FactRef, StructureDelta } from './types';
+import type { FactRef, PieceRef, StructureDelta } from './types';
+
+// Extract the bare PieceRef identity from a richer PieceFact (drop attacker lists
+// etc.) so teaching events stay small and serialize cleanly.
+export function toPieceRef(p: PieceRef): PieceRef {
+  return { id: p.id, side: p.side, pieceType: p.pieceType, square: p.square };
+}
 
 // A structure delta IS already an evidence-shaped fact; carry its identity through.
 export function structureDeltaToFactRef(delta: StructureDelta): FactRef {

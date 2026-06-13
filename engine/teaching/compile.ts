@@ -10,10 +10,19 @@ import {
   type TeachingFactBundleV1,
 } from './types';
 import { compareCreatedStructures } from './counterfactual';
-import { stableEventId, structureDeltaToFactRef } from './evidence';
-import { renderAllowedFork, renderPawnStructureDamage, type PawnDamageMode } from './render';
+import { stableEventId, structureDeltaToFactRef, toPieceRef } from './evidence';
+import {
+  renderAllowedFork,
+  renderMissedHangingPiece,
+  renderPawnStructureDamage,
+  type PawnDamageMode,
+} from './render';
 import { resolveTopicId, topicMeta } from './registry';
-import { scoreAllowedFork, scorePawnStructureDamage } from './saliency';
+import {
+  scoreAllowedFork,
+  scoreMissedHangingPiece,
+  scorePawnStructureDamage,
+} from './saliency';
 
 export interface CompileInput {
   analysis: MoveAnalysis;
@@ -35,7 +44,8 @@ export function compileTeachingEvents(input: CompileInput): TeachingAnalysis {
   const events: TeachingEvent[] = [];
   events.push(...detectPawnStructureDamage(input));
   events.push(...detectAllowedFork(input));
-  // Future slices append here: detectMissedHangingPiece, detectAllowedPin, ...
+  events.push(...detectMissedHangingPiece(input));
+  // Future slices append here: detectFailedDefense, detectAllowedPin, ...
 
   if (events.length === 0) {
     return { computed: true, schemaVersion: TEACHING_EVENTS_SCHEMA_VERSION, events: [] };
@@ -239,6 +249,77 @@ function detectAllowedFork(input: CompileInput): TeachingEvent[] {
     punishment: { move: fork.moveUci, line: [fork.moveUci] },
     ...(correction ? { correction } : {}),
     proof: { validators: ['fork_validation'], evidence: [forkRef], attribution, badge },
+    saliency,
+    plan,
+  };
+  return [event];
+}
+
+// ── Missed Hanging Piece (plan §10.3) ───────────────────────────────────────
+// An enemy piece was capturable for a winning SEE before the move, the mover did
+// not take it, and the engine's best move IS that capture. Pure piece-safety facts
+// (SEE) + the counterfactual best move — no new chess truth in TS.
+function detectMissedHangingPiece(input: CompileInput): TeachingEvent[] {
+  const { facts, analysis } = input;
+  const mover: Side = facts.before.sideToMove;
+  const cls = analysis.classification;
+  // A genuinely best/excellent move did not "miss" anything.
+  if (cls === 'best' || cls === 'excellent') return [];
+
+  const bestUci = facts.best?.move.uci;
+  if (!bestUci) return [];
+
+  // An enemy piece the mover could win (SEE-losing) whose capture IS the best move.
+  const target = facts.before.pieces.find(
+    (p) =>
+      p.side !== mover &&
+      p.see.status === 'computed' &&
+      p.see.value.losing &&
+      p.see.value.bestCaptureUci === bestUci,
+  );
+  if (!target || target.see.status !== 'computed') return [];
+  const capture = target.see.value.bestCaptureUci;
+  if (!capture || facts.played.move.uci === capture) return [];
+
+  const scoreCp = target.see.value.scoreCp ?? 0;
+  const squares = [target.square];
+  const captor = facts.before.pieces.find(
+    (p) => p.side === mover && p.square === capture.slice(0, 2),
+  );
+  const evidence: FactRef = {
+    factId: `hanging-${target.id}`,
+    kind: 'hanging_piece',
+    squares,
+    side: target.side,
+  };
+  const plan = renderMissedHangingPiece({
+    playedLabel: playedMoveLabel(analysis, facts.played.move.uci),
+    bestLabel: bestMoveLabel(analysis),
+    pieceType: target.pieceType,
+    square: target.square,
+    undefended: target.loose,
+  });
+  const saliency = scoreMissedHangingPiece({ classification: cls, scoreCp });
+
+  const event: TeachingEvent = {
+    id: stableEventId('missed_hanging_piece', facts.played.move.uci, squares),
+    topicId: 'missed_hanging_piece',
+    family: 'piece_safety',
+    action: 'missed',
+    mechanism: 'hanging_piece',
+    side: mover,
+    playedMove: facts.played.move.uci,
+    actors: captor ? [toPieceRef(captor)] : [],
+    targets: [toPieceRef(target)],
+    squares,
+    consequence: { cpLoss: analysis.cpLoss, materialLoss: scoreCp / 100 },
+    correction: { move: capture, avoidedFacts: [], createdFacts: [] },
+    proof: {
+      validators: ['see', 'attack_map'],
+      evidence: [evidence],
+      attribution: 'counterfactual_supported',
+      badge: 'counterfactual_supported',
+    },
     saliency,
     plan,
   };
