@@ -755,11 +755,18 @@ export function App() {
           <nav style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
             <TabButton active={tab === 'board'} onClick={() => setTab('board')}>Analyze</TabButton>
             <TabButton active={tab === 'play'} onClick={() => setTab('play')}>Play</TabButton>
-            {games.length > 1 && (
-              <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
-                {datasetJob.running ? `Insights · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%` : `Insights · ${games.length}`}
-              </TabButton>
-            )}
+            <TabButton
+              active={tab === 'dataset'}
+              onClick={() => setTab('dataset')}
+              disabled={games.length <= 1}
+              title={games.length <= 1 ? 'Import a multi-game PGN (your Chess.com / Lichess export) to unlock cross-game insights' : undefined}
+            >
+              {games.length <= 1
+                ? 'Insights'
+                : datasetJob.running
+                  ? `Insights · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%`
+                  : `Insights · ${games.length}`}
+            </TabButton>
           </nav>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <EngineBadge label="Stockfish" state={engineState} />
@@ -1122,10 +1129,12 @@ function SourceBar({
   );
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+function TabButton({ active, onClick, children, disabled, title }: { active: boolean; onClick: () => void; children: ReactNode; disabled?: boolean; title?: string }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={title}
       style={{
         border: '1px solid ' + (active ? 'var(--accent)' : 'transparent'),
         background: active ? 'var(--card2)' : 'transparent',
