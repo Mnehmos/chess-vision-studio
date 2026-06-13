@@ -117,7 +117,7 @@ export function DatasetPanel({
             disabled={disabled}
             style={{
               border: '1px solid #3b6fd4',
-              background: !disabled ? 'var(--accent)' : '#f3f3f3',
+              background: !disabled ? 'var(--accent)' : 'var(--track)',
               color: !disabled ? '#fff' : 'var(--muted)',
               borderRadius: 4,
               padding: '6px 10px',
@@ -263,8 +263,8 @@ function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['
   const evenY = H - (Math.min(evenEnd, maxCum) / maxCum) * H;
   return (
     <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid #eee', borderRadius: 4 }}>
-      <line x1={0} y1={H} x2={W} y2={evenY} stroke="#ddd" strokeDasharray="4 3" />
-      <polyline points={line} fill="none" stroke="#3b6fd4" strokeWidth={2} />
+      <line x1={0} y1={H} x2={W} y2={evenY} stroke="var(--border)" strokeDasharray="4 3" />
+      <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} />
       <text x={4} y={12} fontSize={10} fill="#999">
         cumulative score (↑ = winning)
       </text>
@@ -339,7 +339,7 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
   return (
     <div>
       <h3 style={{ margin: '0 0 8px' }}>Move explorer</h3>
-      <div style={{ fontSize: 13, color: '#555', marginBottom: 6, minHeight: 20 }}>
+      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6, minHeight: 20 }}>
         {stack.length === 0 ? (
           <span style={{ color: 'var(--muted)' }}>Start position — pick a move played in your games.</span>
         ) : (
@@ -470,7 +470,7 @@ function GamesList({
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <tbody>
             {rows.map((s) => {
-              const c = s.heroScore === 1 ? WIN : s.heroScore === 0.5 ? 'var(--muted)' : s.heroScore === 0 ? LOSS : '#bbb';
+              const c = s.heroScore === 1 ? WIN : s.heroScore === 0.5 ? 'var(--muted)' : s.heroScore === 0 ? LOSS : 'var(--border)';
               const interest = interestByIndex.get(s.index);
               return (
                 <tr
@@ -521,7 +521,7 @@ function GamesList({
 // Per-game cache state: ✓ when fully analyzed (durable), a count while partial.
 function AnalyzedMark({ a }: { a?: { done: number; total: number } }) {
   if (!a || a.total === 0 || a.done === 0) return <span style={{ color: 'var(--border)' }} title="Not analyzed">·</span>;
-  if (a.done >= a.total) return <span style={{ color: '#2f855a', fontWeight: 700 }} title="Analyzed (cached locally)">✓</span>;
+  if (a.done >= a.total) return <span style={{ color: 'var(--good)', fontWeight: 700 }} title="Analyzed (cached locally)">✓</span>;
   return (
     <span style={{ color: '#e8923b', fontSize: 11 }} title={`${a.done}/${a.total} plies analyzed`}>
       {Math.round((a.done / a.total) * 100)}%
@@ -536,8 +536,8 @@ function FilterButton({ active, onClick, children }: { active: boolean; onClick:
       onClick={onClick}
       style={{
         border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
-        background: active ? '#e8f0ff' : '#fff',
-        color: active ? '#1f4fa3' : 'var(--text-soft)',
+        background: active ? 'var(--track)' : '#fff',
+        color: active ? 'var(--accent-light)' : 'var(--text-soft)',
         borderRadius: 4,
         padding: '3px 9px',
         fontSize: 12,

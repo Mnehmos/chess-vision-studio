@@ -64,7 +64,7 @@ export function FactsPanel({
         </div>
       )}
       {liveAnalysis && (
-        <div style={{ marginBottom: 12, padding: 8, background: '#f3f1ea', borderRadius: 6 }}>
+        <div style={{ marginBottom: 12, padding: 8, background: 'var(--track)', borderRadius: 6 }}>
           {liveAnalysis.topExplanation}
         </div>
       )}
@@ -83,7 +83,7 @@ export function FactsPanel({
             {report.square} — {report.color} {report.pieceName?.toLowerCase()}
           </div>
           <Row label="Attacked by" items={report.attackedBy.map((a) => a.label)} color="#c53030" />
-          <Row label="Defended by" items={report.defendedBy.map((d) => d.label)} color="#2f855a" />
+          <Row label="Defended by" items={report.defendedBy.map((d) => d.label)} color="var(--good)" />
           <div>
             <span style={{ color: 'var(--muted)' }}>SEE:</span>{' '}
             {report.safe ? 'safe' : `losing ${report.see}`}
@@ -133,17 +133,17 @@ export function FactsPanel({
           <Row
             label="Can move here"
             items={(report.canMoveHere ?? []).map((m) => m.label)}
-            color="#2f855a"
+            color="var(--good)"
           />
           <Row
             label="White controls"
             items={(report.controlledByWhite ?? []).map((m) => m.label)}
-            color="#555"
+            color="var(--muted)"
           />
           <Row
             label="Black controls"
             items={(report.controlledByBlack ?? []).map((m) => m.label)}
-            color="#555"
+            color="var(--muted)"
           />
           {dependentTactics.length > 0 && (
             <div style={{ marginTop: 6 }}>

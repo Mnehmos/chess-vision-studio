@@ -728,7 +728,11 @@ export function App() {
         :root{color-scheme:dark;
           --bg:#12100e; --card:#1c1916; --card2:#211d19; --track:#2a2622;
           --border:#322d28; --text:#ece7e1; --text-soft:#cfc8bf; --muted:#9b9389;
-          --accent:#b87333; --accent-light:#d4956a;}
+          --accent:#b87333; --accent-light:#d4956a;
+          --good:#4cae6e; --bad:#e0635e; --warn:#e8923b;
+          --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;}
+        section h2{font-family:var(--mono);font-size:12px;font-weight:600;
+          letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
         h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
         input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
         @keyframes csvBlink{50%{opacity:0.1}}
@@ -737,11 +741,25 @@ export function App() {
         @media (max-width:820px){.cvs-workspace{grid-template-columns:1fr}}
       `}</style>
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px clamp(10px, 3vw, 24px) 56px', overflowX: 'hidden' }}>
-        <header style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.01em' }}>Chess Vision Studio</h1>
-          <span style={{ color: 'var(--muted)', fontSize: 13 }}>
-            2D chess perception — relations · SEE · diff · saliency · validated motifs
-          </span>
+        <header style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, letterSpacing: '-0.01em', fontFamily: "'Space Grotesk','Inter',system-ui,sans-serif" }}>
+              Chess <span style={{ color: 'var(--accent-light)' }}>Vision</span> Studio
+            </h1>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--muted)', marginTop: 2 }}>
+              perception engine · relations · see · saliency
+            </div>
+          </div>
+          <nav style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
+            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>Analyze</TabButton>
+            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>Play</TabButton>
+            <TabButton active={tab === 'training'} onClick={() => setTab('training')}>Training</TabButton>
+            {games.length > 1 && (
+              <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
+                {datasetJob.running ? `Dataset · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%` : `Dataset · ${games.length}`}
+              </TabButton>
+            )}
+          </nav>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <EngineBadge label="Stockfish" state={engineState} />
             <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
@@ -759,8 +777,6 @@ export function App() {
           gameIndex={gameIndex}
           onSelectGame={selectGame}
           tab={tab}
-          setTab={setTab}
-          datasetJob={datasetJob}
           pgnText={pgnText}
           setPgnText={setPgnText}
           onLoad={loadPgn}
@@ -841,7 +857,7 @@ export function App() {
             style={{
               width: '100%',
               marginTop: 8,
-              border: '1px solid #d0d5dd',
+              border: '1px solid var(--border)',
               background: 'var(--card)',
               color: 'var(--text)',
               borderRadius: 8,
@@ -1028,8 +1044,6 @@ function SourceBar({
   gameIndex,
   onSelectGame,
   tab,
-  setTab,
-  datasetJob,
   pgnText,
   setPgnText,
   onLoad,
@@ -1038,15 +1052,12 @@ function SourceBar({
   gameIndex: number;
   onSelectGame: (i: number) => void;
   tab: AppTab;
-  setTab: (t: AppTab) => void;
-  datasetJob: DatasetJob;
   pgnText: string;
   setPgnText: (s: string) => void;
   onLoad: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const multi = games.length > 1;
-  const jobPct = datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0;
   const loadedLabel = multi ? `${games.length} games loaded` : games[gameIndex]?.label ?? 'Sample game';
   return (
     <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
@@ -1063,7 +1074,7 @@ function SourceBar({
             <select
               value={gameIndex}
               onChange={(e) => onSelectGame(Number(e.target.value))}
-              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid #d0d5dd', background: 'var(--card)' }}
+              style={{ maxWidth: 320, fontSize: 13, padding: '7px 8px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--card)' }}
             >
               {games.map((g, i) => (
                 <option key={i} value={i}>
@@ -1072,22 +1083,6 @@ function SourceBar({
               ))}
             </select>
           )}
-          <div style={{ display: 'inline-flex', gap: 6 }}>
-            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
-              Board
-            </TabButton>
-            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>
-              Play
-            </TabButton>
-            <TabButton active={tab === 'training'} onClick={() => setTab('training')}>
-              Training
-            </TabButton>
-            {multi && (
-              <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
-                {datasetJob.running ? `Dataset · analyzing ${jobPct}%` : `Dataset · ${games.length}`}
-              </TabButton>
-            )}
-          </div>
         </div>
       </div>
       {open && (
@@ -1104,7 +1099,7 @@ function SourceBar({
               fontSize: 12,
               padding: 10,
               borderRadius: 8,
-              border: '1px solid #d0d5dd',
+              border: '1px solid var(--border)',
               resize: 'vertical',
             }}
           />
@@ -1133,11 +1128,11 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       style={{
-        border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
-        background: active ? 'var(--accent)' : '#fff',
-        color: active ? '#fff' : 'var(--text-soft)',
+        border: '1px solid ' + (active ? 'var(--accent)' : 'transparent'),
+        background: active ? 'var(--card2)' : 'transparent',
+        color: active ? 'var(--text)' : 'var(--muted)',
         padding: '6px 14px',
-        borderRadius: 6,
+        borderRadius: 8,
         cursor: 'pointer',
         fontSize: 14,
         fontWeight: active ? 600 : 400,
@@ -1223,13 +1218,13 @@ function EngineComparisonPanel({
             <p style={valueStyle}>waiting for a played move</p>
           )}
         </div>
-        <div style={{ minWidth: 0, borderLeft: '1px solid #eaecf0', paddingLeft: 14 }}>
+        <div style={{ minWidth: 0, borderLeft: '1px solid var(--border)', paddingLeft: 14 }}>
           <p style={labelStyle}>CVS Engine</p>
           <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsContext}</p>
           {!cvsHealth.available ? (
             <p style={valueStyle}>{cvsHealth.error || 'local engine unavailable'}</p>
           ) : cvsError ? (
-            <p style={{ ...valueStyle, color: '#b42318' }}>{cvsError}</p>
+            <p style={{ ...valueStyle, color: 'var(--bad)' }}>{cvsError}</p>
           ) : cvsAnalysis ? (
             <>
               <p style={valueStyle}>
@@ -1300,11 +1295,14 @@ function ModeBar({
             disabled={disabled}
             title={disabled ? 'needs the engine' : undefined}
             style={{
-              padding: '4px 8px',
+              padding: '6px 10px',
               fontSize: 13,
-              border: modeId === m.id ? '2px solid #16a' : '1px solid #bbb',
-              background: modeId === m.id ? '#dceaff' : '#fff',
-              borderRadius: 4,
+              fontWeight: modeId === m.id ? 600 : 500,
+              border: '1px solid var(--border)',
+              borderBottom: modeId === m.id ? '2px solid var(--accent)' : '1px solid var(--border)',
+              background: 'var(--card2)',
+              color: modeId === m.id ? 'var(--text)' : 'var(--muted)',
+              borderRadius: 6,
               cursor: disabled ? 'not-allowed' : 'pointer',
               opacity: disabled ? 0.5 : 1,
             }}
@@ -1498,7 +1496,7 @@ function MoveStrip({
         marginTop: 8,
         padding: '6px 4px',
         maxWidth: 'min(448px, 100%)',
-        background: '#f3f1ea',
+        background: 'var(--track)',
         borderRadius: 6,
         fontSize: 13,
       }}
@@ -1514,8 +1512,8 @@ function MoveStrip({
               cursor: 'pointer',
               padding: '2px 5px',
               borderRadius: 4,
-              background: current ? '#16a' : 'transparent',
-              color: current ? '#fff' : '#222',
+              background: current ? 'var(--accent)' : 'transparent',
+              color: current ? '#fff' : 'var(--text-soft)',
               fontWeight: current ? 700 : 400,
             }}
           >
@@ -1574,8 +1572,8 @@ function MoveHistory({
           cursor: 'pointer',
           padding: '1px 6px',
           borderRadius: 4,
-          background: current ? '#16a' : 'transparent',
-          color: current ? '#fff' : bad ? '#c01515' : '#222',
+          background: current ? 'var(--accent)' : 'transparent',
+          color: current ? '#fff' : bad ? 'var(--bad)' : 'var(--text-soft)',
           fontWeight: current ? 700 : 400,
         }}
       >
@@ -1596,7 +1594,7 @@ function MoveHistory({
               onClick={onBackToBranchSource}
               title={branchSourceLabel ? `Return to ${branchSourceLabel}` : 'Return to the source line'}
               style={{
-                border: '1px solid #d0d5dd',
+                border: '1px solid var(--border)',
                 background: 'var(--card)',
                 color: 'var(--text)',
                 borderRadius: 6,

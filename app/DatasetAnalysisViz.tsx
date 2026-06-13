@@ -6,7 +6,7 @@ import type { DatasetAnalysis, TimeBucket, SideStats, DatasetWorstMove } from '.
 
 // Classification colors + canonical order (shared visual grammar with the review panel).
 const CLASS_COLOR: Record<string, string> = {
-  best: '#2f855a',
+  best: 'var(--good)',
   excellent: '#3fbf5f',
   good: 'var(--accent-light)',
   inaccuracy: '#e8923b',
@@ -186,7 +186,7 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
 
       {/* Bars: score (filled) and, when analyzed, accuracy underneath. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Meter pct={scorePct} color={scoreColor(b.scorePct)} bg="#eef0f3" />
+        <Meter pct={scorePct} color={scoreColor(b.scorePct)} bg="var(--track)" />
         {showAccuracy && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Meter pct={acc ?? 0} color={accColor(acc ?? 0)} bg="#f5f6f8" height={5} />
@@ -307,14 +307,14 @@ function Meter({ pct, color, bg, height = 8 }: { pct: number; color: string; bg:
 // A win-rate-ish score: green at 60%+, encouraging amber in the middle.
 function scoreColor(pct: number | null): string {
   if (pct === null) return 'var(--muted)';
-  if (pct >= 60) return '#2f855a';
+  if (pct >= 60) return 'var(--good)';
   if (pct >= 50) return '#3fbf5f';
   if (pct >= 40) return '#e8923b';
   return '#e2603b';
 }
 
 function accColor(acc: number): string {
-  if (acc >= 85) return '#2f855a';
+  if (acc >= 85) return 'var(--good)';
   if (acc >= 70) return 'var(--accent-light)';
   if (acc >= 55) return '#e8923b';
   return '#e23b3b';

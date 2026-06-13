@@ -101,7 +101,7 @@ const startBtn: CSSProperties = {
 const stopBtn: CSSProperties = {
   ...smallBtn,
   border: '1px solid #d92d20',
-  color: '#b42318',
+  color: 'var(--bad)',
 };
 
 export function TrainingMonitor() {
@@ -209,7 +209,7 @@ export function TrainingMonitor() {
           </span>
         </div>
         {(requestError || status.error) && (
-          <div style={{ marginTop: 10, color: '#b42318', fontSize: 13 }}>
+          <div style={{ marginTop: 10, color: 'var(--bad)', fontSize: 13 }}>
             {requestError || status.error}
           </div>
         )}
@@ -367,8 +367,8 @@ function Segmented({
             style={{
               border: 0,
               borderRight: o.id === 'import-train' ? '1px solid #d0d5dd' : 0,
-              background: active ? '#e8f0ff' : '#fff',
-              color: active ? '#1f4fa3' : 'var(--text)',
+              background: active ? 'var(--track)' : '#fff',
+              color: active ? 'var(--accent-light)' : 'var(--text)',
               padding: '7px 11px',
               fontSize: 13,
               fontWeight: active ? 700 : 500,
@@ -421,10 +421,10 @@ function Artifact({ labelText, value }: { labelText: string; value: string }) {
 function PhaseBadge({ phase, active }: { phase: TrainingPhase; active: boolean }) {
   const colors: Record<TrainingPhase, { bg: string; fg: string }> = {
     idle: { bg: '#f2f4f7', fg: 'var(--text)' },
-    importing: { bg: '#e8f0ff', fg: '#1f4fa3' },
+    importing: { bg: 'var(--track)', fg: 'var(--accent-light)' },
     training: { bg: '#fff4e5', fg: '#9a5b00' },
     done: { bg: '#e7f8ed', fg: '#1f7a3f' },
-    error: { bg: '#fee4e2', fg: '#b42318' },
+    error: { bg: '#fee4e2', fg: 'var(--bad)' },
     stopped: { bg: '#f2f4f7', fg: 'var(--text-soft)' },
   };
   const c = colors[phase];

@@ -7,7 +7,7 @@ import { computePatternProfile, type FeatureEntry, type PatternProfile } from '.
 import type { Classification, MoveAnalysis } from '../engine/types';
 
 const CLASS_COLOR: Record<Classification, string> = {
-  best: '#2f855a',
+  best: 'var(--good)',
   excellent: '#3fbf5f',
   good: 'var(--accent-light)',
   inaccuracy: '#e8923b',
@@ -371,7 +371,7 @@ function whatHappened(a: MoveAnalysis): string | null {
 }
 
 function accColor(acc: number): string {
-  if (acc >= 85) return '#2f855a';
+  if (acc >= 85) return 'var(--good)';
   if (acc >= 70) return 'var(--accent-light)';
   if (acc >= 55) return '#e8923b';
   return '#e23b3b';

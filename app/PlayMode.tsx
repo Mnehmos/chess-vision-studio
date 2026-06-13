@@ -77,7 +77,7 @@ export function PlayMode({
     const c = new Chess(fen);
     const sideToMove = c.turn() === 'w' ? 'White' : 'Black';
     const winner = c.turn() === 'w' ? 'Black' : 'White';
-    if (c.isCheckmate()) return { text: `Checkmate — ${winner} wins`, over: true, tone: '#b42318' };
+    if (c.isCheckmate()) return { text: `Checkmate — ${winner} wins`, over: true, tone: 'var(--bad)' };
     if (c.isStalemate()) return { text: 'Stalemate — draw', over: true, tone: 'var(--text-soft)' };
     if (c.isInsufficientMaterial()) return { text: 'Draw — insufficient material', over: true, tone: 'var(--text-soft)' };
     if (c.isThreefoldRepetition()) return { text: 'Draw — threefold repetition', over: true, tone: 'var(--text-soft)' };
@@ -450,7 +450,7 @@ export function PlayMode({
                     fontSize: 13,
                     color: 'var(--text)',
                     marginTop: 8,
-                    background: '#f3f1ea',
+                    background: 'var(--track)',
                     padding: 8,
                     borderRadius: 6,
                     lineHeight: 1.5,

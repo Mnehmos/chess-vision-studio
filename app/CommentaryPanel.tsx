@@ -93,7 +93,7 @@ export function CommentaryPanel({
             </button>
           </div>
           {handshake.state === 'error' && (
-            <div style={{ color: '#c01515', fontSize: 11, marginTop: 4, wordBreak: 'break-word' }}>
+            <div style={{ color: 'var(--bad)', fontSize: 11, marginTop: 4, wordBreak: 'break-word' }}>
               {handshake.detail}
             </div>
           )}
@@ -119,7 +119,7 @@ export function CommentaryPanel({
               />
             </div>
           )}
-          {job.error && <div style={{ color: '#c01515', fontSize: 12, marginTop: 6 }}>{job.error}</div>}
+          {job.error && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 6 }}>{job.error}</div>}
 
           {/* Per-ply, on demand. */}
           <div style={{ marginTop: 10, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
@@ -139,7 +139,7 @@ export function CommentaryPanel({
 
 function HandshakeBadge({ handshake }: { handshake: Handshake }) {
   const map = {
-    idle: { dot: '#bbb', text: 'not tested' },
+    idle: { dot: 'var(--border)', text: 'not tested' },
     testing: { dot: '#e8923b', text: 'testing…' },
     ok: { dot: '#3fbf5f', text: 'connected' },
     error: { dot: '#e23b3b', text: 'failed' },
