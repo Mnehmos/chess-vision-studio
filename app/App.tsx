@@ -51,8 +51,10 @@ import type {
   TeachingFactsRequestV1,
 } from '../engine/teaching/types';
 import { compileTeachingEvents } from '../engine/teaching/compile';
+import { buildTeachingPuzzle } from '../engine/teaching/puzzle';
 import { TeachingFactsDebugPanel } from './TeachingFactsDebugPanel';
 import { TeachingPanel } from './TeachingPanel';
+import { TeachingPuzzle } from './TeachingPuzzle';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate } from '../llm/narrate';
 
@@ -136,6 +138,7 @@ export function App() {
   const [teachingFactsBusy, setTeachingFactsBusy] = useState(false);
   const [teachingFactsError, setTeachingFactsError] = useState('');
   const [teachingFocus, setTeachingFocus] = useState<TeachingEvent | null>(null);
+  const [puzzleEvent, setPuzzleEvent] = useState<TeachingEvent | null>(null);
   const [datasetJob, setDatasetJob] = useState({ ...IDLE_DATASET_JOB });
   const engineRef = useRef<UciEngine | null>(null);
   const cvsEngineRunRef = useRef(0);
@@ -548,6 +551,7 @@ export function App() {
   useEffect(() => {
     setFocused(null);
     setTeachingFocus(null);
+    setPuzzleEvent(null);
     if (followMove) setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
   }, [view, plies, followMove]);
 
@@ -556,6 +560,12 @@ export function App() {
     () =>
       teachingFacts && analysis ? compileTeachingEvents({ analysis, facts: teachingFacts }) : null,
     [teachingFacts, analysis],
+  );
+
+  // A two-stage practice puzzle for the event the user chose to drill.
+  const teachingPuzzle = useMemo(
+    () => (puzzleEvent && teachingFacts ? buildTeachingPuzzle(puzzleEvent, teachingFacts) : null),
+    [puzzleEvent, teachingFacts],
   );
 
   // LED: a focused teaching event or insight overrides the mode overlay.
@@ -1307,7 +1317,11 @@ export function App() {
                   error={teachingFactsError}
                   focusedId={teachingFocus?.id ?? null}
                   onShow={setTeachingFocus}
+                  onPractice={setPuzzleEvent}
                 />
+                {teachingPuzzle && (
+                  <TeachingPuzzle puzzle={teachingPuzzle} onClose={() => setPuzzleEvent(null)} />
+                )}
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}
                   facts={teachingFacts}

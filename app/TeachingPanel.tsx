@@ -28,12 +28,14 @@ export function TeachingPanel({
   error,
   focusedId,
   onShow,
+  onPractice,
 }: {
   analysis: TeachingAnalysis | null;
   busy: boolean;
   error: string;
   focusedId: string | null;
   onShow: (event: TeachingEvent | null) => void;
+  onPractice?: (event: TeachingEvent) => void;
 }) {
   const events = analysis && analysis.computed ? analysis.events : [];
   return (
@@ -72,6 +74,7 @@ export function TeachingPanel({
               event={event}
               focused={focusedId === event.id}
               onShow={() => onShow(focusedId === event.id ? null : event)}
+              onPractice={onPractice ? () => onPractice(event) : undefined}
             />
           ))}
         </div>
@@ -84,13 +87,17 @@ function TeachingCard({
   event,
   focused,
   onShow,
+  onPractice,
 }: {
   event: TeachingEvent;
   focused: boolean;
   onShow: () => void;
+  onPractice?: () => void;
 }) {
   const badge = BADGE[event.proof.badge];
   const { plan } = event;
+  // A puzzle is buildable only when the event has a punishment or a correction.
+  const canPractice = !!onPractice && !!(event.punishment || event.correction);
   return (
     <div
       data-testid="teaching-card"
@@ -154,10 +161,27 @@ function TeachingCard({
             {sq}
           </span>
         ))}
+        {canPractice && (
+          <button
+            onClick={onPractice}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 12,
+              border: '1px solid var(--border)',
+              background: 'var(--card)',
+              color: 'var(--text)',
+              borderRadius: 6,
+              padding: '3px 8px',
+              cursor: 'pointer',
+            }}
+          >
+            Practice
+          </button>
+        )}
         <button
           onClick={onShow}
           style={{
-            marginLeft: 'auto',
+            marginLeft: canPractice ? 0 : 'auto',
             fontSize: 12,
             border: '1px solid var(--border)',
             background: focused ? 'var(--accent)' : 'var(--card)',

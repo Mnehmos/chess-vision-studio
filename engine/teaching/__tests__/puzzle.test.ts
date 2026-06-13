@@ -5,7 +5,7 @@ import pawnFixture from '../../../fixtures/teaching-facts/v1/pawn-structure-dama
 import type { MoveAnalysis } from '../../types';
 import type { TeachingEvent, TeachingFactBundleV1 } from '../types';
 import { compileTeachingEvents } from '../compile';
-import { buildTeachingPuzzle } from '../puzzle';
+import { buildTeachingPuzzle, isPuzzleSolution, type PuzzleStage } from '../puzzle';
 
 function analysis(over: Partial<MoveAnalysis>): MoveAnalysis {
   return {
@@ -81,5 +81,26 @@ describe('buildTeachingPuzzle', () => {
       action: 'created',
     } as unknown as TeachingEvent;
     expect(buildTeachingPuzzle(bare, facts)).toBeNull();
+  });
+});
+
+describe('isPuzzleSolution', () => {
+  const stage: PuzzleStage = {
+    kind: 'punishment',
+    fen: '6k1/8/8/6n1/4P3/8/8/4R1K1 b - - 0 1',
+    sideToMove: 'black',
+    prompt: 'Find the punishment.',
+    solutionUci: 'g5f3',
+    acceptableUci: ['g5f3'],
+  };
+
+  it('accepts the solution move and rejects others', () => {
+    expect(isPuzzleSolution(stage, 'g5f3')).toBe(true);
+    expect(isPuzzleSolution(stage, 'g5e4')).toBe(false);
+  });
+
+  it('matches a promotion solution from a bare from-to drop', () => {
+    const promo: PuzzleStage = { ...stage, solutionUci: 'e7e8q', acceptableUci: ['e7e8q'] };
+    expect(isPuzzleSolution(promo, 'e7e8')).toBe(true);
   });
 });

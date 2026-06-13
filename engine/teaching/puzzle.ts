@@ -69,3 +69,12 @@ export function buildTeachingPuzzle(
   if (stages.length === 0) return null;
   return { topicId: event.topicId, stages };
 }
+
+// Whether a played UCI move solves a stage. Promotion-tolerant: a bare from-to
+// drop (no promotion suffix) matches a promoting solution on the same squares.
+// The UI grader may widen acceptableUci with the engine before calling this.
+export function isPuzzleSolution(stage: PuzzleStage, uci: string): boolean {
+  return stage.acceptableUci.some(
+    (sol) => sol === uci || (sol.length === 5 && sol.slice(0, 4) === uci.slice(0, 4)),
+  );
+}
