@@ -19,7 +19,7 @@ const CLASS_ORDER = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blun
 const TEAM = { w: 'var(--accent)', b: '#d43b3b' } as const;
 
 const card: React.CSSProperties = {
-  border: '1px solid #e6e8eb',
+  border: '1px solid var(--border)',
   borderRadius: 10,
   padding: 16,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
@@ -273,7 +273,7 @@ function TeachingMoments({
                 alignItems: 'center',
                 cursor: 'pointer',
                 padding: '5px 6px',
-                borderTop: i === 0 ? 'none' : '1px solid #f0f0f0',
+                borderTop: i === 0 ? 'none' : '1px solid var(--border)',
                 borderLeft: `3px solid ${TEAM[m.color]}`,
                 paddingLeft: 8,
                 fontSize: 13,

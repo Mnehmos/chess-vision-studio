@@ -335,7 +335,7 @@ export function PlayMode({
                       lineHeight: 1,
                       width: 44,
                       height: 44,
-                      border: '1px solid #d0d5dd',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       background: 'var(--card)',
                       cursor: 'pointer',
@@ -538,7 +538,7 @@ function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
         margin: '6px 0',
         width: 'max-content',
         borderRadius: 8,
-        border: active ? '1px solid #1570ef' : '1px solid #eaecf0',
+        border: active ? '1px solid #1570ef' : '1px solid var(--border)',
         background: active ? '#eff6ff' : '#fff',
       }}
     >
@@ -560,7 +560,7 @@ function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
 
 const card: CSSProperties = {
   background: 'var(--card)',
-  border: '1px solid #eaecf0',
+  border: '1px solid var(--border)',
   borderRadius: 12,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
 };
@@ -568,7 +568,7 @@ const btn: CSSProperties = {
   fontSize: 13,
   padding: '6px 10px',
   borderRadius: 8,
-  border: '1px solid #d0d5dd',
+  border: '1px solid var(--border)',
   background: 'var(--card)',
   color: 'var(--text)',
   cursor: 'pointer',
@@ -586,7 +586,7 @@ const modeBtn: CSSProperties = {
   fontSize: 12,
   padding: '5px 9px',
   borderRadius: 7,
-  border: '1px solid #d0d5dd',
+  border: '1px solid var(--border)',
   background: 'var(--card)',
   color: 'var(--text)',
   cursor: 'pointer',

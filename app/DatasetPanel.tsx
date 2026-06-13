@@ -20,7 +20,7 @@ const B_RES = '#4a4a4a';
 // Match the board view's card treatment.
 const card: React.CSSProperties = {
   background: 'var(--card)',
-  border: '1px solid #e6e8eb',
+  border: '1px solid var(--border)',
   borderRadius: 10,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
   padding: 14,
@@ -262,7 +262,7 @@ function Sparkline({ timeline }: { timeline: ReturnType<typeof computeDataset>['
   const evenEnd = 0.5 * n;
   const evenY = H - (Math.min(evenEnd, maxCum) / maxCum) * H;
   return (
-    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid #eee', borderRadius: 4 }}>
+    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: 4 }}>
       <line x1={0} y1={H} x2={W} y2={evenY} stroke="var(--border)" strokeDasharray="4 3" />
       <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} />
       <text x={4} y={12} fontSize={10} fill="#999">
@@ -394,7 +394,7 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
 function MoveRow({ m, here, onPlay }: { m: MoveStat; here: number; onPlay: () => void }) {
   const pct = here ? ((m.games / here) * 100).toFixed(0) : '0';
   return (
-    <tr style={{ borderTop: '1px solid #f0f0f0' }}>
+    <tr style={{ borderTop: '1px solid var(--border)' }}>
       <td style={{ padding: '4px 6px 4px 0' }}>
         <span onClick={onPlay} style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--accent)' }}>
           {m.san}
@@ -466,7 +466,7 @@ function GamesList({
           All
         </FilterButton>
       </div>
-      <div style={{ maxHeight: 260, overflowY: 'auto', marginTop: 8, border: '1px solid #eee', borderRadius: 4 }}>
+      <div style={{ maxHeight: 260, overflowY: 'auto', marginTop: 8, border: '1px solid var(--border)', borderRadius: 4 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
           <tbody>
             {rows.map((s) => {
@@ -598,7 +598,7 @@ function Legend({ items }: { items: [string, string][] }) {
 }
 
 const smallBtn: React.CSSProperties = {
-  border: '1px solid #ccc',
+  border: '1px solid var(--border)',
   background: 'var(--card)',
   borderRadius: 4,
   padding: '2px 8px',

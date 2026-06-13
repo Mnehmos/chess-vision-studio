@@ -122,7 +122,7 @@ export function CommentaryPanel({
           {job.error && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 6 }}>{job.error}</div>}
 
           {/* Per-ply, on demand. */}
-          <div style={{ marginTop: 10, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
             {currentText ? (
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{currentText}</p>
             ) : (
@@ -154,7 +154,7 @@ function HandshakeBadge({ handshake }: { handshake: Handshake }) {
 }
 
 const btn: React.CSSProperties = {
-  border: '1px solid #ccc',
+  border: '1px solid var(--border)',
   background: 'var(--card)',
   borderRadius: 6,
   padding: '4px 10px',

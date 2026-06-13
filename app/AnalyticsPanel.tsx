@@ -53,10 +53,10 @@ export function AnalyticsPanel({
   const timeline = useMemo(() => buildTimeline(scoped), [scoped]);
 
   return (
-    <div style={{ marginTop: 20, borderTop: '2px solid #ddd', paddingTop: 12 }}>
+    <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 10 }}>
         <h3 style={{ margin: 0 }}>Game review</h3>
-        <div style={{ display: 'inline-flex', border: '1px solid #ccc', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
           <ScopeButton active={scope === 'game'} onClick={() => setScope('game')}>
             Whole game
           </ScopeButton>
@@ -136,7 +136,7 @@ function ScopeButton({ active, onClick, children }: { active: boolean; onClick: 
         padding: '4px 10px',
         fontSize: 12,
         cursor: 'pointer',
-        background: active ? 'var(--accent)' : '#f4f4f4',
+        background: active ? 'var(--accent)' : 'var(--card2)',
         color: active ? '#fff' : 'var(--text-soft)',
       }}
     >

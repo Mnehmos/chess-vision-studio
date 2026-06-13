@@ -28,7 +28,6 @@ import { MateCard } from './MateCard';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
 import { PlayMode } from './PlayMode';
-import { TrainingMonitor } from './TrainingMonitor';
 import { CommentaryPanel, type CommentaryJob, type Handshake } from './CommentaryPanel';
 import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
@@ -59,7 +58,7 @@ const primaryBtn: React.CSSProperties = {
 };
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-type AppTab = 'board' | 'dataset' | 'play' | 'training';
+type AppTab = 'board' | 'dataset' | 'play';
 type VerboseMove = { san: string; color: 'w' | 'b'; from: string; to: string; promotion?: string };
 const PROMOTION_PIECES = ['q', 'r', 'n', 'b'] as const;
 
@@ -733,6 +732,9 @@ export function App() {
           --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;}
         section h2{font-family:var(--mono);font-size:12px;font-weight:600;
           letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+        button{background:var(--card2);border:1px solid var(--border);color:var(--text);
+          border-radius:6px;cursor:pointer}
+        button:disabled{opacity:.45;cursor:default}
         h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
         input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
         @keyframes csvBlink{50%{opacity:0.1}}
@@ -753,10 +755,9 @@ export function App() {
           <nav style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
             <TabButton active={tab === 'board'} onClick={() => setTab('board')}>Analyze</TabButton>
             <TabButton active={tab === 'play'} onClick={() => setTab('play')}>Play</TabButton>
-            <TabButton active={tab === 'training'} onClick={() => setTab('training')}>Training</TabButton>
             {games.length > 1 && (
               <TabButton active={tab === 'dataset'} onClick={() => setTab('dataset')}>
-                {datasetJob.running ? `Dataset · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%` : `Dataset · ${games.length}`}
+                {datasetJob.running ? `Insights · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%` : `Insights · ${games.length}`}
               </TabButton>
             )}
           </nav>
@@ -782,9 +783,7 @@ export function App() {
           onLoad={loadPgn}
         />
 
-      {tab === 'training' ? (
-        <TrainingMonitor />
-      ) : tab === 'dataset' ? (
+      {tab === 'dataset' ? (
         <DatasetPanel
           games={games}
           engineReady={engineState === 'ready'}
@@ -1411,7 +1410,7 @@ function MiniBadges({ features }: { features?: PlyFeatures }) {
           title={badgeTitle(b)}
           style={{
             cursor: 'help',
-            border: '1px solid #ddd',
+            border: '1px solid var(--border)',
             borderRadius: 4,
             padding: '4px 6px',
             fontSize: 12,

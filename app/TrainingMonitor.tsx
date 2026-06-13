@@ -56,7 +56,7 @@ const IDLE_STATUS: TrainingStatus = {
 
 const card: CSSProperties = {
   background: 'var(--card)',
-  border: '1px solid #e6e8eb',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
 };
@@ -72,7 +72,7 @@ const label: CSSProperties = {
 const input: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  border: '1px solid #d0d5dd',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '7px 8px',
   fontSize: 13,
@@ -81,7 +81,7 @@ const input: CSSProperties = {
 };
 
 const smallBtn: CSSProperties = {
-  border: '1px solid #d0d5dd',
+  border: '1px solid var(--border)',
   background: 'var(--card)',
   color: 'var(--text)',
   borderRadius: 6,
@@ -356,7 +356,7 @@ function Segmented({
     { id: 'train-only', label: 'Train only' },
   ];
   return (
-    <div style={{ display: 'inline-flex', border: '1px solid #d0d5dd', borderRadius: 6, overflow: 'hidden' }}>
+    <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
       {options.map((o) => {
         const active = value === o.id;
         return (
@@ -366,7 +366,7 @@ function Segmented({
             disabled={disabled}
             style={{
               border: 0,
-              borderRight: o.id === 'import-train' ? '1px solid #d0d5dd' : 0,
+              borderRight: o.id === 'import-train' ? '1px solid var(--border)' : 0,
               background: active ? 'var(--track)' : '#fff',
               color: active ? 'var(--accent-light)' : 'var(--text)',
               padding: '7px 11px',
