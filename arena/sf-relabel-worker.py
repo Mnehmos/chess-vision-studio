@@ -43,31 +43,62 @@ with open(shard, encoding='utf8') as fh:
             fen = j['fen']
         except Exception:
             continue
-        p.stdin.write(f'position fen {fen}\ngo depth {depth}\n')
-        p.stdin.flush()
+        success = False
         cp = mate = None
-        while True:
-            ln = p.stdout.readline()
-            if not ln:
-                failed.write(fen + '\n')
-                break
-            if ln.startswith('info') and ' score ' in ln:
-                t = ln.split()
-                try:
-                    k = t.index('score')
-                    if t[k + 1] == 'cp':
-                        cp, mate = int(t[k + 2]), None
-                    elif t[k + 1] == 'mate':
-                        mate, cp = int(t[k + 2]), None
-                except (ValueError, IndexError):
+        for attempt in range(2):
+            try:
+                p.stdin.write(f'position fen {fen}\ngo depth {depth}\n')
+                p.stdin.flush()
+            except OSError:
+                print(f'[{shard}] Stockfish crashed on write, restarting...', flush=True)
+                p = subprocess.Popen([SF], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+                p.stdin.write(f'uci\nsetoption name Threads value 1\nsetoption name Hash value {hash_mb}\nisready\n')
+                p.stdin.flush()
+                while 'readyok' not in p.stdout.readline():
                     pass
-            elif ln.startswith('bestmove'):
-                break
+                continue
+            
+            crash = False
+            while True:
+                ln = p.stdout.readline()
+                if not ln:
+                    crash = True
+                    break
+                if ln.startswith('info') and ' score ' in ln:
+                    t = ln.split()
+                    try:
+                        k = t.index('score')
+                        if t[k + 1] == 'cp':
+                            cp, mate = int(t[k + 2]), None
+                        elif t[k + 1] == 'mate':
+                            mate, cp = int(t[k + 2]), None
+                    except (ValueError, IndexError):
+                        pass
+                elif ln.startswith('bestmove'):
+                    break
+            
+            if crash:
+                print(f'[{shard}] Stockfish crashed on read, restarting...', flush=True)
+                p = subprocess.Popen([SF], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+                p.stdin.write(f'uci\nsetoption name Threads value 1\nsetoption name Hash value {hash_mb}\nisready\n')
+                p.stdin.flush()
+                while 'readyok' not in p.stdout.readline():
+                    pass
+                continue
+            
+            success = True
+            break
+            
+        if not success:
+            failed.write(fen + '\n')
+            failed.flush()
+
         out.write(json.dumps({'fen': fen, 'res': j.get('res'), 'sfCp': cp,
                               'sfMate': mate, 'sfDepth': depth}) + '\n')
         n += 1
-        if n % 500 == 0:  # was 5000; tighter flush = a kill loses ~seconds of work, not ~25min (we got bitten by this)
+        if n % 10 == 0:
             out.flush()
+        if n % 500 == 0:
             rate = n / (time.time() - t0)
             print(f'{shard}: {done+n} labeled ({rate:.0f}/s)', flush=True)
 out.close()
