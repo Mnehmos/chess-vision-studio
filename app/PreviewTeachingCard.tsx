@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import type { AlternativeLine, AlternativeLineMove } from './arrow-analysis-store';
 import { evalColor } from './arrow-analysis-store';
 
@@ -61,18 +60,19 @@ export function PreviewTeachingCard({ previewLine }: { previewLine: PreviewLineS
   const moveIndex = Math.min(Math.max(0, previewLine.currentIndex), moves.length - 1);
   const firstVisible = Math.max(0, moveIndex - PREVIEW_WINDOW + 1);
   const visibleMoves = moves.slice(firstVisible, moveIndex + 1);
-  const source = previewLine.alt.source === 'best-line'
-    ? 'generated best line'
-    : previewLine.alt.source === 'refutation'
-      ? 'refutation'
-      : 'variation';
+  const source =
+    previewLine.alt.source === 'best-line'
+      ? 'generated best line'
+      : previewLine.alt.source === 'refutation'
+        ? 'refutation'
+        : 'variation';
 
   return (
-    <section style={CARD}>
-      <div style={KICKER}>TEACHING - {source}</div>
-      <div style={LOG}>
+    <section className="preview-teaching-card">
+      <div className="preview-teaching-card__kicker">TEACHING - {source}</div>
+      <div className="preview-teaching-card__log">
         {firstVisible > 0 && (
-          <div style={OLDER}>
+          <div className="preview-teaching-card__older">
             {firstVisible} earlier {firstVisible === 1 ? 'move' : 'moves'} in this line
           </div>
         )}
@@ -82,17 +82,25 @@ export function PreviewTeachingCard({ previewLine }: { previewLine: PreviewLineS
           const absoluteIndex = firstVisible + index;
           const current = absoluteIndex === moveIndex;
           return (
-            <div key={`${move.uci}-${index}`} style={{ ...ROW, borderColor: current ? 'var(--accent)' : 'var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <strong style={{ color: 'var(--text)', fontSize: 14 }}>
+            <div
+              key={`${move.uci}-${index}`}
+              className="preview-teaching-card__row"
+              style={{ borderColor: current ? 'var(--accent)' : 'var(--border)' }}
+            >
+              <div className="preview-teaching-card__row-header">
+                <strong className="preview-teaching-card__move">
                   {absoluteIndex + 1}. {move.san}
                 </strong>
-                <span style={{ ...BADGE, background: color }}>{qualityLabel(move)}</span>
-                {evalText && <span style={EVAL}>{evalText}</span>}
+                <span className="preview-teaching-card__badge" style={{ background: color }}>
+                  {qualityLabel(move)}
+                </span>
+                {evalText && <span className="preview-teaching-card__eval">{evalText}</span>}
               </div>
-              <p style={TEXT}>{moveComment(move)}</p>
+              <p className="preview-teaching-card__text">{moveComment(move)}</p>
               {move.bestMoveSan && move.bestMoveUci !== move.uci && (
-                <div style={HINT}>Best available: {move.bestMoveSan}</div>
+                <div className="preview-teaching-card__hint">
+                  Best available: {move.bestMoveSan}
+                </div>
               )}
             </div>
           );
@@ -101,75 +109,3 @@ export function PreviewTeachingCard({ previewLine }: { previewLine: PreviewLineS
     </section>
   );
 }
-
-const CARD: CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--card)',
-  borderRadius: 8,
-  padding: 12,
-  boxSizing: 'border-box',
-  display: 'flex',
-  flexDirection: 'column',
-  overflow: 'hidden',
-};
-
-const KICKER: CSSProperties = {
-  color: 'var(--muted)',
-  fontFamily: 'var(--mono)',
-  fontSize: 11,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  marginBottom: 10,
-};
-
-const BADGE: CSSProperties = {
-  borderRadius: 4,
-  color: '#fff',
-  fontSize: 11,
-  fontWeight: 700,
-  padding: '2px 6px',
-};
-
-const LOG: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  flex: 1,
-  justifyContent: 'flex-end',
-  overflow: 'hidden',
-};
-
-const ROW: CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--card2)',
-  borderRadius: 8,
-  padding: 9,
-  minWidth: 0,
-};
-
-const OLDER: CSSProperties = {
-  color: 'var(--muted)',
-  fontSize: 11,
-  textAlign: 'center',
-};
-
-const EVAL: CSSProperties = {
-  marginLeft: 'auto',
-  color: 'var(--text-soft)',
-  fontFamily: 'var(--mono)',
-  fontSize: 12,
-  whiteSpace: 'nowrap',
-};
-
-const TEXT: CSSProperties = {
-  color: 'var(--text)',
-  fontSize: 12,
-  lineHeight: 1.4,
-  margin: '7px 0 0',
-};
-
-const HINT: CSSProperties = {
-  color: 'var(--accent-light)',
-  fontSize: 12,
-  marginTop: 8,
-};
