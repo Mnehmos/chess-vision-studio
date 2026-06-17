@@ -1046,6 +1046,228 @@ select {
   font-weight: 700;
 }
 
+.analytics-coach-brief__headline {
+  margin: 6px 0 8px;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.analytics-coach-brief__diagnosis {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.analytics-coach-brief__notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.analytics-training-steps {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.analytics-training-steps__item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 9px;
+}
+
+.analytics-training-steps__index {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--track);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-training-steps__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.analytics-training-steps__detail {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.analytics-practice-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.analytics-practice-header__title {
+  margin: 0;
+}
+
+.analytics-practice-header__subtitle,
+.analytics-themes__subtitle,
+.analytics-theme-detail__copy {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-empty-success {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.analytics-empty-note {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-themes__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.analytics-themes__subtitle {
+  margin-top: 3px;
+}
+
+.analytics-themes__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.analytics-theme-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px 6px 10px;
+  border-color: var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.analytics-theme-chip.is-active {
+  border-color: var(--accent);
+  background: rgba(184, 115, 51, 0.18);
+  color: var(--accent-light);
+  font-weight: 700;
+}
+
+.analytics-theme-chip__count {
+  min-width: 20px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--track);
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.analytics-theme-chip.is-active .analytics-theme-chip__count {
+  background: var(--accent);
+  color: #fff;
+}
+
+.analytics-theme-detail {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.analytics-theme-detail__title {
+  font-weight: 800;
+}
+
+.analytics-theme-occurrences {
+  margin: 10px 0 0;
+  padding-left: 28px;
+}
+
+.analytics-theme-occurrences__item {
+  padding: 7px 0 8px 3px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-theme-occurrences__button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(76px, auto) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.analytics-theme-occurrences__button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.analytics-theme-occurrences__label {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.analytics-moments {
+  margin-top: 14px;
+}
+
+.analytics-moments__header {
+  margin-bottom: 12px;
+}
+
+.analytics-moments__title {
+  margin: 0;
+}
+
+.analytics-moments__copy {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-moment-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analytics-moment-card__copy {
+  min-height: 54px;
+  margin: 10px 0 12px;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.analytics-moment-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
 @media (max-width: 980px) {
   .cvs-review-summary,
   .cvs-review-moment {

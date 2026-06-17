@@ -253,18 +253,9 @@ function CoachView({
 
       <PanelCard className="cvs-review-brief">
         <Eyebrow>Coach brief</Eyebrow>
-        <h4 style={{ margin: '6px 0 8px', fontSize: 18, lineHeight: 1.25 }}>{brief.headline}</h4>
-        <p style={{ margin: 0, color: 'var(--text-soft)', lineHeight: 1.55, fontSize: 14 }}>
-          {brief.diagnosis}
-        </p>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
-            gap: 10,
-            marginTop: 14,
-          }}
-        >
+        <h4 className="analytics-coach-brief__headline">{brief.headline}</h4>
+        <p className="analytics-coach-brief__diagnosis">{brief.diagnosis}</p>
+        <div className="analytics-coach-brief__notes">
           <BriefNote label="Keep doing" text={brief.strength} color="var(--good)" />
           <BriefNote label="New habit" text={brief.habit} color="var(--accent-light)" />
           <BriefNote
@@ -277,51 +268,23 @@ function CoachView({
 
       <PanelCard className="cvs-review-plan">
         <Eyebrow>Next training session</Eyebrow>
-        <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+        <div className="analytics-training-steps">
           {brief.steps.map((step, index) => (
-            <div
-              key={step.title}
-              style={{ display: 'grid', gridTemplateColumns: '28px 1fr', gap: 9 }}
-            >
-              <span
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 7,
-                  display: 'grid',
-                  placeItems: 'center',
-                  background: 'var(--track)',
-                  color: 'var(--accent-light)',
-                  fontWeight: 700,
-                  fontSize: 12,
-                }}
-              >
-                {index + 1}
-              </span>
+            <div key={step.title} className="analytics-training-steps__item">
+              <span className="analytics-training-steps__index">{index + 1}</span>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{step.title}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>
-                  {step.detail}
-                </div>
+                <div className="analytics-training-steps__title">{step.title}</div>
+                <div className="analytics-training-steps__detail">{step.detail}</div>
               </div>
             </div>
           ))}
         </div>
       </PanelCard>
 
-      <div
-        className="cvs-review-full"
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: 12,
-          marginTop: 2,
-        }}
-      >
+      <div className="cvs-review-full analytics-practice-header">
         <div>
-          <h4 style={{ margin: 0 }}>Start with these positions</h4>
-          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+          <h4 className="analytics-practice-header__title">Start with these positions</h4>
+          <div className="analytics-practice-header__subtitle">
             Calculate first. Reveal the played move only afterward.
           </div>
         </div>
@@ -337,10 +300,8 @@ function CoachView({
         ))
       ) : (
         <PanelCard className="cvs-review-full">
-          <div style={{ color: 'var(--good)', fontWeight: 700 }}>
-            No major practice position found.
-          </div>
-          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+          <div className="analytics-empty-success">No major practice position found.</div>
+          <div className="analytics-empty-note">
             Use the Data view to inspect smaller positional losses and recurring patterns.
           </div>
         </PanelCard>
@@ -382,28 +343,16 @@ function RecurringThemes({
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="analytics-themes__header">
         <div>
           <Eyebrow>Recurring themes</Eyebrow>
-          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+          <div className="analytics-themes__subtitle">
             Select a theme to inspect every detected occurrence.
           </div>
         </div>
       </div>
 
-      <div
-        role="group"
-        aria-label="Recurring themes"
-        style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 11 }}
-      >
+      <div role="group" aria-label="Recurring themes" className="analytics-themes__chips">
         {profile.topPatterns.map((pattern) => {
           const active = pattern.type === activeType;
           return (
@@ -411,74 +360,32 @@ function RecurringThemes({
               key={pattern.type}
               aria-pressed={active}
               onClick={() => setSelected(pattern.type)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '6px 8px 6px 10px',
-                borderRadius: 999,
-                border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                background: active ? 'rgba(184,115,51,.18)' : 'var(--card)',
-                color: active ? 'var(--accent-light)' : 'var(--text-soft)',
-                fontSize: 12,
-                fontWeight: active ? 700 : 500,
-              }}
+              className={`analytics-theme-chip${active ? ' is-active' : ''}`}
             >
               {pattern.title}
-              <span
-                style={{
-                  minWidth: 20,
-                  padding: '1px 5px',
-                  borderRadius: 999,
-                  background: active ? 'var(--accent)' : 'var(--track)',
-                  color: active ? '#fff' : 'var(--muted)',
-                  fontSize: 10,
-                  textAlign: 'center',
-                }}
-              >
-                {pattern.count}
-              </span>
+              <span className="analytics-theme-chip__count">{pattern.count}</span>
             </button>
           );
         })}
       </div>
 
-      <div
-        style={{
-          marginTop: 12,
-          paddingTop: 10,
-          borderTop: '1px solid var(--border)',
-        }}
-      >
-        <div style={{ fontWeight: 800 }}>{activeTheme.title}</div>
-        <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
-          {activeTheme.detail}
-        </div>
+      <div className="analytics-theme-detail">
+        <div className="analytics-theme-detail__title">{activeTheme.title}</div>
+        <div className="analytics-theme-detail__copy">{activeTheme.detail}</div>
       </div>
 
-      <ol style={{ margin: '10px 0 0', paddingLeft: 28 }}>
+      <ol className="analytics-theme-occurrences">
         {occurrences.map((occurrence, index) => (
           <li
             key={`${occurrence.ply}-${occurrence.event.type}-${index}`}
-            style={{ padding: '7px 0 8px 3px', borderBottom: '1px solid var(--border)' }}
+            className="analytics-theme-occurrences__item"
           >
             <button
+              className="analytics-theme-occurrences__button"
               onClick={() => onJump(occurrence.ply)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(76px,auto) 1fr auto',
-                gap: 10,
-                alignItems: 'baseline',
-                width: '100%',
-                padding: 0,
-                border: 0,
-                background: 'transparent',
-                textAlign: 'left',
-                color: 'var(--text)',
-              }}
             >
               <strong>{occurrence.move}</strong>
-              <span style={{ color: 'var(--text-soft)', fontSize: 12 }}>
+              <span className="analytics-theme-occurrences__label">
                 {occurrence.event.label}
                 {occurrence.event.squares.length ? ` (${occurrence.event.squares.join(', ')})` : ''}
               </span>
@@ -512,10 +419,10 @@ function MomentsView({
 }) {
   const moments = teachingMoments(entries, 12);
   return (
-    <div style={{ marginTop: 14 }}>
-      <div style={{ marginBottom: 12 }}>
-        <h4 style={{ margin: 0 }}>{SIDE_NAME[focus]}'s critical moments</h4>
-        <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13 }}>
+    <div className="analytics-moments">
+      <div className="analytics-moments__header">
+        <h4 className="analytics-moments__title">{SIDE_NAME[focus]}'s critical moments</h4>
+        <p className="analytics-moments__copy">
           Ordered by evaluation loss. Use each as a calculation exercise from the position before
           the move.
         </p>
@@ -552,14 +459,7 @@ function MomentCard({
   const analysis = entry.analysis;
   return (
     <PanelCard className="cvs-review-moment">
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 10,
-          alignItems: 'flex-start',
-        }}
-      >
+      <div className="analytics-moment-card__header">
         <div>
           <Eyebrow>Move {analysis.move}</Eyebrow>
           <div
@@ -589,17 +489,11 @@ function MomentCard({
         </span>
       </div>
       <p
-        style={{
-          margin: '10px 0 12px',
-          minHeight: 54,
-          color: 'var(--text-soft)',
-          fontSize: 13,
-          lineHeight: 1.45,
-        }}
+        className="analytics-moment-card__copy"
       >
         {analysis.topExplanation || 'Find a stronger candidate move in this position.'}
       </p>
-      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+      <div className="analytics-moment-card__actions">
         <button
           className="analytics-action analytics-action--primary"
           onClick={() => onJump(Math.max(0, entry.ply - 1))}
