@@ -119,35 +119,7 @@ export function AnalyticsPanel({
   );
 
   return (
-    <section
-      style={{
-        marginTop: 24,
-        border: '1px solid var(--border)',
-        borderRadius: 12,
-        background: 'var(--card)',
-        padding: '16px clamp(12px, 2vw, 20px) 20px',
-      }}
-    >
-      <style>{`
-        .cvs-review-tabs{display:flex;gap:6px;flex-wrap:wrap}
-        .cvs-review-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
-        .cvs-review-summary{grid-column:span 3}
-        .cvs-review-brief{grid-column:span 7}
-        .cvs-review-plan{grid-column:span 5}
-        .cvs-review-moment{grid-column:span 4}
-        .cvs-review-half{grid-column:span 6}
-        .cvs-review-third{grid-column:span 4}
-        .cvs-review-full{grid-column:1/-1}
-        @media(max-width:980px){
-          .cvs-review-summary{grid-column:span 6}
-          .cvs-review-brief,.cvs-review-plan,.cvs-review-half,.cvs-review-third{grid-column:1/-1}
-          .cvs-review-moment{grid-column:span 6}
-        }
-        @media(max-width:620px){
-          .cvs-review-summary,.cvs-review-moment{grid-column:1/-1}
-        }
-      `}</style>
-
+    <section className="analytics-panel">
       {onComputeThemes && (
         <TeachingThemes
           profile={teachingProfile ?? null}
@@ -158,22 +130,14 @@ export function AnalyticsPanel({
         />
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 16,
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="analytics-panel__header">
         <div>
-          <h3 style={{ margin: 0, fontSize: 20 }}>Game review</h3>
-          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+          <h3 className="analytics-panel__title">Game review</h3>
+          <div className="analytics-panel__subtitle">
             Diagnose, practice, then inspect the engine data.
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="analytics-panel__controls">
           <SegmentedControl>
             <SegmentButton active={focus === 'w'} onClick={() => setFocusOverride('w')}>
               White
@@ -193,10 +157,7 @@ export function AnalyticsPanel({
         </div>
       </div>
 
-      <div
-        className="cvs-review-tabs"
-        style={{ marginTop: 14, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}
-      >
+      <div className="cvs-review-tabs analytics-panel__tabs">
         <ViewButton active={reviewView === 'coach'} onClick={() => setReviewView('coach')}>
           Coach
         </ViewButton>
@@ -207,14 +168,14 @@ export function AnalyticsPanel({
           All data
         </ViewButton>
         {scope === 'step' && (
-          <span style={{ alignSelf: 'center', color: 'var(--muted)', fontSize: 12, marginLeft: 4 }}>
+          <span className="analytics-panel__scope-note">
             through move {Math.ceil(view / 2) || 0}
           </span>
         )}
       </div>
 
       {scoped.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13, padding: '18px 0 4px' }}>
+        <div className="analytics-panel__empty">
           Step forward to build the review move by move.
         </div>
       ) : reviewView === 'coach' ? (
@@ -272,7 +233,7 @@ function CoachView({
 }) {
   const solidMoves = stats.byClass.best + stats.byClass.excellent;
   return (
-    <div className="cvs-review-grid" style={{ marginTop: 14 }}>
+    <div className="cvs-review-grid analytics-panel__grid">
       <SummaryTile
         label={`${SIDE_NAME[focus]} accuracy`}
         value={`${stats.accuracy.toFixed(0)}%`}
@@ -639,15 +600,21 @@ function MomentCard({
         {analysis.topExplanation || 'Find a stronger candidate move in this position.'}
       </p>
       <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-        <button onClick={() => onJump(Math.max(0, entry.ply - 1))} style={primaryAction}>
+        <button
+          className="analytics-action analytics-action--primary"
+          onClick={() => onJump(Math.max(0, entry.ply - 1))}
+        >
           Try from here
         </button>
         {onGeneratePuzzle && (
-          <button onClick={() => onGeneratePuzzle(entry.ply)} style={secondaryAccentAction}>
+          <button
+            className="analytics-action analytics-action--accent"
+            onClick={() => onGeneratePuzzle(entry.ply)}
+          >
             Generate puzzle
           </button>
         )}
-        <button onClick={() => onJump(entry.ply)} style={secondaryAction}>
+        <button className="analytics-action" onClick={() => onJump(entry.ply)}>
           Show played move
         </button>
       </div>
@@ -669,7 +636,7 @@ function DataView({
   onJump: (ply: number) => void;
 }) {
   return (
-    <div className="cvs-review-grid" style={{ marginTop: 14 }}>
+    <div className="cvs-review-grid analytics-panel__grid">
       <PanelCard className="cvs-review-half">
         <SideCard title="White" color={TEAM.w} s={analytics.white} />
       </PanelCard>
@@ -805,45 +772,17 @@ function SummaryTile({
   tone?: string;
 }) {
   return (
-    <div
-      className="cvs-review-summary"
-      style={{
-        border: '1px solid var(--border)',
-        borderRadius: 9,
-        background: 'var(--card2)',
-        padding: '10px 12px',
-      }}
-    >
-      <div
-        style={{
-          color: 'var(--muted)',
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '.08em',
-        }}
-      >
-        {label}
+    <div className="cvs-review-summary analytics-summary-tile">
+      <div className="analytics-summary-tile__label">{label}</div>
+      <div className="analytics-summary-tile__value" style={{ color: tone }}>
+        {value}
       </div>
-      <div style={{ color: tone, fontSize: 20, fontWeight: 800, marginTop: 3 }}>{value}</div>
     </div>
   );
 }
 
 function PanelCard({ className, children }: { className: string; children: ReactNode }) {
-  return (
-    <div
-      className={className}
-      style={{
-        border: '1px solid var(--border)',
-        borderRadius: 9,
-        background: 'var(--card2)',
-        padding: 12,
-        minWidth: 0,
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className={`${className} analytics-panel-card`}>{children}</div>;
 }
 
 function BriefNote({ label, text, color }: { label: string; text: string; color: string }) {
@@ -868,34 +807,11 @@ function BriefNote({ label, text, color }: { label: string; text: string; color:
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        color: 'var(--muted)',
-        fontSize: 11,
-        fontWeight: 800,
-        textTransform: 'uppercase',
-        letterSpacing: '.09em',
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="analytics-eyebrow">{children}</div>;
 }
 
 function SegmentedControl({ children }: { children: ReactNode }) {
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        border: '1px solid var(--border)',
-        borderRadius: 7,
-        overflow: 'hidden',
-      }}
-    >
-      {children}
-    </div>
-  );
+  return <div className="analytics-segmented">{children}</div>;
 }
 
 function SegmentButton({
@@ -909,15 +825,8 @@ function SegmentButton({
 }) {
   return (
     <button
+      className={`analytics-segmented__button${active ? ' is-active' : ''}`}
       onClick={onClick}
-      style={{
-        border: 0,
-        borderRadius: 0,
-        padding: '5px 10px',
-        fontSize: 12,
-        background: active ? 'var(--accent)' : 'var(--card2)',
-        color: active ? '#fff' : 'var(--text-soft)',
-      }}
     >
       {children}
     </button>
@@ -935,44 +844,13 @@ function ViewButton({
 }) {
   return (
     <button
+      className={`analytics-view-button${active ? ' is-active' : ''}`}
       onClick={onClick}
-      style={{
-        padding: '7px 11px',
-        fontSize: 13,
-        fontWeight: active ? 700 : 500,
-        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-        background: active ? 'rgba(184,115,51,.18)' : 'transparent',
-        color: active ? 'var(--accent-light)' : 'var(--text-soft)',
-      }}
     >
       {children}
     </button>
   );
 }
-
-const primaryAction: React.CSSProperties = {
-  border: '1px solid var(--accent)',
-  background: 'var(--accent)',
-  color: '#fff',
-  padding: '6px 9px',
-  fontSize: 12,
-  fontWeight: 700,
-};
-const secondaryAction: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'transparent',
-  color: 'var(--text-soft)',
-  padding: '6px 9px',
-  fontSize: 12,
-};
-const secondaryAccentAction: React.CSSProperties = {
-  border: '1px solid var(--accent)',
-  background: 'rgba(184,115,51,.16)',
-  color: 'var(--accent-light)',
-  padding: '6px 9px',
-  fontSize: 12,
-  fontWeight: 700,
-};
 
 function SideCard({ title, color, s }: { title: string; color: string; s: SideStats }) {
   const total = s.moves || 1;
