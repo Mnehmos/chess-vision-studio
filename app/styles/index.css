@@ -653,6 +653,208 @@ select {
   white-space: pre-wrap;
 }
 
+.facts-panel {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.facts-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.facts-panel__title {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.facts-panel__hint {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.facts-panel__move {
+  margin-bottom: 8px;
+}
+
+.facts-panel__classification {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.facts-panel__classification--best,
+.facts-panel__classification--excellent {
+  background: #3fbf5f;
+}
+
+.facts-panel__classification--good {
+  background: var(--accent-light);
+}
+
+.facts-panel__classification--inaccuracy {
+  background: #e8923b;
+}
+
+.facts-panel__classification--mistake {
+  background: #e2603b;
+}
+
+.facts-panel__classification--blunder {
+  background: #e23b3b;
+}
+
+.facts-panel__classification--default {
+  background: var(--muted);
+}
+
+.facts-panel__explanation {
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--track);
+}
+
+.facts-panel__card {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 2px solid;
+  border-radius: 8px;
+}
+
+.facts-panel__card--piece {
+  border-color: #2563c9;
+}
+
+.facts-panel__card--empty {
+  border-color: #cbd5e1;
+}
+
+.facts-panel__card-title {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.facts-panel__source-pill {
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.facts-panel__label,
+.facts-panel__none,
+.facts-panel__saliency {
+  color: var(--muted);
+}
+
+.facts-panel__row-item--danger {
+  color: #c53030;
+}
+
+.facts-panel__row-item--good {
+  color: var(--good);
+}
+
+.facts-panel__row-item--warning {
+  color: #b45309;
+}
+
+.facts-panel__row-item--muted {
+  color: var(--muted);
+}
+
+.facts-panel__relation {
+  margin-top: 6px;
+}
+
+.facts-panel__relation-link {
+  color: #b45309;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.facts-panel__status {
+  padding: 1px 8px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.facts-panel__status--hanging {
+  background: #e23b3b;
+}
+
+.facts-panel__status--attacked {
+  background: #8a6d3b;
+}
+
+.facts-panel__status--loose {
+  background: #e8b33b;
+}
+
+.facts-panel__status--safe {
+  background: #3f813f;
+}
+
+.facts-panel__status--muted {
+  background: var(--muted);
+}
+
+.facts-panel__empty {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.facts-panel__insights-title {
+  margin: 0 0 4px;
+}
+
+.facts-panel__unfocus {
+  margin-left: 6px;
+  font-size: 11px;
+}
+
+.facts-panel__insight-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.facts-panel__insight-item {
+  margin-bottom: 2px;
+}
+
+.facts-panel__insight-button {
+  padding: 0 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.facts-panel__insight-button.is-focused {
+  background: #fde68a;
+  color: #1f2937;
+  font-weight: 700;
+}
+
 .mate-card {
   min-width: 300px;
   margin-top: 12px;
