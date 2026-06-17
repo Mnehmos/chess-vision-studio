@@ -42,6 +42,7 @@ import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
 import { PlayCommentaryPanel } from './PlayCommentaryPanel';
+import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
@@ -774,64 +775,9 @@ export function PlayMode({
 
   return (
     <div className="cvs-workspace">
-      {/* ── Left column: controls legend + game review ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }}>
+      <div className="play-left-rail">
         <AnnotationCommandList />
-        {reviewMoments.length > 0 && (
-          <div style={{ ...card, padding: '14px', width: '180px', boxSizing: 'border-box' }}>
-            <h4
-              style={{
-                margin: 0,
-                fontSize: '13px',
-                color: 'var(--accent-light, #d4956a)',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                borderBottom: '1px solid var(--border, #322d28)',
-                paddingBottom: '8px',
-                marginBottom: '10px'
-              }}
-            >
-              Game Review
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <button
-                onClick={exportGameData}
-                style={{
-                  width: '100%',
-                  border: '1px solid var(--border, #322d28)',
-                  background: 'var(--card2, #211d19)',
-                  color: 'var(--accent-light, #d4956a)',
-                  borderRadius: 6,
-                  padding: '6px 8px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                }}
-              >
-                ⬇ Export JSON
-              </button>
-              <div
-                style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                  paddingRight: '4px'
-                }}
-              >
-                {reviewMoments.map((m) => (
-                  <div key={m.id} style={{ fontSize: '11px', borderBottom: '1px solid var(--border, #322d28)', paddingBottom: '6px' }}>
-                    <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>Ply {m.ply + 1} break:</div>
-                    <div style={{ color: 'var(--text-soft)', marginTop: 2, lineHeight: 1.3 }}>{m.insight}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        <PlayGameReview reviewMoments={reviewMoments} onExport={exportGameData} />
       </div>
 
       {/* ── Board + controls ───────────────────────────────────────────── */}
