@@ -1,4 +1,4 @@
-// Engine comparison card — Stockfish verdict vs native CVS engine, side by side.
+// Engine comparison card - Stockfish verdict vs native CVS engine, side by side.
 // Extracted from App so Play mode can render the same panel.
 import type { MoveAnalysis } from '../engine/types';
 import type { CvsEngineAnalysis, CvsEngineHealth } from './cvs-engine-client';
@@ -24,56 +24,69 @@ export function EngineComparisonPanel({
   cvsContext: string;
   cvsPlayedUci: string | undefined;
 }) {
-  const labelStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase' };
-  const valueStyle: React.CSSProperties = { margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.45 };
   return (
-    <section style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Engine Analysis</h2>
-        <span style={{ color: 'var(--muted)', fontSize: 12, flexShrink: 0 }}>local WIP</span>
+    <section className="engine-comparison">
+      <div className="engine-comparison__header">
+        <h2 className="engine-comparison__title">Engine Analysis</h2>
+        <span className="engine-comparison__tag">local WIP</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 14 }}>
-        <div style={{ minWidth: 0 }}>
-          <p style={labelStyle}>Stockfish</p>
+      <div className="engine-comparison__grid">
+        <div className="engine-comparison__column">
+          <p className="engine-comparison__label">Stockfish</p>
           {stockfishState !== 'ready' ? (
-            <p style={valueStyle}>{stockfishState === 'loading' ? 'loading' : 'off'}</p>
+            <p className="engine-comparison__value">
+              {stockfishState === 'loading' ? 'loading' : 'off'}
+            </p>
           ) : stockfishAnalysis ? (
             <>
-              <p style={valueStyle}>
-                {move ?? stockfishAnalysis.move}: {stockfishAnalysis.classification}, loss {stockfishAnalysis.cpLoss.toFixed(2)}
+              <p className="engine-comparison__value">
+                {move ?? stockfishAnalysis.move}: {stockfishAnalysis.classification}, loss{' '}
+                {stockfishAnalysis.cpLoss.toFixed(2)}
               </p>
-              <p style={{ ...valueStyle, fontSize: 13 }}>
+              <p className="engine-comparison__value engine-comparison__value--small">
                 eval {formatEval(stockfishAnalysis.evalAfter)} d{stockfishAnalysis.evalAfter.depth}
               </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+              <p className="engine-comparison__value engine-comparison__value--muted">
+                {stockfishAnalysis.evalAfter.pv.slice(0, 6).join(' ') || 'no pv'}
+              </p>
             </>
           ) : (
-            <p style={valueStyle}>waiting for a played move</p>
+            <p className="engine-comparison__value">waiting for a played move</p>
           )}
         </div>
-        <div style={{ minWidth: 0, borderLeft: '1px solid var(--border)', paddingLeft: 14 }}>
-          <p style={labelStyle}>CVS Engine</p>
-          <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsContext}</p>
+
+        <div className="engine-comparison__column engine-comparison__column--cvs">
+          <p className="engine-comparison__label">CVS Engine</p>
+          <p className="engine-comparison__value engine-comparison__value--muted">{cvsContext}</p>
           {!cvsHealth.available ? (
-            <p style={valueStyle}>{cvsHealth.error || 'local engine unavailable'}</p>
+            <p className="engine-comparison__value">
+              {cvsHealth.error || 'local engine unavailable'}
+            </p>
           ) : cvsError ? (
-            <p style={{ ...valueStyle, color: 'var(--bad)' }}>{cvsError}</p>
+            <p className="engine-comparison__value engine-comparison__value--error">
+              {cvsError}
+            </p>
           ) : cvsAnalysis ? (
             <>
-              <p style={valueStyle}>
-                {cvsPlayedUci ? `played ${cvsPlayedUci}, ` : ''}best {cvsAnalysis.uci ?? 'none'} {formatCvsAgreement(cvsPlayedUci, cvsAnalysis.uci)}{' '}
-                {cvsBusy ? '(updating)' : ''}
+              <p className="engine-comparison__value">
+                {cvsPlayedUci ? `played ${cvsPlayedUci}, ` : ''}best {cvsAnalysis.uci ?? 'none'}{' '}
+                {formatCvsAgreement(cvsPlayedUci, cvsAnalysis.uci)} {cvsBusy ? '(updating)' : ''}
               </p>
-              <p style={{ ...valueStyle, fontSize: 13 }}>
+              <p className="engine-comparison__value engine-comparison__value--small">
                 eval {formatCvsEval(cvsAnalysis)} d{cvsAnalysis.depth} in {cvsAnalysis.timeMs}ms
               </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>
-                {formatNodes(cvsAnalysis.nodes)} nodes, q {formatNodes(cvsAnalysis.qNodes)}, tt {cvsAnalysis.ttHits}
+              <p className="engine-comparison__value engine-comparison__value--muted">
+                {formatNodes(cvsAnalysis.nodes)} nodes, q {formatNodes(cvsAnalysis.qNodes)}, tt{' '}
+                {cvsAnalysis.ttHits}
               </p>
-              <p style={{ ...valueStyle, color: 'var(--muted)', fontSize: 12 }}>{cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}</p>
+              <p className="engine-comparison__value engine-comparison__value--muted">
+                {cvsAnalysis.pv.slice(0, 6).join(' ') || 'no pv'}
+              </p>
             </>
           ) : (
-            <p style={valueStyle}>{cvsBusy ? `analyzing ${cvsContext}` : 'ready'}</p>
+            <p className="engine-comparison__value">
+              {cvsBusy ? `analyzing ${cvsContext}` : 'ready'}
+            </p>
           )}
         </div>
       </div>
