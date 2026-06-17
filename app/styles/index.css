@@ -106,6 +106,61 @@ select {
   }
 }
 
+.led-color--green {
+  --led-color: #3fbf5f;
+  background: var(--led-color);
+}
+
+.led-color--red {
+  --led-color: #e23b3b;
+  background: var(--led-color);
+}
+
+.led-color--blue {
+  --led-color: #3b7fe2;
+  background: var(--led-color);
+}
+
+.led-color--yellow {
+  --led-color: #e8d23b;
+  background: var(--led-color);
+}
+
+.led-color--orange {
+  --led-color: #e8923b;
+  background: var(--led-color);
+}
+
+.led-color--purple {
+  --led-color: #a14fe0;
+  background: var(--led-color);
+}
+
+.led-color--dark-red {
+  --led-color: #7a1010;
+  background: var(--led-color);
+}
+
+.led-color--dark-blue {
+  --led-color: #16306b;
+  background: var(--led-color);
+}
+
+.led-color--gray {
+  --led-color: #8a8a8a;
+  background: var(--led-color);
+}
+
+.led-color--red-blink {
+  --led-color: #ff2a2a;
+  background: var(--led-color);
+}
+
+.led-color--off {
+  --led-color: #222;
+  background: var(--led-color);
+}
+
 .app-header {
   display: flex;
   flex-wrap: wrap;
@@ -1799,6 +1854,35 @@ select {
   height: 11px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 3px;
+}
+
+.led-preview__title {
+  margin: 0 0 6px;
+}
+
+.led-preview__grid {
+  display: grid;
+  width: max-content;
+  grid-template-columns: repeat(8, 20px);
+  grid-template-rows: repeat(8, 20px);
+  gap: 2px;
+  padding: 4px;
+  border-radius: 4px;
+  background: #111;
+}
+
+.led-preview__square {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.led-preview__square.is-lit {
+  box-shadow: 0 0 6px var(--led-color);
+}
+
+.led-preview__square.is-blinking {
+  animation: csvBlink 0.8s steps(2, start) infinite;
 }
 
 .play-board-help {

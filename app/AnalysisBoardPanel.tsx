@@ -8,7 +8,8 @@ import type { Arrow } from './BoardArrows';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationLegend } from './AnnotationLegend';
 import type { AlternativeLine } from './arrow-analysis-store';
-import { LED_CSS, MODES } from './modes';
+import { ledColorClass } from './led-classes';
+import { MODES } from './modes';
 import { VariationPreviewPanel, type VariationPreviewGifJob } from './VariationPreviewPanel';
 import type { VariationPreviewPosition } from './variation-preview';
 import { keepInView } from './analysis-scroll';
@@ -449,10 +450,7 @@ export function ModeLegend({ modeId }: { modeId: ModeId }) {
     <div className="analysis-mode-legend">
       {mode.legend.map((item) => (
         <span key={item.color} className="analysis-mode-legend__item">
-          <span
-            className="analysis-mode-legend__swatch"
-            style={{ background: LED_CSS[item.color] }}
-          />
+          <span className={`analysis-mode-legend__swatch ${ledColorClass(item.color)}`} />
           {item.meaning}
         </span>
       ))}
