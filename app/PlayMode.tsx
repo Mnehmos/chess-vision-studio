@@ -53,6 +53,7 @@ import {
   type VerboseMove,
 } from './play-mode-helpers';
 import { buildPlayModeExportPayload, type PlayOpponent } from './play-mode-export';
+import { isHumanTurn, moveHistoryRows, playStatus, sideToMove } from './play-mode-state';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // Engine-opponent search depth (Stockfish; CVS uses its configured depth) and a
@@ -386,24 +387,13 @@ export function PlayMode({
   const [coachLog, setCoachLog] = useState<CoachTurn[]>([]);
   const coachScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const status = useMemo(() => {
-    const c = new Chess(fen);
-    const sideToMove = c.turn() === 'w' ? 'White' : 'Black';
-    const winner = c.turn() === 'w' ? 'Black' : 'White';
-    if (c.isCheckmate()) return { text: `Checkmate — ${winner} wins`, over: true, tone: 'var(--bad)' };
-    if (c.isStalemate()) return { text: 'Stalemate — draw', over: true, tone: 'var(--text-soft)' };
-    if (c.isInsufficientMaterial()) return { text: 'Draw — insufficient material', over: true, tone: 'var(--text-soft)' };
-    if (c.isThreefoldRepetition()) return { text: 'Draw — threefold repetition', over: true, tone: 'var(--text-soft)' };
-    if (c.isDraw()) return { text: 'Draw — fifty-move rule', over: true, tone: 'var(--text-soft)' };
-    const check = c.inCheck() ? ' — check' : '';
-    return { text: `${sideToMove} to move${check}`, over: false, tone: check ? '#b54708' : 'var(--text)' };
-  }, [fen]);
+  const status = useMemo(() => playStatus(fen), [fen]);
 
   // Whose move it is from the human's seat — true when there's no engine opponent
   // or it's the human's colour to move. Gates manual moves so you can't play the
   // engine's pieces, and tells the opponent effect when to reply.
   const humanToMove = useMemo(
-    () => opponent === 'none' || (new Chess(fen).turn() as 'w' | 'b') === playerSide,
+    () => isHumanTurn(fen, opponent, playerSide),
     [opponent, fen, playerSide],
   );
 
@@ -805,13 +795,10 @@ export function PlayMode({
     }
   }
 
-  const turn = new Chess(fen).turn(); // side to move — drives the turn plates + promo glyphs
+  const turn = sideToMove(fen); // side to move — drives the turn plates + promo glyphs
   const topSide: 'w' | 'b' = flipped ? 'w' : 'b';
   const bottomSide: 'w' | 'b' = flipped ? 'b' : 'w';
-  const rows: { n: number; white?: string; black?: string }[] = [];
-  for (let i = 0; i < history.length; i += 2) {
-    rows.push({ n: i / 2 + 1, white: history[i]?.san, black: history[i + 1]?.san });
-  }
+  const rows = moveHistoryRows(history);
 
   return (
     <div className="cvs-workspace">
