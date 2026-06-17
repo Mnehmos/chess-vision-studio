@@ -92,6 +92,12 @@ import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import { factsRequestForPly } from './teaching-facts-request';
+import {
+  legalMovesFrom,
+  teachingLedMap as teachingNodeLedMap,
+  teachingNodeArrows,
+  type VerboseMove,
+} from './play-mode-helpers';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -100,7 +106,6 @@ const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 // ── design tokens ─────────────────────────────────────────────────────────────
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 type AppTab = 'board' | 'dataset' | 'play';
-type VerboseMove = { san: string; color: 'w' | 'b'; from: string; to: string; promotion?: string };
 
 // "Analyze all games" progress. done/total count PLIES (drives the bar);
 // gamesDone/gamesTotal + currentGame give a human-meaningful "Game X/Y".
@@ -1056,7 +1061,7 @@ export function App() {
   // LED: a focused teaching event or insight overrides the mode overlay.
   const ledMap = useMemo(() => {
     if (hideOverlays) return { mode: 'off' as any, squares: {} };
-    if (teachingFocus) return teachingLedMap(teachingFocus);
+    if (teachingFocus) return teachingNodeLedMap(teachingFocus, 'focus');
     if (focused) return focusLedMap(focused);
     return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
   }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays]);
@@ -1070,7 +1075,7 @@ export function App() {
     if (hideOverlays) return [];
     // TEACHING FOCUS: a clicked teaching event draws its played move, punishment,
     // and correction and suppresses everything else.
-    if (teachingFocus) return teachingArrows(teachingFocus);
+    if (teachingFocus) return teachingNodeArrows(teachingFocus);
     // FOCUS MODE: a clicked insight spotlights only its own line; everything else
     // is suppressed so the user sees exactly that one tactic.
     if (focused) return lineArrows(fen, focused, false);
@@ -1849,48 +1854,6 @@ function withRepetitionWarning(
   };
 }
 
-// Board overlay for a focused teaching event: the played move (slate), the
-// opponent's punishment (red), and the correction (green, dashed).
-function teachingArrows(node: TeachingNode): Arrow[] {
-  const out: Arrow[] = [];
-  const arrow = (uci: string, color: string, extra?: Partial<Arrow>): void => {
-    if (uci.length < 4) return;
-    out.push({ from: uci.slice(0, 2) as Square, to: uci.slice(2, 4) as Square, color, ...extra });
-  };
-  arrow(node.subjectMove, ARROW.move, { move: true });
-
-  if (node.boardPayload.arrows) {
-    for (const arr of node.boardPayload.arrows) {
-      out.push({
-        from: arr.from as Square,
-        to: arr.to as Square,
-        color: arr.color === 'red' ? ARROW.attack : ARROW.defend,
-        dashed: arr.style === 'dashed',
-      });
-    }
-  } else {
-    if (node.verification.expectedMove) {
-      arrow(node.verification.expectedMove, ARROW.attack, { label: '!' });
-    }
-  }
-  return out;
-}
-
-function teachingLedMap(node: TeachingNode): LedMap {
-  const squares: Record<string, LedColor> = {};
-  for (const sq of allSquares()) squares[sq] = 'off';
-  if (node.boardPayload.squares) {
-    for (const sq of node.boardPayload.squares) {
-      squares[sq.square] = sq.color === 'red' ? 'red' : sq.color === 'gray' ? 'off' : 'orange';
-    }
-  } else {
-    for (const sq of node.involvedSquares) {
-      squares[sq] = 'orange';
-    }
-  }
-  return { mode: 'focus', squares };
-}
-
 function focusLedMap(ins: InsightCandidate): LedMap {
   const squares: Record<string, LedColor> = {};
   for (const sq of allSquares()) squares[sq] = 'off';
@@ -1904,14 +1867,6 @@ function focusLedMap(ins: InsightCandidate): LedMap {
 function safeGames(pgn: string): ParsedGame[] {
   try {
     return gamesFromPgn(pgn);
-  } catch {
-    return [];
-  }
-}
-
-function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
-  try {
-    return new Chess(fen).moves({ square: sq as never, verbose: true }) as unknown as VerboseMove[];
   } catch {
     return [];
   }

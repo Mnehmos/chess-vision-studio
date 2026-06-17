@@ -7,7 +7,14 @@ import type { TeachingFactsRequestV1, TeachingEvent, TeachingFactBundleV1, Teach
 import type { TeachingNode } from '../engine/teaching/node';
 import type { UciEngine } from '../engine/evaluation';
 
-export type VerboseMove = { from: string; to: string; san: string; flags: string; promotion?: string };
+export type VerboseMove = {
+  san: string;
+  color: 'w' | 'b';
+  from: string;
+  to: string;
+  flags: string;
+  promotion?: string;
+};
 
 export function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
   try {
@@ -70,7 +77,7 @@ export function teachingNodeArrows(node: TeachingNode): Arrow[] {
   return out;
 }
 
-export function teachingLedMap(node: TeachingNode): LedMap {
+export function teachingLedMap(node: TeachingNode, mode = 'teaching'): LedMap {
   const squares = {} as LedMap['squares'];
   for (const square of allSquares()) squares[square] = 'off';
   if (node.boardPayload.squares) {
@@ -82,7 +89,7 @@ export function teachingLedMap(node: TeachingNode): LedMap {
       squares[square as Square] = 'orange';
     }
   }
-  return { mode: 'teaching', squares };
+  return { mode, squares };
 }
 
 const TACTIC_TOPICS = new Set(['allowed_fork', 'allowed_pin', 'failed_defense', 'missed_hanging_piece']);
