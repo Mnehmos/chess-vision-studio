@@ -8,6 +8,27 @@ import allowedForkFixture from '../fixtures/teaching-facts/v1/allowed-fork.json'
 import type { UciEngine } from '../engine/evaluation';
 import type { TeachingFactBundleV1 } from '../engine/teaching/types';
 import { PlayMode } from './PlayMode';
+import type { ArrowAnalysisClients } from './arrow-analysis-store';
+
+function makeArrowAnalysisClients(): ArrowAnalysisClients {
+  const analyze = vi.fn(async (fen: string, depth: number, forcedMove?: string) => ({
+    fen,
+    bestmove: forcedMove,
+    uci: forcedMove ?? null,
+    scoreCp: 0,
+    mate: null,
+    pv: [],
+    depth,
+  }));
+  return {
+    analyzeStockfish: analyze,
+    analyzeCvs: analyze,
+    loadTeachingFacts: vi.fn(async () => {
+      throw new Error('facts disabled in arrow interaction tests');
+    }),
+    logger: { error: vi.fn() },
+  };
+}
 
 afterEach(() => {
   cleanup();
@@ -216,9 +237,15 @@ describe('PlayMode — legal chess', () => {
       evaluate: vi.fn(async () => ({ cp: 0, depth: 14, pv: [] })),
       dispose: vi.fn(),
     } as unknown as UciEngine;
+    const arrowAnalysisClients = makeArrowAnalysisClients();
 
     const { container } = render(
-      <PlayMode engine={engine} engineReady cvsHealth={{ ok: true, available: true }} />
+      <PlayMode
+        engine={engine}
+        engineReady
+        cvsHealth={{ ok: true, available: true }}
+        arrowAnalysisClients={arrowAnalysisClients}
+      />
     );
 
     // Mock document.elementFromPoint and pointer capture APIs for jsdom
@@ -298,9 +325,15 @@ describe('PlayMode — legal chess', () => {
       evaluate: vi.fn(async () => ({ cp: 0, depth: 14, pv: [] })),
       dispose: vi.fn(),
     } as unknown as UciEngine;
+    const arrowAnalysisClients = makeArrowAnalysisClients();
 
     const { container, getByText } = render(
-      <PlayMode engine={engine} engineReady cvsHealth={{ ok: true, available: true }} />
+      <PlayMode
+        engine={engine}
+        engineReady
+        cvsHealth={{ ok: true, available: true }}
+        arrowAnalysisClients={arrowAnalysisClients}
+      />
     );
 
     // Mock document.elementFromPoint and pointer capture APIs for jsdom

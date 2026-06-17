@@ -35,7 +35,7 @@ import type {
 } from '../engine/teaching/types';
 import { buildTeachingNodes, type TeachingNode } from '../engine/teaching/node';
 import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
-import { useArrowAnalysis, type AlternativeLine } from './arrow-analysis-store';
+import { useArrowAnalysis, type AlternativeLine, type ArrowAnalysisClients } from './arrow-analysis-store';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
@@ -80,6 +80,7 @@ export function PlayMode({
   narrateMove,
   cvsHealth,
   loadTeachingFacts = getTeachingFacts,
+  arrowAnalysisClients,
 }: {
   engine?: UciEngine | null;
   engineReady?: boolean;
@@ -87,6 +88,7 @@ export function PlayMode({
   narrateTeaching?: (event: TeachingEvent) => Promise<string>;
   cvsHealth?: CvsEngineHealth;
   loadTeachingFacts?: (request: TeachingFactsRequestV1) => Promise<TeachingFactBundleV1>;
+  arrowAnalysisClients?: ArrowAnalysisClients;
 }) {
   const [fen, setFen] = useState(START_FEN);
   const [selected, setSelected] = useState<Square | null>(null);
@@ -215,7 +217,7 @@ export function PlayMode({
     generatingBestLine,
     refuteLine,
     toggleReveal,
-  } = useArrowAnalysis(fen, cvsHealth, engineReady, handlePredictionBreak);
+  } = useArrowAnalysis(fen, cvsHealth, engineReady, handlePredictionBreak, arrowAnalysisClients);
 
   const [previewLine, setPreviewLine] = useState<{ alt: AlternativeLine; currentIndex: number } | null>(null);
   const [hoveredAltId, setHoveredAltId] = useState<string | null>(null);

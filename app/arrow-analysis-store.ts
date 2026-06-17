@@ -6,6 +6,7 @@ import { buildTeachingNodes, getPositionAfterMove } from '../engine/teaching/nod
 import { analyzeWithStockfish } from './stockfish-client';
 import { analyzeWithCvsEngine, getTeachingFacts } from './cvs-engine-client';
 import { Chess } from 'chess.js';
+import type { TeachingFactBundleV1, TeachingFactsRequestV1 } from '../engine/teaching/types';
 
 export interface AlternativeLineMove {
   uci: string;
@@ -51,6 +52,19 @@ type EngineResult = {
   bestmove?: string;
   uci?: string | null;
 };
+
+export type ArrowAnalyzeClient = (
+  fen: string,
+  depth: number,
+  forcedMove?: string,
+) => Promise<EngineResult>;
+
+export interface ArrowAnalysisClients {
+  analyzeStockfish?: ArrowAnalyzeClient;
+  analyzeCvs?: ArrowAnalyzeClient;
+  loadTeachingFacts?: (request: TeachingFactsRequestV1) => Promise<TeachingFactBundleV1>;
+  logger?: Pick<Console, 'error'>;
+}
 
 export function isMoveLegal(fen: string, from: Square, to: Square, promotion?: string): boolean {
   try {
@@ -189,9 +203,14 @@ export function getMoveSan(fen: string, from: Square, to: Square, promotion?: st
   }
 }
 
-async function getFactsForAlternative(fen: string, moveUci: string, pv: string[]) {
+async function getFactsForAlternative(
+  fen: string,
+  moveUci: string,
+  pv: string[],
+  loadTeachingFacts: (request: TeachingFactsRequestV1) => Promise<TeachingFactBundleV1>,
+) {
   try {
-    return await getTeachingFacts({
+    return await loadTeachingFacts({
       schemaVersion: 1,
       fenBefore: fen,
       playedMoveUci: moveUci,
@@ -235,7 +254,8 @@ export function useArrowAnalysis(
     playedMoveSan: string,
     brokenAlt: AlternativeLine,
     fenBefore: string
-  ) => void
+  ) => void,
+  clients: ArrowAnalysisClients = {},
 ) {
   // Alternatives list: analyzed variations
   const [alternatives, setAlternatives] = useState<AlternativeLine[]>([]);
@@ -245,11 +265,16 @@ export function useArrowAnalysis(
   const activeKeysRef = useRef<Set<string>>(new Set());
   const prevFenRef = useRef(fen);
 
+  const analyzeStockfish = clients.analyzeStockfish ?? analyzeWithStockfish;
+  const analyzeCvs = clients.analyzeCvs ?? analyzeWithCvsEngine;
+  const loadFacts = clients.loadTeachingFacts ?? getTeachingFacts;
+  const logger = clients.logger ?? console;
+
   const analyzeEngine = async (targetFen: string, depth: number, forcedMove?: string): Promise<EngineResult> => {
     if (stockfishReady) {
-      return analyzeWithStockfish(targetFen, depth, forcedMove);
+      return analyzeStockfish(targetFen, depth, forcedMove);
     }
-    return analyzeWithCvsEngine(targetFen, depth, forcedMove);
+    return analyzeCvs(targetFen, depth, forcedMove);
   };
 
   const evaluateCandidate = async (targetFen: string, moveUci: string, depth: number) => {
@@ -346,7 +371,7 @@ export function useArrowAnalysis(
 
       if (!activeKeysRef.current.has(jobKey)) return;
 
-      const facts = await getFactsForAlternative(activeFen, moveUci, r2.pv);
+      const facts = await getFactsForAlternative(activeFen, moveUci, r2.pv, loadFacts);
       let teachingNodes: TeachingNode[] = [];
       if (facts) {
         const nodeReq = {
@@ -394,7 +419,7 @@ export function useArrowAnalysis(
         )
       );
     } catch (err) {
-      console.error('Alternative line analysis failed:', err);
+      logger.error('Alternative line analysis failed:', err);
       if (activeKeysRef.current.has(jobKey)) {
         setAlternatives((prev) =>
           prev.map((x) =>
@@ -608,7 +633,7 @@ export function useArrowAnalysis(
 
       if (!activeKeysRef.current.has(jobKey)) return;
 
-      const facts = await getFactsForAlternative(activeFen, uci, r.pv);
+      const facts = await getFactsForAlternative(activeFen, uci, r.pv, loadFacts);
       let teachingNodes: TeachingNode[] = [];
       if (facts) {
         const nodeReq = {
@@ -650,7 +675,7 @@ export function useArrowAnalysis(
         ),
       } : x));
     } catch (err) {
-      console.error('Deepen analysis failed:', err);
+      logger.error('Deepen analysis failed:', err);
       setAlternatives(prev => prev.map(x => x.id === id && x.moves.length === movesCount ? { ...x, isAnalyzing: false } : x));
     } finally {
       activeKeysRef.current.delete(jobKey);
@@ -758,7 +783,7 @@ export function useArrowAnalysis(
         ),
       );
     } catch (err) {
-      console.error('Best line generation failed:', err);
+      logger.error('Best line generation failed:', err);
       setAlternatives((prev) =>
         prev.map((x) => (x.id === id ? { ...x, isAnalyzing: false } : x)),
       );
@@ -864,7 +889,7 @@ export function useArrowAnalysis(
         prev.map((x) => (x.id === newId ? { ...x, isAnalyzing: false } : x)),
       );
     } catch (err) {
-      console.error('Refute line generation failed:', err);
+      logger.error('Refute line generation failed:', err);
       setAlternatives((prev) =>
         prev.map((x) => (x.id === newId ? { ...x, isAnalyzing: false } : x)),
       );
