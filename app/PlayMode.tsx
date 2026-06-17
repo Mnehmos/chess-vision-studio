@@ -47,6 +47,7 @@ import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
 import { PlayModeControls } from './PlayModeControls';
 import { PlayOpponentControls } from './PlayOpponentControls';
+import { PlayPromotionOverlay } from './PlayPromotionOverlay';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
@@ -76,11 +77,6 @@ const OPPONENT_THINK_MS = 500;
 type Opponent = PlayOpponent;
 
 type HistEntry = { san: string; fen: string; from: Square; to: Square; uci: string };
-const PROMO_PIECES = ['q', 'r', 'n', 'b'] as const;
-const PROMO_GLYPH: Record<string, Record<string, string>> = {
-  w: { q: '♕', r: '♖', n: '♘', b: '♗' },
-  b: { q: '♛', r: '♜', n: '♞', b: '♝' },
-};
 export function PlayMode({
   engine,
   engineReady = false,
@@ -833,42 +829,13 @@ export function PlayMode({
             onArrowDrawn={previewLine ? undefined : handleArrowDrawn}
             onArrowRightClick={previewLine ? undefined : handleArrowDrawn}
           />
-          {promo && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'rgba(16,24,40,0.55)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 5,
-              }}
-            >
-              <div style={{ ...card, padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>Promote to</span>
-                {PROMO_PIECES.map((p) => (
-                  <button
-                    key={p}
-                    aria-label={`promote-${p}`}
-                    onClick={() => applyMove(promo.from, promo.to, p)}
-                    style={{
-                      fontSize: 30,
-                      lineHeight: 1,
-                      width: 44,
-                      height: 44,
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      background: 'var(--card)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {PROMO_GLYPH[turn][p]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <PlayPromotionOverlay
+            promo={promo}
+            turn={turn}
+            onPromote={(piece) => {
+              if (promo) applyMove(promo.from, promo.to, piece);
+            }}
+          />
         </div>
 
         <PlayTurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />

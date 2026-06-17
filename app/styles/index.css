@@ -386,6 +386,42 @@ select {
   margin-left: auto;
 }
 
+.play-promotion-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 24, 40, 0.55);
+}
+
+.play-promotion-overlay__panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--panel-shadow);
+}
+
+.play-promotion-overlay__label {
+  margin-right: 2px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.play-promotion-overlay__piece {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--card);
+  font-size: 30px;
+  line-height: 1;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
