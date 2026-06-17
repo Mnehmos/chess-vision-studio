@@ -422,6 +422,29 @@ select {
   line-height: 1;
 }
 
+.play-mode-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 8px 2px 0;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.play-mode-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.play-mode-legend__swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {

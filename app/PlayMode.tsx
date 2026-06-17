@@ -18,7 +18,6 @@ import {
 } from './cvs-engine-client';
 import { TeachingLog, whiteEvalText, whiteEvalCp, hangingNote, type CoachTurn } from './TeachingLog';
 import { computeLedMap, type ModeId } from '../engine/led';
-import { MODES, LED_CSS } from './modes';
 import { selectionArrows, lineArrows } from './annotate';
 import { AnnotationLegend } from './AnnotationLegend';
 import { analyzeMoveLive } from '../engine/analyze';
@@ -46,6 +45,7 @@ import { PlayCommentaryPanel } from './PlayCommentaryPanel';
 import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
 import { PlayModeControls } from './PlayModeControls';
+import { PlayModeLegend } from './PlayModeLegend';
 import { PlayOpponentControls } from './PlayOpponentControls';
 import { PlayPromotionOverlay } from './PlayPromotionOverlay';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
@@ -840,25 +840,7 @@ export function PlayMode({
 
         <PlayTurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />
 
-        <div
-          style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', margin: '8px 2px 0', fontSize: 12, color: 'var(--text-soft)' }}
-        >
-          {(MODES.find((m) => m.id === mode)?.legend ?? []).map((l) => (
-            <span key={l.color + l.meaning} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span
-                style={{
-                  width: 11,
-                  height: 11,
-                  borderRadius: 3,
-                  background: LED_CSS[l.color],
-                  border: '1px solid rgba(0,0,0,0.12)',
-                  display: 'inline-block',
-                }}
-              />
-              {l.meaning}
-            </span>
-          ))}
-        </div>
+        <PlayModeLegend mode={mode} />
         <AnnotationLegend
           showThreats={showThreats}
           setShowThreats={setShowThreats}
