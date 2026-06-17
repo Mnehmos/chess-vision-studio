@@ -45,6 +45,7 @@ import { PlayBoardHeader } from './PlayBoardHeader';
 import { PlayCommentaryPanel } from './PlayCommentaryPanel';
 import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
+import { PlayModeControls } from './PlayModeControls';
 import { PlayOpponentControls } from './PlayOpponentControls';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
@@ -808,31 +809,13 @@ export function PlayMode({
           onPlayerSideChange={choosePlayerSide}
         />
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center', width: '100%' }}>
-          {MODES.map((m) => {
-            const disabled = !!m.needsAnalysis && !lastAnalysis;
-            return (
-              <button
-                key={m.id}
-                disabled={disabled}
-                onClick={() => setMode(m.id)}
-                title={disabled ? 'Make a move with the engine loaded to populate this' : undefined}
-                style={m.id === mode ? modeBtnActive : disabled ? modeBtnDisabled : modeBtn}
-              >
-                {m.label}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setHideOverlays(!hideOverlays)}
-            style={{
-              ...(hideOverlays ? modeBtnActive : modeBtn),
-              marginLeft: 'auto',
-            }}
-          >
-            {hideOverlays ? 'Show Overlays' : 'Hide Overlays'}
-          </button>
-        </div>
+        <PlayModeControls
+          mode={mode}
+          hasAnalysis={!!lastAnalysis}
+          hideOverlays={hideOverlays}
+          onModeChange={setMode}
+          onHideOverlaysChange={setHideOverlays}
+        />
 
         <PlayTurnPlate color={topSide} active={!status.over && turn === topSide} />
 
@@ -1186,25 +1169,4 @@ const primaryBtn: CSSProperties = {
   background: 'var(--accent-light)',
   color: '#fff',
   cursor: 'pointer',
-};
-const modeBtn: CSSProperties = {
-  fontSize: 12,
-  padding: '5px 9px',
-  borderRadius: 7,
-  border: '1px solid var(--border)',
-  background: 'var(--card)',
-  color: 'var(--text)',
-  cursor: 'pointer',
-};
-const modeBtnActive: CSSProperties = {
-  ...modeBtn,
-  border: '1px solid var(--accent)',
-  background: 'rgba(184,115,51,0.18)',
-  color: 'var(--accent-light)',
-  fontWeight: 600,
-};
-const modeBtnDisabled: CSSProperties = {
-  ...modeBtn,
-  opacity: 0.45,
-  cursor: 'not-allowed',
 };

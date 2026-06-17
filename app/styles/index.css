@@ -378,6 +378,14 @@ select {
   font-size: 11px;
 }
 
+.play-mode-controls {
+  width: 100%;
+}
+
+.play-mode-controls__overlay-toggle {
+  margin-left: auto;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
