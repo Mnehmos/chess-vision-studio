@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../review-config';
 
 export type TrainingPhase = 'idle' | 'importing' | 'training' | 'done' | 'error' | 'stopped';
 
@@ -42,7 +43,7 @@ export function normalizeTrainingConfig(raw: TrainingStartConfig): Required<Trai
     datasetOut: raw.datasetOut?.trim() || 'arena/out/lichess-master-dataset.jsonl',
     weightsOut: raw.weightsOut?.trim() || 'arena/out/weights.json',
     reportOut: raw.reportOut?.trim() || 'arena/out/train-report.json',
-    depth: num(raw.depth, 10),
+    depth: num(raw.depth, DEFAULT_STOCKFISH_REVIEW_DEPTH),
     limit: num(raw.limit, 50),
     maxPlies: num(raw.maxPlies, 80),
     minElo: num(raw.minElo, 2200),

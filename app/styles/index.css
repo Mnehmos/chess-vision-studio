@@ -1197,6 +1197,292 @@ select {
   background: var(--muted);
 }
 
+.training-monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.training-monitor__card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--panel-shadow);
+}
+
+.training-monitor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.training-monitor__times,
+.training-monitor__log-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.training-monitor__actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.training-monitor__button {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.training-monitor__button--start {
+  border-color: #3b6fd4;
+  background: var(--accent);
+  color: #fff;
+}
+
+.training-monitor__button--stop {
+  border-color: #d92d20;
+  color: var(--bad);
+}
+
+.training-monitor__error {
+  margin-top: 10px;
+  color: var(--bad);
+  font-size: 13px;
+}
+
+.training-monitor__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.training-monitor__segment-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.training-monitor__path-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.training-monitor__param-grid,
+.training-monitor__metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.training-monitor__metric-grid {
+  margin-bottom: 14px;
+}
+
+.training-monitor__metric-grid--spaced {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.training-monitor__artifact-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.training-monitor__log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.training-monitor__log-title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.training-monitor__log-body {
+  min-height: 220px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 6px;
+  background: #0b1120;
+  color: #e4e7ec;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.training-monitor__field {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.training-monitor__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.training-monitor__input {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.training-monitor__segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.training-monitor__segment {
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 0;
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.training-monitor__segment + .training-monitor__segment {
+  border-left: 1px solid var(--border);
+}
+
+.training-monitor__segment.is-active {
+  background: var(--track);
+  color: var(--accent-light);
+  font-weight: 700;
+}
+
+.training-monitor__metric {
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.training-monitor__metric-title,
+.training-monitor__metric-sub {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.training-monitor__metric-title {
+  font-weight: 600;
+}
+
+.training-monitor__metric-value {
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 750;
+}
+
+.training-monitor__progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.training-monitor__progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--track);
+}
+
+.training-monitor__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.training-monitor__artifact {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.training-monitor__artifact-label {
+  color: var(--muted);
+}
+
+.training-monitor__artifact-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-monitor__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.training-monitor__phase--idle {
+  background: var(--track);
+  color: var(--text);
+}
+
+.training-monitor__phase--importing {
+  background: var(--track);
+  color: var(--accent-light);
+}
+
+.training-monitor__phase--training {
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--warn);
+}
+
+.training-monitor__phase--done {
+  background: rgba(74, 222, 128, 0.14);
+  color: var(--good);
+}
+
+.training-monitor__phase--error {
+  background: rgba(251, 113, 133, 0.14);
+  color: var(--bad);
+}
+
+.training-monitor__phase--stopped {
+  background: var(--track);
+  color: var(--text-soft);
+}
+
+.training-monitor__phase-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
 .mate-card {
   min-width: 300px;
   margin-top: 12px;

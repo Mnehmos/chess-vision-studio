@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { idleStatus, normalizeTrainingConfig, parseProgress, readTrainReport } from './training-state';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../review-config';
 
 describe('training supervisor state helpers', () => {
   it('normalizes default and caller-provided training config', () => {
@@ -12,7 +13,7 @@ describe('training supervisor state helpers', () => {
       datasetOut: 'arena/out/lichess-master-dataset.jsonl',
       weightsOut: 'arena/out/weights.json',
       reportOut: 'arena/out/train-report.json',
-      depth: 10,
+      depth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
       limit: 50,
       maxPlies: 80,
       minElo: 2200,
@@ -31,7 +32,7 @@ describe('training supervisor state helpers', () => {
     ).toMatchObject({
       mode: 'train-only',
       input: 'games.pgn',
-      depth: 10,
+      depth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
       limit: 7,
       sampleEvery: 1,
     });
