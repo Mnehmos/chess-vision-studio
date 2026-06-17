@@ -41,6 +41,7 @@ import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
+import { PlayBoardHeader } from './PlayBoardHeader';
 import { PlayCommentaryPanel } from './PlayCommentaryPanel';
 import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
@@ -787,25 +788,14 @@ export function PlayMode({
       >
         <div style={{ ...card, padding: 12, boxSizing: 'border-box', width: '100%', maxWidth: 480 }}>
         <div data-gif-crop="true">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 10 }}>
-          <strong data-testid="play-status" style={{ fontSize: 15, color: status.tone }}>
-            {status.text}
-          </strong>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button style={btn} onClick={undo} disabled={!history.length}>
-              Undo
-            </button>
-            <button style={btn} onClick={() => setFlipped((f) => !f)}>
-              Flip
-            </button>
-            <button style={btn} onClick={exportGameData} disabled={!history.length}>
-              Export
-            </button>
-            <button style={primaryBtn} onClick={newGame}>
-              New game
-            </button>
-          </div>
-        </div>
+        <PlayBoardHeader
+          status={status}
+          hasHistory={history.length > 0}
+          onUndo={undo}
+          onFlip={() => setFlipped((f) => !f)}
+          onExport={exportGameData}
+          onNewGame={newGame}
+        />
 
         {/* Engine opponent: play vs CVS or Stockfish, or leave off to play both sides. */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>

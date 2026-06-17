@@ -313,6 +313,34 @@ select {
   line-height: 1.3;
 }
 
+.play-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.play-board-header__status {
+  font-size: 15px;
+}
+
+.play-board-header__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.play-button {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.play-button--primary {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: #fff;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
