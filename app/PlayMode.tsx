@@ -35,7 +35,7 @@ import type {
 } from '../engine/teaching/types';
 import { buildTeachingNodes, type TeachingNode } from '../engine/teaching/node';
 import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
-import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove } from './arrow-analysis-store';
+import { useArrowAnalysis, type AlternativeLine } from './arrow-analysis-store';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
@@ -54,6 +54,12 @@ import {
 } from './play-mode-helpers';
 import { buildPlayModeExportPayload, type PlayOpponent } from './play-mode-export';
 import { isHumanTurn, moveHistoryRows, playStatus, sideToMove } from './play-mode-state';
+import {
+  applyReviewAnalysis,
+  buildReviewMoment,
+  predictionBreakInsight,
+  type ReviewMoment,
+} from './play-mode-review';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // Engine-opponent search depth (Stockfish; CVS uses its configured depth) and a
@@ -68,23 +74,6 @@ const PROMO_GLYPH: Record<string, Record<string, string>> = {
   w: { q: '♕', r: '♖', n: '♘', b: '♗' },
   b: { q: '♛', r: '♜', n: '♞', b: '♝' },
 };
-export interface ReviewMoment {
-  id: string;
-  ply: number;
-  fenBefore: string;
-  playedMove: string;
-  playedMoveSan: string;
-  predictedLine: {
-    moves: AlternativeLineMove[];
-    scoreCp: number;
-    mate: number | null;
-    pv: string[];
-  };
-  insight: string;
-  playedScore?: number;
-  playedMate?: number | null;
-}
-
 export function PlayMode({
   engine,
   engineReady = false,
@@ -155,22 +144,15 @@ export function PlayMode({
     brokenAlt: AlternativeLine,
     fenBefore: string
   ) => {
-    const ply = history.length;
-    const momentId = `rev-${Date.now()}-${playedMoveUci}`;
-    const newMoment: ReviewMoment = {
-      id: momentId,
-      ply,
-      fenBefore,
-      playedMove: playedMoveUci,
+    const newMoment = buildReviewMoment({
+      ply: history.length,
+      playedMoveUci,
       playedMoveSan,
-      predictedLine: {
-        moves: [...brokenAlt.moves],
-        scoreCp: brokenAlt.scoreCp,
-        mate: brokenAlt.mate,
-        pv: [...brokenAlt.pv],
-      },
-      insight: `Analyzing break at ply ${ply + 1}...`,
-    };
+      brokenAlt,
+      fenBefore,
+      nowMs: Date.now(),
+    });
+    const momentId = newMoment.id;
 
     setReviewMoments((prev) => [...prev, newMoment]);
 
@@ -182,31 +164,16 @@ export function PlayMode({
       : analyzeWithCvsEngine(fenBefore, depth, playedMoveUci);
 
     analyzePromise.then((res) => {
-      const mover = new Chess(fenBefore).turn() === 'w' ? 1 : -1;
-      const playedScore = res.scoreCp;
-      const predictedScore = brokenAlt.scoreCp;
-      const diff = (playedScore - predictedScore) * mover / 100;
-
-      let insightText = '';
-
-      const firstPredSan = brokenAlt.moves[0]?.san || playedMoveSan;
-
-      if (diff < -1.5) {
-        insightText = `Blunder! You played ${playedMoveSan} but predicted ${firstPredSan}. This dropped the evaluation by ${Math.abs(diff).toFixed(2)} pawns.`;
-      } else if (diff < -0.5) {
-        insightText = `Mistake. Played ${playedMoveSan} instead of predicted ${firstPredSan}, losing ${Math.abs(diff).toFixed(2)} pawns.`;
-      } else if (diff > 0.5) {
-        insightText = `Nice find! Played ${playedMoveSan} is better than predicted ${firstPredSan} by ${diff.toFixed(2)} pawns.`;
-      } else {
-        insightText = `Played ${playedMoveSan} is comparable to your predicted ${firstPredSan} (diff: ${diff.toFixed(2)} pawns).`;
-      }
+      const insightText = predictionBreakInsight({
+        fenBefore,
+        playedMoveSan,
+        predictedMoveSan: brokenAlt.moves[0]?.san || playedMoveSan,
+        playedScore: res.scoreCp,
+        predictedScore: brokenAlt.scoreCp,
+      });
 
       setReviewMoments((prev) => {
-        const updated = prev.map((m) =>
-          m.id === momentId
-            ? { ...m, insight: insightText, playedScore: res.scoreCp, playedMate: res.mate }
-            : m
-        );
+        const updated = applyReviewAnalysis(prev, momentId, res, insightText);
 
         setTimeout(() => {
           downloadJson(
