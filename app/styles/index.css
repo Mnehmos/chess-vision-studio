@@ -1046,6 +1046,25 @@ select {
   font-weight: 700;
 }
 
+.analytics-brief-note {
+  padding-left: 9px;
+  border-left: 3px solid var(--border);
+}
+
+.analytics-brief-note__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.analytics-brief-note__copy {
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .analytics-coach-brief__headline {
   margin: 6px 0 8px;
   font-size: 18px;
@@ -1229,6 +1248,62 @@ select {
   font-size: 12px;
 }
 
+.analytics-theme-occurrences__classification {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.analytics-teaching-themes__action {
+  padding-inline: 12px;
+}
+
+.analytics-teaching-themes__status {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-teaching-themes__status--success {
+  color: var(--good);
+}
+
+.analytics-teaching-examples {
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+.analytics-teaching-examples__item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-teaching-examples__button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+
+.analytics-teaching-examples__button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.analytics-teaching-examples__squares {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.analytics-teaching-examples__meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .analytics-moments {
   margin-top: 14px;
 }
@@ -1254,6 +1329,20 @@ select {
   gap: 10px;
 }
 
+.analytics-moment-card__classification {
+  margin-top: 5px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.analytics-moment-card__badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--track);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .analytics-moment-card__copy {
   min-height: 54px;
   margin: 10px 0 12px;
@@ -1270,6 +1359,65 @@ select {
 
 .analytics-data-title {
   margin: 0 0 7px;
+}
+
+.analytics-side-card__title {
+  margin: 0 0 4px;
+}
+
+.analytics-side-card__meta {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-side-card__distribution {
+  display: flex;
+  height: 12px;
+  overflow: hidden;
+  margin-bottom: 6px;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.analytics-side-card__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.analytics-mistake-column__title {
+  margin: 0 0 7px;
+}
+
+.analytics-mistake-column__empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-mistake-column__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.analytics-mistake-column__item {
+  margin-bottom: 4px;
+}
+
+.analytics-mistake-column__move {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.analytics-mistake-column__move:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .analytics-data-empty {

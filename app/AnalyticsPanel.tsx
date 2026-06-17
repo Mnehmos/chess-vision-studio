@@ -390,11 +390,8 @@ function RecurringThemes({
                 {occurrence.event.squares.length ? ` (${occurrence.event.squares.join(', ')})` : ''}
               </span>
               <span
-                style={{
-                  color: CLASS_COLOR[occurrence.classification],
-                  fontSize: 11,
-                  whiteSpace: 'nowrap',
-                }}
+                className="analytics-theme-occurrences__classification"
+                style={{ color: CLASS_COLOR[occurrence.classification] }}
               >
                 {occurrence.classification} -{occurrence.cpLoss.toFixed(1)}
               </span>
@@ -463,25 +460,15 @@ function MomentCard({
         <div>
           <Eyebrow>Move {analysis.move}</Eyebrow>
           <div
-            style={{
-              marginTop: 5,
-              fontWeight: 800,
-              color: CLASS_COLOR[analysis.classification],
-              textTransform: 'capitalize',
-            }}
+            className="analytics-moment-card__classification"
+            style={{ color: CLASS_COLOR[analysis.classification] }}
           >
             {analysis.classification}
           </div>
         </div>
         <span
-          style={{
-            color: CLASS_COLOR[analysis.classification],
-            background: 'var(--track)',
-            borderRadius: 999,
-            padding: '4px 8px',
-            fontSize: 12,
-            whiteSpace: 'nowrap',
-          }}
+          className="analytics-moment-card__badge"
+          style={{ color: CLASS_COLOR[analysis.classification] }}
         >
           {analysis.mateProof
             ? `mate in ${analysis.mateProof.mateInMoves}`
@@ -681,21 +668,11 @@ function PanelCard({ className, children }: { className: string; children: React
 
 function BriefNote({ label, text, color }: { label: string; text: string; color: string }) {
   return (
-    <div style={{ borderLeft: `3px solid ${color}`, paddingLeft: 9 }}>
-      <div
-        style={{
-          color,
-          fontSize: 11,
-          fontWeight: 800,
-          textTransform: 'uppercase',
-          letterSpacing: '.06em',
-        }}
-      >
+    <div className="analytics-brief-note" style={{ borderLeftColor: color }}>
+      <div className="analytics-brief-note__label" style={{ color }}>
         {label}
       </div>
-      <div style={{ color: 'var(--text-soft)', fontSize: 12, lineHeight: 1.45, marginTop: 3 }}>
-        {text}
-      </div>
+      <div className="analytics-brief-note__copy">{text}</div>
     </div>
   );
 }
@@ -749,24 +726,15 @@ function ViewButton({
 function SideCard({ title, color, s }: { title: string; color: string; s: SideStats }) {
   const total = s.moves || 1;
   return (
-    <div>
-      <h4 style={{ margin: '0 0 4px' }}>
+    <div className="analytics-side-card">
+      <h4 className="analytics-side-card__title">
         <span style={{ color }}>{title}</span>{' '}
         <span style={{ color: accColor(s.accuracy) }}>{s.accuracy.toFixed(0)}%</span>
       </h4>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 7 }}>
+      <div className="analytics-side-card__meta">
         {s.moves} moves, average loss {s.avgCpLoss.toFixed(2)}
       </div>
-      <div
-        style={{
-          display: 'flex',
-          height: 12,
-          borderRadius: 3,
-          overflow: 'hidden',
-          marginBottom: 6,
-          background: 'var(--track)',
-        }}
-      >
+      <div className="analytics-side-card__distribution">
         {CLASS_ORDER.map((classification) => {
           const width = (s.byClass[classification] / total) * 100;
           return width > 0 ? (
@@ -778,7 +746,7 @@ function SideCard({ title, color, s }: { title: string; color: string; s: SideSt
           ) : null;
         })}
       </div>
-      <div style={{ fontSize: 12, display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+      <div className="analytics-side-card__legend">
         {CLASS_ORDER.filter((classification) => s.byClass[classification] > 0).map(
           (classification) => (
             <span key={classification} style={{ color: CLASS_COLOR[classification] }}>
@@ -803,28 +771,23 @@ function MistakeColumn({
   onJump: (ply: number) => void;
 }) {
   return (
-    <div>
-      <h4 style={{ margin: '0 0 7px', color }}>{title}</h4>
+    <div className="analytics-mistake-column">
+      <h4 className="analytics-mistake-column__title" style={{ color }}>
+        {title}
+      </h4>
       {moves.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No losses above half a pawn.</div>
+        <div className="analytics-mistake-column__empty">No losses above half a pawn.</div>
       ) : (
-        <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+        <ol className="analytics-mistake-column__list">
           {moves.map((move) => (
-            <li key={move.ply} style={{ marginBottom: 4 }}>
-              <button
-                onClick={() => onJump(move.ply)}
-                style={{
-                  border: 0,
-                  padding: 0,
-                  background: 'transparent',
-                  color: 'var(--text)',
-                  textDecoration: 'underline',
-                  fontSize: 13,
-                }}
-              >
+            <li key={move.ply} className="analytics-mistake-column__item">
+              <button className="analytics-mistake-column__move" onClick={() => onJump(move.ply)}>
                 {move.move}
               </button>{' '}
-              <span style={{ color: CLASS_COLOR[move.classification] }}>
+              <span
+                className="analytics-mistake-column__classification"
+                style={{ color: CLASS_COLOR[move.classification] }}
+              >
                 {move.classification} (
                 {move.mateIn ? `mate in ${move.mateIn}` : `-${move.cpLoss.toFixed(1)}`})
               </span>
@@ -1067,18 +1030,10 @@ function TeachingThemes({
 
   return (
     <PanelCard className="cvs-review-full">
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
+      <div className="analytics-themes__header">
         <div>
           <Eyebrow>Teaching themes</Eyebrow>
-          <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 3 }}>
+          <div className="analytics-themes__subtitle">
             Validated teaching topics across every analyzed game in your library, from the engine
             facts.
           </div>
@@ -1086,16 +1041,7 @@ function TeachingThemes({
         <button
           onClick={onCompute}
           disabled={running}
-          style={{
-            border: '1px solid var(--accent)',
-            background: running ? 'var(--card)' : 'rgba(184,115,51,.18)',
-            color: 'var(--accent-light)',
-            borderRadius: 8,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: running ? 'default' : 'pointer',
-          }}
+          className="analytics-action analytics-action--accent analytics-teaching-themes__action"
         >
           {running
             ? `Analyzing… game ${job?.done ?? 0}/${job?.total ?? 0}`
@@ -1106,21 +1052,21 @@ function TeachingThemes({
       </div>
 
       {!profile && !running && (
-        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 10 }}>
+        <div className="analytics-teaching-themes__status">
           Surface validated topics (allowed forks, missed material, pins, failed defenses, pawn
           damage) across every analyzed game in your library.
         </div>
       )}
 
       {profile && topics.length === 0 && !running && (
-        <div style={{ color: 'var(--good)', fontSize: 13, marginTop: 10 }}>
+        <div className="analytics-teaching-themes__status analytics-teaching-themes__status--success">
           No teaching topics detected across your analyzed games.
         </div>
       )}
 
       {profile && topics.length > 0 && (
         <>
-          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 11 }}>
+          <div className="analytics-themes__chips">
             {topics.map((t) => {
               const isActive = t === active;
               return (
@@ -1128,72 +1074,41 @@ function TeachingThemes({
                   key={t}
                   aria-pressed={isActive}
                   onClick={() => setSelected(t)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    padding: '6px 8px 6px 10px',
-                    borderRadius: 999,
-                    border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
-                    background: isActive ? 'rgba(184,115,51,.18)' : 'var(--card)',
-                    color: isActive ? 'var(--accent-light)' : 'var(--text-soft)',
-                    fontSize: 12,
-                    fontWeight: isActive ? 700 : 500,
-                  }}
+                  className={`analytics-theme-chip${isActive ? ' is-active' : ''}`}
                 >
                   {TOPIC_REGISTRY[t].displayName}
-                  <span
-                    style={{
-                      minWidth: 20,
-                      padding: '1px 5px',
-                      borderRadius: 999,
-                      background: isActive ? 'var(--accent)' : 'var(--track)',
-                      color: isActive ? '#fff' : 'var(--muted)',
-                      fontSize: 10,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {profile.byTopic[t]?.count ?? 0}
-                  </span>
+                  <span className="analytics-theme-chip__count">{profile.byTopic[t]?.count ?? 0}</span>
                 </button>
               );
             })}
           </div>
           {active && stats && (
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontWeight: 800 }}>{TOPIC_REGISTRY[active].displayName}</div>
-              <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>
+            <div className="analytics-theme-detail">
+              <div className="analytics-theme-detail__title">{TOPIC_REGISTRY[active].displayName}</div>
+              <div className="analytics-theme-detail__copy">
                 {stats.count}× · avg loss {stats.avgCpLoss.toFixed(1)} · phases {stats.byPhase.opening}
                 /{stats.byPhase.middlegame}/{stats.byPhase.endgame}
                 {stats.topSquares.length ? ` · common squares ${stats.topSquares.join(', ')}` : ''}
               </div>
-              <ol style={{ margin: '10px 0 0', paddingLeft: 22 }}>
+              <ol className="analytics-teaching-examples">
                 {stats.examples.map((ex, i) => (
                   <li
                     key={`${ex.gameKey}-${ex.ply}-${i}`}
-                    style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}
+                    className="analytics-teaching-examples__item"
                   >
                     <button
                       onClick={() => onJump(ex.gameKey, ex.ply)}
-                      style={{
-                        border: 0,
-                        background: 'transparent',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        padding: 0,
-                        color: 'var(--text)',
-                        fontSize: 13,
-                      }}
+                      className="analytics-teaching-examples__button"
                     >
                       {ex.headline}
                       {ex.squares.length ? (
-                        <span style={{ color: 'var(--muted)', fontFamily: 'var(--mono)', fontSize: 11 }}>
+                        <span className="analytics-teaching-examples__squares">
                           {' '}
                           {ex.squares.join(',')}
                         </span>
                       ) : null}
                       {gameLabelOf ? (
-                        <span style={{ display: 'block', color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>
+                        <span className="analytics-teaching-examples__meta">
                           {gameLabelOf(ex.gameKey)} · move {Math.floor((ex.ply + 1) / 2)}
                         </span>
                       ) : null}
