@@ -16,6 +16,8 @@ export function VariationPreviewPanel({
   previewLine,
   previewPositions,
   gifJob,
+  firstLabel = 'Ref',
+  lastLabel = 'End',
   onStep,
   onSave,
   onExportGif,
@@ -24,6 +26,8 @@ export function VariationPreviewPanel({
   previewLine: VariationPreviewLineState;
   previewPositions: VariationPreviewPosition[];
   gifJob: VariationPreviewGifJob;
+  firstLabel?: string;
+  lastLabel?: string;
   onStep: (index: number) => void;
   onSave: () => void;
   onExportGif: () => void;
@@ -64,7 +68,7 @@ export function VariationPreviewPanel({
           onClick={() => onStep(0)}
           disabled={atStart}
         >
-          Ref
+          {firstLabel}
         </button>
         <button
           className="play-button variation-preview-panel__nav"
@@ -85,7 +89,7 @@ export function VariationPreviewPanel({
           onClick={() => onStep(previewPositions.length - 1)}
           disabled={atEnd}
         >
-          End
+          {lastLabel}
         </button>
 
         <button
