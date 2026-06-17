@@ -40,8 +40,10 @@ import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
+import { PlayBoardHelp } from './PlayBoardHelp';
 import { PlayBoardHeader } from './PlayBoardHeader';
 import { PlayCommentaryPanel } from './PlayCommentaryPanel';
+import { PlayDebugOverlay } from './PlayDebugOverlay';
 import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
 import { PlayModeControls } from './PlayModeControls';
@@ -855,12 +857,7 @@ export function PlayMode({
           hideOverlays={hideOverlays}
           setHideOverlays={setHideOverlays}
         />
-        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 2px 0' }}>
-          Drag a piece or click from → to. Only legal moves are allowed.
-          <label style={{ marginLeft: 10, cursor: 'pointer' }} title="dev overlay: artifact identity + eval status">
-            <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} /> debug
-          </label>
-        </p>
+        <PlayBoardHelp debug={debug} onDebugChange={setDebug} />
 
         {previewLine && (
           <div
@@ -1054,39 +1051,16 @@ export function PlayMode({
         <PlayMoveHistory rows={rows} />
 
         {debug && (
-          <div
-            data-testid="debug-overlay"
-            style={{
-              ...card,
-              padding: 10,
-              fontSize: 11,
-              fontFamily: 'ui-monospace, monospace',
-              color: 'var(--text-soft)',
-              wordBreak: 'break-all',
-              lineHeight: 1.5,
-            }}
-          >
-            <strong style={{ color: 'var(--text)' }}>debug</strong>
-            <div>ply: {history.length} · sideToMove: {turn}</div>
-            <div>selected: {selected ?? '—'} · focused: {focused ? focused.squares.join(',') : '—'}</div>
-            <div>fen: {fen}</div>
-            <div>analysis.positionId: {lastAnalysis?.positionId ?? '—'}</div>
-            <div>
-              positionAfter===fen: {lastAnalysis ? String(lastAnalysis.positionAfter === fen) : '—'} · live:{' '}
-              {liveAnalysis ? 'yes' : 'no'}
-            </div>
-            <div>
-              class: {lastAnalysis?.classification ?? '—'} · cpLoss:{' '}
-              {lastAnalysis ? lastAnalysis.cpLoss.toFixed(2) : '—'}
-            </div>
-            <div>
-              evalBefore: {lastAnalysis?.evalBefore.status ?? (lastAnalysis ? 'ok' : '—')}
-              {lastAnalysis?.evalBefore.reason ? ` (${lastAnalysis.evalBefore.reason})` : ''} · evalAfter:{' '}
-              {lastAnalysis?.evalAfter.status ?? (lastAnalysis ? 'ok' : '—')}
-              {lastAnalysis?.evalAfter.reason ? ` (${lastAnalysis.evalAfter.reason})` : ''}
-            </div>
-            <div>teaching events: {teachingNodes ? teachingNodes.length : '—'}</div>
-          </div>
+          <PlayDebugOverlay
+            ply={history.length}
+            turn={turn}
+            selected={selected}
+            focused={focused}
+            fen={fen}
+            lastAnalysis={lastAnalysis}
+            liveAnalysis={liveAnalysis}
+            teachingNodes={teachingNodes}
+          />
         )}
         </div>
       </div>
