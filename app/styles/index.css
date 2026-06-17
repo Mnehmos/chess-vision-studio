@@ -106,6 +106,142 @@ select {
   }
 }
 
+@keyframes csvPulse {
+  0% {
+    r: 6;
+    opacity: 1;
+  }
+
+  100% {
+    r: 18;
+    opacity: 0;
+  }
+}
+
+.board2d {
+  position: relative;
+  width: calc(var(--cvs-sq) * 8);
+  max-width: 100%;
+}
+
+.board2d__grid {
+  display: grid;
+  width: calc(var(--cvs-sq) * 8);
+  grid-template-columns: repeat(8, var(--cvs-sq));
+  grid-template-rows: repeat(8, var(--cvs-sq));
+  border: 2px solid #333;
+  user-select: none;
+  touch-action: none;
+}
+
+.board2d__square {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-size: calc(var(--cvs-sq) * 0.68);
+  cursor: pointer;
+}
+
+.board2d__legal-dot {
+  position: absolute;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  background: rgba(216, 138, 63, 0.85);
+  box-shadow: 0 0 7px 1px rgba(216, 138, 63, 0.7);
+  pointer-events: none;
+}
+
+.board2d__legal-dot.is-capture {
+  width: 92%;
+  height: 92%;
+  border: 4px solid rgba(216, 138, 63, 0.95);
+  background: transparent;
+}
+
+.board2d__led {
+  position: absolute;
+  inset: 0;
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.board2d__led.is-blinking {
+  animation: csvBlink 0.8s steps(2, start) infinite;
+}
+
+.board2d__coord {
+  position: absolute;
+  color: #333;
+  font-size: 10px;
+}
+
+.board2d__coord--rank {
+  top: 1px;
+  left: 2px;
+}
+
+.board2d__coord--file {
+  right: 2px;
+  bottom: 0;
+}
+
+.board2d__piece {
+  position: relative;
+  cursor: pointer;
+}
+
+.board2d__piece.is-draggable {
+  cursor: grab;
+}
+
+.board2d__promotion {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  width: var(--cvs-sq);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border, #444);
+  border-radius: 4px;
+  background: var(--card, #2a2a2a);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.board2d__promotion-piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: calc(var(--cvs-sq) * 0.8);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: calc(var(--cvs-sq) * 0.55);
+}
+
+.board-arrows {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.board-arrows__delete-target {
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.board-arrows__pulse {
+  animation: csvPulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.board-arrows__label {
+  pointer-events: none;
+}
+
 .led-color--green {
   --led-color: #3fbf5f;
   background: var(--led-color);

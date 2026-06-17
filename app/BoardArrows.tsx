@@ -55,14 +55,8 @@ export function BoardArrows({
       height="100%"
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
+      className="board-arrows"
     >
-      <style>{`
-        @keyframes csvPulse {
-          0% { r: 6; opacity: 1; }
-          100% { r: 18; opacity: 0; }
-        }
-      `}</style>
       <defs>
         {colors.map((c) => (
           <marker
@@ -142,7 +136,7 @@ export function BoardArrows({
                 y2={y2}
                 stroke="transparent"
                 strokeWidth={14}
-                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                className="board-arrows__delete-target"
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -158,8 +152,8 @@ export function BoardArrows({
                 fill="none"
                 stroke={a.color}
                 strokeWidth={2}
+                className="board-arrows__pulse"
                 style={{
-                  animation: 'csvPulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite',
                   transformOrigin: `${x2}px ${y2}px`,
                 }}
               />
@@ -189,7 +183,7 @@ export function BoardArrows({
                     fontSize="9"
                     fontWeight="700"
                     fill="#fff"
-                    style={{ pointerEvents: 'none' }}
+                    className="board-arrows__label"
                   >
                     {a.label}
                   </text>

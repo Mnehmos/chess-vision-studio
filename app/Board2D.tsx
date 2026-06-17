@@ -6,7 +6,7 @@ import { parseFen } from '../engine/board';
 import type { LedMap, Square } from '../engine/types';
 import { LED_CSS } from './modes';
 import { BoardArrows, type Arrow } from './BoardArrows';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 const GLYPH: Record<string, string> = {
   wP: '♙',
@@ -159,18 +159,12 @@ export function Board2D({
     promoColor = board.grid[fromF]?.[fromR]?.color ?? 'w';
   }
 
-  const promoStyle: React.CSSProperties = {
-    position: 'absolute',
+  const boardStyle = {
+    ['--cvs-sq' as string]: squareSizeCss ?? 'clamp(34px, calc((100vw - 40px) / 8), 56px)',
+  } as CSSProperties;
+
+  const promoStyle: CSSProperties = {
     left: `calc(var(--cvs-sq) * ${promoCol})`,
-    width: 'var(--cvs-sq)',
-    zIndex: 100,
-    display: 'flex',
-    flexDirection: 'column',
-    background: 'var(--card, #2a2a2a)',
-    border: '1px solid var(--border, #444)',
-    borderRadius: '4px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-    overflow: 'hidden',
   };
   if (promoRow > 4) {
     promoStyle.bottom = `calc(var(--cvs-sq) * ${7 - promoRow})`;
@@ -179,32 +173,13 @@ export function Board2D({
   }
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        // Responsive square size: caps at 56px on desktop, shrinks to fit
-        // narrow/phone viewports (single-column layout below 820px). All
-        // square-relative sizing reads from this one variable.
-        ['--cvs-sq' as string]:
-          squareSizeCss ?? 'clamp(34px, calc((100vw - 40px) / 8), 56px)',
-        width: 'calc(var(--cvs-sq) * 8)',
-        maxWidth: '100%',
-      }}
-    >
+    <div className="board2d" style={boardStyle}>
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onContextMenu={handleContextMenu}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(8, var(--cvs-sq))',
-          gridTemplateRows: 'repeat(8, var(--cvs-sq))',
-          border: '2px solid #333',
-          width: 'calc(var(--cvs-sq) * 8)',
-          userSelect: 'none',
-          touchAction: 'none',
-        }}
+        className="board2d__grid"
       >
       {ranks.map((r) =>
         files.map((f) => {
@@ -231,51 +206,31 @@ export function Board2D({
                   : undefined
               }
               style={{
-                position: 'relative',
                 background: base,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 'calc(var(--cvs-sq) * 0.68)',
-                cursor: 'pointer',
                 color: piece?.color === 'w' ? '#fff' : '#111',
                 textShadow: piece?.color === 'w' ? '0 0 2px #000' : 'none',
                 boxShadow: isSel ? 'inset 0 0 0 3px #16a' : undefined,
               }}
+              className="board2d__square"
             >
               {legalDots?.includes(sq) && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    width: piece ? '92%' : '42%',
-                    height: piece ? '92%' : '42%',
-                    borderRadius: '50%',
-                    border: piece ? '4px solid rgba(216,138,63,0.95)' : 'none',
-                    background: piece ? 'transparent' : 'rgba(216,138,63,0.85)',
-                    boxShadow: '0 0 7px 1px rgba(216,138,63,0.7)',
-                    pointerEvents: 'none',
-                  }}
-                />
+                <span className={`board2d__legal-dot${piece ? ' is-capture' : ''}`} />
               )}
               {led !== 'off' && (
                 <span
+                  className={`board2d__led${led === 'red_blink' ? ' is-blinking' : ''}`}
                   style={{
-                    position: 'absolute',
-                    inset: 0,
                     background: LED_CSS[led],
-                    opacity: 0.42,
-                    animation: led === 'red_blink' ? 'csvBlink 0.8s steps(2, start) infinite' : undefined,
-                    pointerEvents: 'none',
                   }}
                 />
               )}
               {f === leftFile && (
-                <span style={{ position: 'absolute', left: 2, top: 1, fontSize: 10, color: '#333' }}>
+                <span className="board2d__coord board2d__coord--rank">
                   {r + 1}
                 </span>
               )}
               {r === bottomRank && (
-                <span style={{ position: 'absolute', right: 2, bottom: 0, fontSize: 10, color: '#333' }}>
+                <span className="board2d__coord board2d__coord--file">
                   {String.fromCharCode(97 + f)}
                 </span>
               )}
@@ -291,7 +246,7 @@ export function Board2D({
                         }
                       : undefined
                   }
-                  style={{ position: 'relative', cursor: dragOn ? 'grab' : 'pointer' }}
+                  className={`board2d__piece${dragOn ? ' is-draggable' : ''}`}
                 >
                   {GLYPH[piece.color + piece.type.toUpperCase()]}
                 </span>
@@ -302,7 +257,7 @@ export function Board2D({
       )}
       </div>
       {promotionPending && (
-        <div style={promoStyle}>
+        <div className="board2d__promotion" style={promoStyle}>
           {['q', 'r', 'b', 'n'].map((piece) => {
             const pieceCode = promoColor + piece.toUpperCase();
             return (
@@ -313,19 +268,10 @@ export function Board2D({
                   setPromotionPending(null);
                 }}
                 style={{
-                  width: '100%',
-                  height: 'calc(var(--cvs-sq) * 0.8)',
-                  background: 'none',
-                  border: 'none',
                   color: promoColor === 'w' ? '#fff' : '#111',
                   textShadow: promoColor === 'w' ? '0 0 2px #000' : 'none',
-                  fontSize: 'calc(var(--cvs-sq) * 0.55)',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                 }}
+                className="board2d__promotion-piece"
               >
                 {GLYPH[pieceCode]}
               </button>
