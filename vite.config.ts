@@ -6,6 +6,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createInterface, type Interface } from 'node:readline';
 import { cpus } from 'node:os';
 import type { TeachingFactsRequestV1 } from './engine/teaching/types';
+import { killProcessTree, npmCommand, readJsonBody, sendJson as json } from './arena/dev-server/http';
 
 /**
  * Dev-server OpenAI proxy. The key stays in .env (plain OPENAI_API_KEY, server-side)
@@ -17,11 +18,6 @@ function openaiProxy(env: Record<string, string>): Plugin {
   const key = env.OPENAI_API_KEY || '';
   const model = env.OPENAI_MODEL || 'gpt-5.5';
   const baseUrl = (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
-  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
-    res.statusCode = status;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(body));
-  };
   return {
     name: 'openai-proxy',
     configureServer(server) {
@@ -89,12 +85,6 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
   // staying 100% rust. Light use stays at one process; bulk fans out.
   const pools = new Map<string, CvsEngineProcess[]>();
   const POOL_SIZE = Math.max(2, Math.min(8, (cpus().length || 4) - 2));
-
-  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
-    res.statusCode = status;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(body));
-  };
 
   const dispose = () => {
     const procs = [...pools.values()].flat();
@@ -457,12 +447,6 @@ function stockfishProxy(env: Record<string, string>): Plugin {
   let poolKey = '';
   const POOL_SIZE = Math.max(1, Math.min(4, Number(env.CVS_SF_POOL ?? 1) || 1));
 
-  const json = (res: import('http').ServerResponse, status: number, body: unknown) => {
-    res.statusCode = status;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(body));
-  };
-
   const sfConfig = () => {
     const exe =
       env.CVS_SF_EXE?.trim() || 'F:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe';
@@ -697,11 +681,6 @@ function trainingSupervisor(): Plugin {
   } | null = null;
   let status: TrainingStatus = idleStatus();
 
-  const json = (res: import('http').ServerResponse, code: number, body: unknown) => {
-    res.statusCode = code;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(body));
-  };
   const broadcast = () => {
     const payload = `data: ${JSON.stringify(status)}\n\n`;
     for (const c of clients) c.write(payload);
@@ -827,10 +806,6 @@ function normalizeTrainingConfig(raw: TrainingStartConfig): Required<TrainingSta
     sampleEvery: Math.max(1, num(raw.sampleEvery, 1)),
     epochs: num(raw.epochs, 120),
   };
-}
-
-function npmCommand(): string {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 function runImport(
@@ -959,33 +934,6 @@ function readTrainReport(path: string, status: TrainingStatus): void {
   } catch {
     // Report is optional; stdout parsing still gives the monitor useful data.
   }
-}
-
-function killProcessTree(child: ChildProcessWithoutNullStreams | null): void {
-  if (!child || child.killed || child.exitCode !== null) return;
-  if (process.platform === 'win32' && child.pid) {
-    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
-  } else {
-    child.kill('SIGTERM');
-  }
-}
-
-function readJsonBody<T>(req: import('http').IncomingMessage): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (c) => {
-      body += c;
-      if (body.length > 1_000_000) reject(new Error('request body too large'));
-    });
-    req.on('end', () => {
-      try {
-        resolve(body ? (JSON.parse(body) as T) : ({} as T));
-      } catch (e) {
-        reject(e);
-      }
-    });
-    req.on('error', reject);
-  });
 }
 
 // Stockfish WASM needs cross-origin isolation (SharedArrayBuffer) in the browser.
