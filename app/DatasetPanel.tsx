@@ -1,7 +1,6 @@
-// Dataset view — OpeningTree-style aggregation over a full game export:
-// a position-keyed move explorer (W/D/L bars), the hero's record by color and
-// opening, and a score-over-time series. All structural (PGN-only), so it runs
-// instantly over hundreds of games.
+// Dataset view - OpeningTree-style aggregation over a full game export:
+// a position-keyed move explorer, hero record by color/opening, score over time,
+// and dataset-wide review summaries.
 import { useMemo, useState } from 'react';
 import type { ParsedGame } from '../engine/position';
 import { computeDataset, type Record4 } from '../engine/dataset';
@@ -12,19 +11,9 @@ import { DatasetAnalysisViz } from './DatasetAnalysisViz';
 const WIN = '#3fbf5f';
 const DRAW = '#b9b9b9';
 const LOSS = '#e2603b';
-// Move-explorer result colors (position-centric: white vs black score).
 const W_RES = '#7ba3d0';
 const D_RES = '#c4c4c4';
 const B_RES = '#4a4a4a';
-
-// Match the board view's card treatment.
-const card: React.CSSProperties = {
-  background: 'var(--card)',
-  border: '1px solid var(--border)',
-  borderRadius: 10,
-  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-  padding: 14,
-};
 
 export function DatasetPanel({
   games,
@@ -47,14 +36,13 @@ export function DatasetPanel({
     currentGame: string;
   };
   cache: AnalysisCache;
-  cacheVersion: number; // bump signal: `cache` is a stable ref, so memos key on this
+  cacheVersion: number;
   keyOf: (g: ParsedGame) => string;
   onAnalyzeAll: () => void;
   onOpenGame: (index: number) => void;
 }) {
   const ds = useMemo(() => computeDataset(games), [games]);
   const tree = useMemo(() => buildOpeningTree(games), [games]);
-  // Dataset-wide analysis points + time-of-day (recompute as the cache fills).
   const hero = ds.hero ?? null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const datasetAnalysis = useMemo(
@@ -72,95 +60,50 @@ export function DatasetPanel({
     ? Math.round((analysisProgress.done / analysisProgress.total) * 100)
     : 0;
   const disabled = !engineReady || analysisProgress.running;
+
   return (
-    <div>
-      <div style={{ marginBottom: 12 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 12,
-            minHeight: 34,
-          }}
-        >
-          <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+    <div className="dataset-panel">
+      <div className="dataset-panel__analyze">
+        <div className="dataset-panel__analyze-row">
+          <div className="dataset-panel__analyze-copy">
             {analysisProgress.running ? (
               <>
-                <strong style={{ color: 'var(--text)' }}>
+                <strong className="dataset-panel__strong">
                   Analyzing game {Math.min(analysisProgress.gamesDone + 1, analysisProgress.gamesTotal)}
                   /{analysisProgress.gamesTotal}
                 </strong>{' '}
-                · {analysisProgress.done.toLocaleString()}/{analysisProgress.total.toLocaleString()} moves · {pct}%
+                - {analysisProgress.done.toLocaleString()}/{analysisProgress.total.toLocaleString()} moves - {pct}%
                 {analysisProgress.currentGame && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--muted)',
-                      marginTop: 2,
-                      maxWidth: 520,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {analysisProgress.currentGame}
-                  </div>
+                  <div className="dataset-panel__current-game">{analysisProgress.currentGame}</div>
                 )}
               </>
             ) : (
               'Dataset analysis is cached per game once run.'
             )}
           </div>
-          <button
-            onClick={onAnalyzeAll}
-            disabled={disabled}
-            style={{
-              border: '1px solid var(--accent)',
-              background: !disabled ? 'var(--accent)' : 'var(--track)',
-              color: !disabled ? '#fff' : 'var(--muted)',
-              borderRadius: 4,
-              padding: '6px 10px',
-              fontSize: 13,
-              cursor: !disabled ? 'pointer' : 'not-allowed',
-              minWidth: 148,
-            }}
-          >
-            {analysisProgress.running ? `Analyzing… ${pct}%` : 'Analyze all games'}
+          <button className="dataset-panel__analyze-button" onClick={onAnalyzeAll} disabled={disabled}>
+            {analysisProgress.running ? `Analyzing... ${pct}%` : 'Analyze all games'}
           </button>
         </div>
         {analysisProgress.running && (
-          <div
-            style={{
-              height: 6,
-              background: 'var(--track)',
-              borderRadius: 3,
-              marginTop: 8,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${pct}%`,
-                background: 'var(--accent)',
-                transition: 'width 0.2s',
-              }}
-            />
+          <div className="dataset-panel__progress-track">
+            <div className="dataset-panel__progress-fill" style={{ width: `${pct}%` }} />
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        {/* Left column: the numbers */}
-        <div style={{ ...card, flex: '1 1 420px', minWidth: 360 }}>
-          <h3 style={{ margin: '0 0 8px' }}>
-            {ds.hero ? `${ds.hero} — ` : ''}
+
+      <div className="dataset-panel__main-grid">
+        <section className="dataset-panel__card dataset-panel__card--summary">
+          <h3 className="dataset-panel__headline">
+            {ds.hero ? `${ds.hero} - ` : ''}
             {ds.totalGames} games
           </h3>
 
           {ds.hero && <HeroRecord ds={ds} />}
 
-          <h4 style={{ margin: '16px 0 4px' }}>{ds.hero ? 'Your results across all games' : 'Results across all games'}</h4>
+          <h4 className="dataset-panel__section-title">
+            {ds.hero ? 'Your results across all games' : 'Results across all games'}
+          </h4>
           {ds.hero && ds.heroRecord ? (
             <>
               <StackedBar
@@ -189,48 +132,47 @@ export function DatasetPanel({
 
           {ds.hero && (
             <>
-              <h4 style={{ margin: '16px 0 4px' }}>Accuracy over time</h4>
+              <h4 className="dataset-panel__section-title">Accuracy over time</h4>
               <AccuracyChart perGame={datasetAnalysis.perGame} />
               <ResultStrip ds={ds} onOpenGame={onOpenGame} />
 
-              <h4 style={{ margin: '16px 0 4px' }}>Openings (your perspective)</h4>
+              <h4 className="dataset-panel__section-title">Openings (your perspective)</h4>
               <OpeningsTable ds={ds} />
             </>
           )}
-        </div>
+        </section>
 
-        {/* Right column: the move explorer */}
-        <div style={{ ...card, flex: '1 1 360px', minWidth: 320 }}>
+        <section className="dataset-panel__card dataset-panel__card--explorer">
           <MoveExplorer tree={tree} totalGames={ds.totalGames} />
-        </div>
+        </section>
       </div>
 
-      {/* Dataset-wide analysis points + the time-of-day breakdown. */}
-      <div style={{ marginTop: 20 }}>
+      <div className="dataset-panel__analysis">
         <DatasetAnalysisViz analysis={datasetAnalysis} onOpenGame={onOpenGame} />
       </div>
 
-      <div style={{ ...card, marginTop: 20 }}>
+      <section className="dataset-panel__card dataset-panel__games">
         <GamesList ds={ds} onOpenGame={onOpenGame} analyzedByIndex={analyzedByIndex} />
-      </div>
+      </section>
     </div>
   );
 }
 
-// ── hero record ──────────────────────────────────────────────────────────────
 function HeroRecord({ ds }: { ds: ReturnType<typeof computeDataset> }) {
   const r = ds.heroRecord;
   return (
-    <div>
-      <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>
-        {r.wins}<span style={{ color: WIN }}>W</span> · {r.draws}<span style={{ color: 'var(--muted)' }}>D</span> ·{' '}
-        {r.losses}<span style={{ color: LOSS }}>L</span>
-        <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--muted)', marginLeft: 10 }}>
-          {r.winPct.toFixed(0)}% win · {r.scorePct.toFixed(0)}% score
+    <div className="dataset-hero-record">
+      <div className="dataset-hero-record__score">
+        {r.wins}
+        <span className="dataset-hero-record__win">W</span> - {r.draws}
+        <span className="dataset-hero-record__draw">D</span> - {r.losses}
+        <span className="dataset-hero-record__loss">L</span>
+        <span className="dataset-hero-record__meta">
+          {r.winPct.toFixed(0)}% win - {r.scorePct.toFixed(0)}% score
         </span>
       </div>
       <RecordBar rec={r} />
-      <div style={{ display: 'flex', gap: 18, marginTop: 8, fontSize: 13 }}>
+      <div className="dataset-hero-record__color-grid">
         <ColorRecord title="as White" rec={ds.asWhite} />
         <ColorRecord title="as Black" rec={ds.asBlack} />
       </div>
@@ -240,8 +182,8 @@ function HeroRecord({ ds }: { ds: ReturnType<typeof computeDataset> }) {
 
 function ColorRecord({ title, rec }: { title: string; rec: Record4 }) {
   return (
-    <div style={{ flex: 1 }}>
-      <div style={{ color: 'var(--muted)', marginBottom: 2 }}>
+    <div className="dataset-color-record">
+      <div className="dataset-color-record__label">
         {title}: {rec.wins}-{rec.draws}-{rec.losses}
       </div>
       <RecordBar rec={rec} />
@@ -262,19 +204,16 @@ function RecordBar({ rec }: { rec: Record4 }) {
   );
 }
 
-// ── accuracy-over-time chart ─────────────────────────────────────────────────
-// Hero accuracy per analyzed game, chronological. Needs analysis data — the
-// chart itself nudges toward "Analyze all games" until there's enough.
 function AccuracyChart({ perGame }: { perGame: { ts: number | null; accuracy: number }[] }) {
   const W = 420;
   const H = 96;
   const PAD = 14;
   if (perGame.length < 3) {
     return (
-      <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+      <div className="dataset-panel__muted">
         {perGame.length === 0
-          ? 'No analyzed games yet — run “Analyze all games” to chart your accuracy over time.'
-          : `Only ${perGame.length} analyzed game${perGame.length === 1 ? '' : 's'} — analyze more to see the trend.`}
+          ? 'No analyzed games yet - run "Analyze all games" to chart your accuracy over time.'
+          : `Only ${perGame.length} analyzed game${perGame.length === 1 ? '' : 's'} - analyze more to see the trend.`}
       </div>
     );
   }
@@ -286,16 +225,16 @@ function AccuracyChart({ perGame }: { perGame: { ts: number | null; accuracy: nu
   const line = perGame.map((p, i) => `${x(i)},${y(p.accuracy)}`).join(' ');
   const y80 = y(80);
   return (
-    <svg width={W} height={H} style={{ display: 'block', background: 'var(--card2)', border: '1px solid var(--border)', borderRadius: 4, maxWidth: '100%' }}>
+    <svg width={W} height={H} className="dataset-accuracy-chart">
       {y80 > PAD && y80 < H - PAD && (
-        <line x1={PAD} y1={y80} x2={W - PAD} y2={y80} stroke="var(--border)" strokeDasharray="4 3" />
+        <line className="dataset-accuracy-chart__guide" x1={PAD} y1={y80} x2={W - PAD} y2={y80} />
       )}
-      <polyline points={line} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
+      <polyline className="dataset-accuracy-chart__line" points={line} />
       {perGame.map((p, i) => (
-        <circle key={i} cx={x(i)} cy={y(p.accuracy)} r={2.5} fill="var(--accent-light)" />
+        <circle key={i} className="dataset-accuracy-chart__dot" cx={x(i)} cy={y(p.accuracy)} r={2.5} />
       ))}
-      <text x={PAD} y={11} fontSize={10} fill="#9b9389">
-        accuracy per analyzed game · dashes = 80%
+      <text className="dataset-accuracy-chart__label" x={PAD} y={11}>
+        accuracy per analyzed game - dashes = 80%
       </text>
     </svg>
   );
@@ -309,16 +248,15 @@ function ResultStrip({
   onOpenGame: (i: number) => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, marginTop: 6 }}>
+    <div className="dataset-result-strip">
       {ds.timeline.map((t) => {
-        const c = t.heroScore === 1 ? WIN : t.heroScore === 0.5 ? DRAW : t.heroScore === 0 ? LOSS : 'var(--track)';
         const s = ds.summaries[t.index];
         return (
-          <div
+          <button
             key={t.index}
+            className={`dataset-result-strip__dot dataset-result-strip__dot--${resultTone(t.heroScore)}`}
             onClick={() => onOpenGame(t.index)}
-            title={`${s.white} vs ${s.black} · ${s.result}${s.date ? ` · ${s.date}` : ''}`}
-            style={{ width: 10, height: 10, background: c, borderRadius: 2, cursor: 'pointer' }}
+            title={`${s.white} vs ${s.black} - ${s.result}${s.date ? ` - ${s.date}` : ''}`}
           />
         );
       })}
@@ -326,19 +264,18 @@ function ResultStrip({
   );
 }
 
-// ── openings ────────────────────────────────────────────────────────────────
 function OpeningsTable({ ds }: { ds: ReturnType<typeof computeDataset> }) {
   const rows = ds.openings.slice(0, 8);
   return (
-    <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+    <table className="dataset-openings-table">
       <tbody>
         {rows.map((o) => (
           <tr key={o.name}>
-            <td style={{ padding: '2px 8px 2px 0', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={o.name}>
+            <td className="dataset-openings-table__name" title={o.name}>
               {o.name}
             </td>
-            <td style={{ padding: '2px 8px', color: 'var(--muted)', textAlign: 'right' }}>{o.games}</td>
-            <td style={{ padding: '2px 0', width: 120 }}>
+            <td className="dataset-openings-table__games">{o.games}</td>
+            <td className="dataset-openings-table__bar">
               <StackedBar
                 height={10}
                 segments={[
@@ -348,9 +285,7 @@ function OpeningsTable({ ds }: { ds: ReturnType<typeof computeDataset> }) {
                 ]}
               />
             </td>
-            <td style={{ padding: '2px 0 2px 8px', color: 'var(--muted)', textAlign: 'right', width: 44 }}>
-              {((o.score / o.games) * 100).toFixed(0)}%
-            </td>
+            <td className="dataset-openings-table__score">{((o.score / o.games) * 100).toFixed(0)}%</td>
           </tr>
         ))}
       </tbody>
@@ -358,7 +293,6 @@ function OpeningsTable({ ds }: { ds: ReturnType<typeof computeDataset> }) {
   );
 }
 
-// ── move explorer (OpeningTree) ──────────────────────────────────────────────
 function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeningTree>; totalGames: number }) {
   const [stack, setStack] = useState<{ san: string; fen: string }[]>([]);
   const currentFen = stack.length ? stack[stack.length - 1].fen : tree.rootFen;
@@ -367,46 +301,46 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 8px' }}>Move explorer</h3>
-      <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 6, minHeight: 20 }}>
+      <h3 className="dataset-panel__headline">Move explorer</h3>
+      <div className="dataset-move-explorer__path">
         {stack.length === 0 ? (
-          <span style={{ color: 'var(--muted)' }}>Start position — pick a move played in your games.</span>
+          <span className="dataset-panel__muted">Start position - pick a move played in your games.</span>
         ) : (
           <span>
             {stack.map((s, i) => (
               <span key={i}>
                 {i % 2 === 0 ? `${Math.floor(i / 2) + 1}.` : ''}
-                <span
+                <button
+                  className="dataset-move-explorer__crumb"
                   onClick={() => setStack(stack.slice(0, i + 1))}
-                  style={{ cursor: 'pointer', marginRight: 4, textDecoration: 'underline' }}
                 >
                   {s.san}
-                </span>
+                </button>
               </span>
             ))}
           </span>
         )}
       </div>
       {stack.length > 0 && (
-        <div style={{ marginBottom: 8, display: 'flex', gap: 6 }}>
-          <button onClick={() => setStack(stack.slice(0, -1))} style={smallBtn}>
-            ← Back
+        <div className="dataset-move-explorer__nav">
+          <button className="dataset-panel__small-button" onClick={() => setStack(stack.slice(0, -1))}>
+            Back
           </button>
-          <button onClick={() => setStack([])} style={smallBtn}>
-            ⟲ Start
+          <button className="dataset-panel__small-button" onClick={() => setStack([])}>
+            Start
           </button>
         </div>
       )}
 
       {moves.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>End of book — no further games from here.</div>
+        <div className="dataset-panel__muted">End of book - no further games from here.</div>
       ) : (
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+        <table className="dataset-move-table">
           <thead>
-            <tr style={{ color: 'var(--muted)', textAlign: 'left', fontSize: 11 }}>
-              <th style={{ padding: '0 6px 4px 0' }}>Move</th>
-              <th style={{ padding: '0 6px 4px' }}>Games</th>
-              <th style={{ padding: '0 0 4px' }}>Results</th>
+            <tr>
+              <th>Move</th>
+              <th>Games</th>
+              <th>Results</th>
             </tr>
           </thead>
           <tbody>
@@ -423,16 +357,16 @@ function MoveExplorer({ tree, totalGames }: { tree: ReturnType<typeof buildOpeni
 function MoveRow({ m, here, onPlay }: { m: MoveStat; here: number; onPlay: () => void }) {
   const pct = here ? ((m.games / here) * 100).toFixed(0) : '0';
   return (
-    <tr style={{ borderTop: '1px solid var(--border)' }}>
-      <td style={{ padding: '4px 6px 4px 0' }}>
-        <span onClick={onPlay} style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--accent)' }}>
+    <tr>
+      <td>
+        <button className="dataset-move-table__move" onClick={onPlay}>
           {m.san}
-        </span>
+        </button>
       </td>
-      <td style={{ padding: '4px 6px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-        {m.games} <span style={{ color: 'var(--muted)' }}>({pct}%)</span>
+      <td className="dataset-move-table__games">
+        {m.games} <span className="dataset-panel__muted">({pct}%)</span>
       </td>
-      <td style={{ padding: '4px 0', minWidth: 130 }}>
+      <td className="dataset-move-table__bar">
         <StackedBar
           height={14}
           segments={[
@@ -447,7 +381,6 @@ function MoveRow({ m, here, onPlay }: { m: MoveStat; here: number; onPlay: () =>
   );
 }
 
-// ── full games list ──────────────────────────────────────────────────────────
 type GameFilter = 'interesting' | 'losses' | 'recent' | 'all';
 
 function GamesList({
@@ -477,11 +410,11 @@ function GamesList({
     });
 
   return (
-    <details>
-      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+    <details className="dataset-games">
+      <summary className="dataset-games__summary">
         Review games ({rows.length} shown / {ds.totalGames})
       </summary>
-      <div style={{ display: 'flex', gap: 6, marginTop: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+      <div className="dataset-games__filters">
         <FilterButton active={filter === 'interesting'} onClick={() => setFilter('interesting')}>
           Interesting
         </FilterButton>
@@ -495,46 +428,28 @@ function GamesList({
           All
         </FilterButton>
       </div>
-      <div style={{ maxHeight: 260, overflowY: 'auto', marginTop: 8, border: '1px solid var(--border)', borderRadius: 4 }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12 }}>
+      <div className="dataset-games__table-wrap">
+        <table className="dataset-games__table">
           <tbody>
             {rows.map((s) => {
-              const c = s.heroScore === 1 ? WIN : s.heroScore === 0.5 ? 'var(--muted)' : s.heroScore === 0 ? LOSS : 'var(--border)';
               const interest = interestByIndex.get(s.index);
               return (
-                <tr
-                  key={s.index}
-                  onClick={() => onOpenGame(s.index)}
-                  style={{ cursor: 'pointer', borderTop: '1px solid var(--border)' }}
-                >
-                  <td style={{ padding: '3px 6px', width: 6 }}>
-                    <div style={{ width: 6, height: 14, background: c, borderRadius: 2 }} />
+                <tr key={s.index} onClick={() => onOpenGame(s.index)}>
+                  <td className="dataset-games__result">
+                    <span className={`dataset-games__result-dot dataset-games__result-dot--${resultTone(s.heroScore)}`} />
                   </td>
-                  <td style={{ padding: '3px 4px', width: 30, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                  <td className="dataset-games__analysis">
                     <AnalyzedMark a={analyzedByIndex.get(s.index)} />
                   </td>
-                  <td style={{ padding: '3px 8px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{s.date ?? '—'}</td>
-                  <td style={{ padding: '3px 8px', whiteSpace: 'nowrap' }}>
+                  <td className="dataset-games__date">{s.date ?? '-'}</td>
+                  <td className="dataset-games__players">
                     {s.white} vs {s.black}
                   </td>
-                  <td style={{ padding: '3px 8px', color: 'var(--muted)' }}>{s.result}</td>
-                  <td
-                    style={{ padding: '3px 8px', color: 'var(--muted)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    title={s.opening}
-                  >
+                  <td className="dataset-games__text-muted">{s.result}</td>
+                  <td className="dataset-games__opening" title={s.opening}>
                     {s.opening}
                   </td>
-                  <td
-                    style={{
-                      padding: '3px 8px',
-                      color: 'var(--muted)',
-                      maxWidth: 260,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={interest?.reasons.join('; ') ?? ''}
-                  >
+                  <td className="dataset-games__reasons" title={interest?.reasons.join('; ') ?? ''}>
                     {interest?.reasons.slice(0, 2).join('; ') ?? ''}
                   </td>
                 </tr>
@@ -547,31 +462,33 @@ function GamesList({
   );
 }
 
-// Per-game cache state: ✓ when fully analyzed (durable), a count while partial.
 function AnalyzedMark({ a }: { a?: { done: number; total: number } }) {
-  if (!a || a.total === 0 || a.done === 0) return <span style={{ color: 'var(--border)' }} title="Not analyzed">·</span>;
-  if (a.done >= a.total) return <span style={{ color: 'var(--good)', fontWeight: 700 }} title="Analyzed (cached locally)">✓</span>;
+  if (!a || a.total === 0 || a.done === 0) {
+    return (
+      <span className="dataset-games__mark dataset-games__mark--none" title="Not analyzed">
+        -
+      </span>
+    );
+  }
+  if (a.done >= a.total) {
+    return (
+      <span className="dataset-games__mark dataset-games__mark--done" title="Analyzed (cached locally)">
+        ok
+      </span>
+    );
+  }
   return (
-    <span style={{ color: '#e8923b', fontSize: 11 }} title={`${a.done}/${a.total} plies analyzed`}>
+    <span className="dataset-games__mark dataset-games__mark--partial" title={`${a.done}/${a.total} plies analyzed`}>
       {Math.round((a.done / a.total) * 100)}%
     </span>
   );
 }
 
-// ── primitives ───────────────────────────────────────────────────────────────
 function FilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
   return (
     <button
+      className={`dataset-games__filter${active ? ' is-active' : ''}`}
       onClick={onClick}
-      style={{
-        border: '1px solid ' + (active ? 'var(--accent)' : 'var(--border)'),
-        background: active ? 'var(--track)' : 'var(--card2)',
-        color: active ? 'var(--accent-light)' : 'var(--text-soft)',
-        borderRadius: 4,
-        padding: '3px 9px',
-        fontSize: 12,
-        cursor: 'pointer',
-      }}
     >
       {children}
     </button>
@@ -589,23 +506,20 @@ function StackedBar({
 }) {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   return (
-    <div style={{ display: 'flex', width: '100%', height, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
+    <div className="dataset-stacked-bar" style={{ height }}>
       {segments.map((s, i) =>
         s.value > 0 ? (
           <div
             key={i}
+            className="dataset-stacked-bar__segment"
             title={`${s.label}: ${s.value}`}
             style={{
               width: `${(s.value / total) * 100}%`,
               background: s.color,
-              color: '#fff',
-              fontSize: 9,
               lineHeight: `${height}px`,
-              textAlign: 'center',
-              overflow: 'hidden',
             }}
           >
-            {showCounts && (s.value / total) > 0.12 ? s.value : ''}
+            {showCounts && s.value / total > 0.12 ? s.value : ''}
           </div>
         ) : null,
       )}
@@ -615,10 +529,10 @@ function StackedBar({
 
 function Legend({ items }: { items: [string, string][] }) {
   return (
-    <div style={{ display: 'flex', gap: 12, marginTop: 3, fontSize: 11, color: 'var(--muted)' }}>
+    <div className="dataset-legend">
       {items.map(([label, color]) => (
-        <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 9, height: 9, background: color, borderRadius: 2, display: 'inline-block' }} />
+        <span key={label} className="dataset-legend__item">
+          <span className="dataset-legend__swatch" style={{ background: color }} />
           {label}
         </span>
       ))}
@@ -626,11 +540,9 @@ function Legend({ items }: { items: [string, string][] }) {
   );
 }
 
-const smallBtn: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--card)',
-  borderRadius: 4,
-  padding: '2px 8px',
-  fontSize: 12,
-  cursor: 'pointer',
-};
+function resultTone(score: number | null | undefined): 'win' | 'draw' | 'loss' | 'unknown' {
+  if (score === 1) return 'win';
+  if (score === 0.5) return 'draw';
+  if (score === 0) return 'loss';
+  return 'unknown';
+}

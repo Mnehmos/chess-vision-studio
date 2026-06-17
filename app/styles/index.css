@@ -855,6 +855,474 @@ select {
   font-weight: 700;
 }
 
+.dataset-panel {
+  min-width: 0;
+}
+
+.dataset-panel__analyze {
+  margin-bottom: 12px;
+}
+
+.dataset-panel__analyze-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+}
+
+.dataset-panel__analyze-copy {
+  min-width: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.dataset-panel__strong {
+  color: var(--text);
+}
+
+.dataset-panel__current-game {
+  max-width: 520px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-panel__analyze-button {
+  min-width: 148px;
+  padding: 6px 10px;
+  border-color: var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+}
+
+.dataset-panel__analyze-button:disabled {
+  background: var(--track);
+  color: var(--muted);
+}
+
+.dataset-panel__progress-track {
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.dataset-panel__progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.dataset-panel__main-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.dataset-panel__card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--panel-shadow);
+}
+
+.dataset-panel__card--summary {
+  flex: 1 1 420px;
+  min-width: 360px;
+}
+
+.dataset-panel__card--explorer {
+  flex: 1 1 360px;
+  min-width: 320px;
+}
+
+.dataset-panel__analysis,
+.dataset-panel__games {
+  margin-top: 20px;
+}
+
+.dataset-panel__headline {
+  margin: 0 0 8px;
+}
+
+.dataset-panel__section-title {
+  margin: 16px 0 4px;
+}
+
+.dataset-panel__muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dataset-panel__small-button {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.dataset-hero-record__score {
+  margin-bottom: 2px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.dataset-hero-record__win {
+  color: #3fbf5f;
+}
+
+.dataset-hero-record__draw {
+  color: var(--muted);
+}
+
+.dataset-hero-record__loss {
+  color: #e2603b;
+}
+
+.dataset-hero-record__meta {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.dataset-hero-record__color-grid {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.dataset-color-record {
+  flex: 1;
+}
+
+.dataset-color-record__label {
+  margin-bottom: 2px;
+  color: var(--muted);
+}
+
+.dataset-accuracy-chart {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card2);
+}
+
+.dataset-accuracy-chart__guide {
+  stroke: var(--border);
+  stroke-dasharray: 4 3;
+}
+
+.dataset-accuracy-chart__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.dataset-accuracy-chart__dot {
+  fill: var(--accent-light);
+}
+
+.dataset-accuracy-chart__label {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.dataset-result-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.dataset-result-strip__dot {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+}
+
+.dataset-result-strip__dot:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.dataset-result-strip__dot--win,
+.dataset-games__result-dot--win {
+  background: #3fbf5f;
+}
+
+.dataset-result-strip__dot--draw,
+.dataset-games__result-dot--draw {
+  background: #b9b9b9;
+}
+
+.dataset-result-strip__dot--loss,
+.dataset-games__result-dot--loss {
+  background: #e2603b;
+}
+
+.dataset-result-strip__dot--unknown,
+.dataset-games__result-dot--unknown {
+  background: var(--track);
+}
+
+.dataset-openings-table,
+.dataset-move-table,
+.dataset-games__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dataset-openings-table__name {
+  max-width: 200px;
+  overflow: hidden;
+  padding: 2px 8px 2px 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-openings-table__games,
+.dataset-openings-table__score {
+  color: var(--muted);
+  text-align: right;
+}
+
+.dataset-openings-table__games {
+  padding: 2px 8px;
+}
+
+.dataset-openings-table__bar {
+  width: 120px;
+  padding: 2px 0;
+}
+
+.dataset-openings-table__score {
+  width: 44px;
+  padding: 2px 0 2px 8px;
+}
+
+.dataset-move-explorer__path {
+  min-height: 20px;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dataset-move-explorer__crumb {
+  margin-right: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font: inherit;
+  text-decoration: underline;
+}
+
+.dataset-move-explorer__crumb:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.dataset-move-explorer__nav {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.dataset-move-table {
+  font-size: 13px;
+}
+
+.dataset-move-table th {
+  padding: 0 6px 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+}
+
+.dataset-move-table tr {
+  border-top: 1px solid var(--border);
+}
+
+.dataset-move-table td {
+  padding: 4px 6px 4px 0;
+}
+
+.dataset-move-table__move {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+}
+
+.dataset-move-table__move:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.dataset-move-table__games {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dataset-move-table__bar {
+  min-width: 130px;
+}
+
+.dataset-games__summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dataset-games__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.dataset-games__filter {
+  padding: 3px 9px;
+  border-radius: 4px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.dataset-games__filter.is-active {
+  border-color: var(--accent);
+  background: var(--track);
+  color: var(--accent-light);
+}
+
+.dataset-games__table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.dataset-games__table {
+  font-size: 12px;
+}
+
+.dataset-games__table tr {
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+}
+
+.dataset-games__table td {
+  padding: 3px 8px;
+}
+
+.dataset-games__result {
+  width: 6px;
+  padding: 3px 6px;
+}
+
+.dataset-games__result-dot {
+  display: block;
+  width: 6px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.dataset-games__analysis {
+  width: 30px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dataset-games__date,
+.dataset-games__text-muted,
+.dataset-games__opening,
+.dataset-games__reasons {
+  color: var(--muted);
+}
+
+.dataset-games__date,
+.dataset-games__players {
+  white-space: nowrap;
+}
+
+.dataset-games__opening,
+.dataset-games__reasons {
+  overflow: hidden;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataset-games__reasons {
+  max-width: 260px;
+}
+
+.dataset-games__mark--none {
+  color: var(--border);
+}
+
+.dataset-games__mark--done {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.dataset-games__mark--partial {
+  color: #e8923b;
+  font-size: 11px;
+}
+
+.dataset-stacked-bar {
+  display: flex;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.dataset-stacked-bar__segment {
+  overflow: hidden;
+  color: #fff;
+  font-size: 9px;
+  text-align: center;
+}
+
+.dataset-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.dataset-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dataset-legend__swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
 .dataset-analysis {
   display: flex;
   flex-direction: column;
