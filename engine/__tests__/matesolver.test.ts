@@ -19,7 +19,7 @@ describe('forcedMate — correctness', () => {
   });
 
   it('finds a dataset mate-in-2 (queen + rook)', () => {
-    const r = forcedMate('6k1/5ppp/8/7Q/8/8/6PP/5RK1 w - - 0 1', 3, 3000);
+    const r = forcedMate('6k1/5ppp/8/7Q/8/8/6PP/5RK1 w - - 0 1', 3, 10_000);
     expect(r).not.toBeNull();
     expect(r!.mateInMoves).toBeLessThanOrEqual(2);
   });

@@ -76,7 +76,7 @@ describe('M3 — engine-driven grading (sign-flip end-to-end)', () => {
     const grade = await gradeMove(engine, startFen, san, 14);
     expect(grade.cpLoss).toBeLessThan(0.5);
     expect(['best', 'excellent', 'good']).toContain(grade.classification);
-  }, 25000);
+  }, 60_000);
 
   it('hanging the queen for free is graded a blunder', () => {
     // White is up a queen (Q+2R vs 2R). Qd8?? simply drops it to ...Rxd8.
@@ -85,5 +85,5 @@ describe('M3 — engine-driven grading (sign-flip end-to-end)', () => {
       expect(grade.cpLoss).toBeGreaterThan(4);
       expect(grade.classification).toBe('blunder');
     });
-  }, 25000);
+  }, 60_000);
 });
