@@ -9,13 +9,6 @@ import {
 } from '../engine/teaching/puzzle';
 import { Board2D } from './Board2D';
 
-const CARD: React.CSSProperties = {
-  background: 'var(--card)',
-  border: '1px solid var(--accent)',
-  borderRadius: 10,
-  padding: 12,
-};
-
 function blankLed(): LedMap {
   const squares: Record<string, LedColor> = {};
   for (const sq of allSquares()) squares[sq] = 'off';
@@ -56,15 +49,14 @@ function canonicalDropUci(fen: string, from: Square, to: Square): string | null 
 // Interactive two-stage lesson. The solver drags the solution move on a real
 // board (same Board2D + onPieceDrop the analysis view uses); a correct move
 // advances the stage. Grading is the pure isPuzzleSolution.
-export const TeachingPuzzle = forwardRef<HTMLElement, {
-  puzzle: Puzzle;
-  onClose: () => void;
-  gradeAlternative?: (stage: PuzzleStage, uci: string) => Promise<boolean>;
-}>(function TeachingPuzzle({
-  puzzle,
-  onClose,
-  gradeAlternative,
-}, ref) {
+export const TeachingPuzzle = forwardRef<
+  HTMLElement,
+  {
+    puzzle: Puzzle;
+    onClose: () => void;
+    gradeAlternative?: (stage: PuzzleStage, uci: string) => Promise<boolean>;
+  }
+>(function TeachingPuzzle({ puzzle, onClose, gradeAlternative }, ref) {
   const [stageIndex, setStageIndex] = useState(0);
   const [status, setStatus] = useState<'solving' | 'checking' | 'wrong' | 'solved'>('solving');
   const [selected, setSelected] = useState<Square | undefined>(undefined);
@@ -78,11 +70,11 @@ export const TeachingPuzzle = forwardRef<HTMLElement, {
   const legalDots = useMemo(() => {
     if (!stage || !selected) return undefined;
     try {
-      const c = new Chess(stage.fen);
-      const moves = c.moves({ square: selected as never, verbose: true }) as unknown as {
+      const chess = new Chess(stage.fen);
+      const moves = chess.moves({ square: selected as never, verbose: true }) as unknown as {
         to: string;
       }[];
-      return moves.length ? (moves.map((m) => m.to) as Square[]) : undefined;
+      return moves.length ? (moves.map((move) => move.to) as Square[]) : undefined;
     } catch {
       return undefined;
     }
@@ -90,9 +82,11 @@ export const TeachingPuzzle = forwardRef<HTMLElement, {
 
   if (!stage) {
     return (
-      <section ref={ref} data-testid="teaching-puzzle" style={CARD}>
+      <section ref={ref} data-testid="teaching-puzzle" className="teaching-puzzle">
         <Header title="Lesson complete" onClose={onClose} />
-        <div style={{ color: '#3fbf5f', fontSize: 13 }}>✓ Solved — nice work.</div>
+        <div className="teaching-puzzle__success">
+          {'\u2713'} Solved {'\u2014'} nice work.
+        </div>
       </section>
     );
   }
@@ -129,7 +123,7 @@ export const TeachingPuzzle = forwardRef<HTMLElement, {
   };
 
   const goNext = () => {
-    setStageIndex((i) => i + 1);
+    setStageIndex((index) => index + 1);
     setStatus('solving');
     setSelected(undefined);
     setResultFen(null);
@@ -149,30 +143,41 @@ export const TeachingPuzzle = forwardRef<HTMLElement, {
   const lastStage = stageIndex + 1 >= puzzle.stages.length;
 
   return (
-    <section ref={ref} data-testid="teaching-puzzle" style={CARD}>
-      <Header title={`Puzzle · stage ${stageIndex + 1}/${puzzle.stages.length}`} onClose={onClose} />
-      <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>{stage.prompt}</div>
+    <section ref={ref} data-testid="teaching-puzzle" className="teaching-puzzle">
+      <Header
+        title={`Puzzle ${'\u00b7'} stage ${stageIndex + 1}/${puzzle.stages.length}`}
+        onClose={onClose}
+      />
+      <div className="teaching-puzzle__prompt">{stage.prompt}</div>
       <Board2D
         fen={boardFen}
         ledMap={ledMap}
         selected={status === 'solved' || status === 'checking' ? undefined : selected}
         legalDots={status === 'solved' || status === 'checking' ? undefined : legalDots}
-        onSelect={(sq) => setSelected((cur) => (cur === sq ? undefined : sq))}
+        onSelect={(sq) => setSelected((current) => (current === sq ? undefined : sq))}
         orientation={stage.sideToMove}
         draggable={status === 'solving' || status === 'wrong'}
         onPieceDrop={onDrop}
         squareSizeCss="clamp(26px, min(5.2vw, 42px), 42px)"
       />
-      <div style={{ marginTop: 8, fontSize: 13, minHeight: 22, display: 'flex', gap: 8, alignItems: 'center' }}>
-        {status === 'checking' && <span style={{ color: 'var(--muted)' }}>Checking alternative...</span>}
-        {status === 'wrong' && <span style={{ color: 'var(--bad)' }}>Not quite — try again.</span>}
-        {status === 'solved' && <span style={{ color: '#3fbf5f' }}>✓ Correct!</span>}
+      <div className="teaching-puzzle__status">
+        {status === 'checking' && (
+          <span className="teaching-puzzle__status-muted">Checking alternative...</span>
+        )}
+        {status === 'wrong' && (
+          <span className="teaching-puzzle__status-bad">
+            Not quite {'\u2014'} try again.
+          </span>
+        )}
+        {status === 'solved' && (
+          <span className="teaching-puzzle__success">{'\u2713'} Correct!</span>
+        )}
         {status === 'solved' &&
           (lastStage ? (
-            <span style={{ color: 'var(--muted)' }}>Lesson complete.</span>
+            <span className="teaching-puzzle__status-muted">Lesson complete.</span>
           ) : (
-            <button onClick={goNext} style={btn}>
-              Next →
+            <button className="teaching-puzzle__next" onClick={goNext}>
+              Next {'\u2192'}
             </button>
           ))}
       </div>
@@ -180,45 +185,12 @@ export const TeachingPuzzle = forwardRef<HTMLElement, {
   );
 });
 
-const btn: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--accent)',
-  color: '#fff',
-  borderRadius: 6,
-  padding: '3px 10px',
-  fontSize: 12,
-  cursor: 'pointer',
-};
-
 function Header({ title, onClose }: { title: string; onClose: () => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-      <span
-        style={{
-          fontFamily: 'var(--mono)',
-          fontSize: 10,
-          letterSpacing: '.14em',
-          textTransform: 'uppercase',
-          color: 'var(--accent-light)',
-        }}
-      >
-        {title}
-      </span>
-      <button
-        onClick={onClose}
-        aria-label="Close puzzle"
-        style={{
-          marginLeft: 'auto',
-          border: '1px solid var(--border)',
-          background: 'var(--card)',
-          color: 'var(--text)',
-          borderRadius: 6,
-          padding: '2px 8px',
-          fontSize: 12,
-          cursor: 'pointer',
-        }}
-      >
-        ✕
+    <div className="teaching-puzzle__header">
+      <span className="teaching-puzzle__title">{title}</span>
+      <button className="teaching-puzzle__close" onClick={onClose} aria-label="Close puzzle">
+        {'\u2715'}
       </button>
     </div>
   );

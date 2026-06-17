@@ -912,6 +912,74 @@ select {
   color: #fff;
 }
 
+.teaching-puzzle {
+  padding: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.teaching-puzzle__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.teaching-puzzle__title {
+  color: var(--accent-light);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.teaching-puzzle__close {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.teaching-puzzle__prompt {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.teaching-puzzle__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.teaching-puzzle__status-muted {
+  color: var(--muted);
+}
+
+.teaching-puzzle__status-bad {
+  color: var(--bad);
+}
+
+.teaching-puzzle__success {
+  color: #3fbf5f;
+  font-size: 13px;
+}
+
+.teaching-puzzle__next {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);
