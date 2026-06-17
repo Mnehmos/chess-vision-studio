@@ -980,6 +980,140 @@ select {
   font-size: 12px;
 }
 
+.teaching-panel {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.teaching-panel__kicker {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.teaching-panel__state,
+.teaching-panel__empty,
+.teaching-panel__summary {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.teaching-panel__error {
+  color: var(--bad);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.teaching-panel__summary {
+  color: var(--text-soft);
+}
+
+.teaching-move-body__nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.teaching-card {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.teaching-card--mistake {
+  border-left: 3px solid #c53030;
+}
+
+.teaching-card--idea {
+  border-left: 3px solid #2f855a;
+}
+
+.teaching-card--opening {
+  border-left: 3px solid #3182ce;
+}
+
+.teaching-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.teaching-card__header--wrap {
+  flex-wrap: wrap;
+}
+
+.teaching-card__headline,
+.teaching-card__title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.teaching-card__title {
+  font-weight: 700;
+}
+
+.teaching-card__text {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.teaching-card__text--spaced {
+  margin-top: 2px;
+}
+
+.teaching-card__strong {
+  color: var(--text);
+}
+
+.teaching-card__badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+}
+
+.teaching-card__badge--idea {
+  background: #2f855a;
+}
+
+.teaching-card__badge--opening {
+  background: #3182ce;
+}
+
+.teaching-card__eco {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.teaching-card__opening-summary.has-ideas {
+  margin-bottom: 6px;
+}
+
+.teaching-card__ideas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.teaching-card__idea {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);

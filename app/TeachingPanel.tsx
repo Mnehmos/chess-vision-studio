@@ -32,31 +32,12 @@ export function TeachingPanel({
   summary?: string; // the move's top ranked insight ("Gains the center on d5")
 }) {
   return (
-    <section
-      data-testid="teaching-panel"
-      style={{
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        padding: 12,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: 'var(--mono)',
-          fontSize: 10,
-          letterSpacing: '.14em',
-          textTransform: 'uppercase',
-          color: 'var(--muted)',
-          marginBottom: 8,
-        }}
-      >
-        Teaching
-      </div>
+    <section data-testid="teaching-panel" className="teaching-panel">
+      <div className="teaching-panel__kicker">Teaching</div>
       {busy ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Analyzing…</div>
+        <div className="teaching-panel__state">Analyzing{'\u2026'}</div>
       ) : error ? (
-        <div style={{ color: 'var(--bad)', fontSize: 13, wordBreak: 'break-word' }}>{error}</div>
+        <div className="teaching-panel__error">{error}</div>
       ) : (
         <TeachingMoveBody
           nodes={nodes}
@@ -75,10 +56,10 @@ export function TeachingPanel({
   );
 }
 
-// THE single teaching renderer — reused by the Analyze panel AND every coaching-log
+// THE single teaching renderer - reused by the Analyze panel AND every coaching-log
 // turn so teaching reads identically everywhere (one idea, built once). Precedence:
-// a committed mistake (rich card) → a tactical idea (fork/pin/capture) → what the
-// move does (top ranked insight) → opening book → nothing.
+// a committed mistake (rich card) -> a tactical idea (fork/pin/capture) -> what the
+// move does (top ranked insight) -> opening book -> nothing.
 const MISTAKE_BAND = new Set(['inaccuracy', 'mistake', 'blunder']);
 
 export function TeachingMoveBody({
@@ -112,7 +93,7 @@ export function TeachingMoveBody({
 }) {
   if (nodes.length > 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="teaching-move-body__nodes">
         {nodes.map((node) => (
           <TeachingNodeCard
             key={node.id}
@@ -129,37 +110,34 @@ export function TeachingMoveBody({
     );
   }
   // A graded mistake with no specific named pattern: say it's a mistake and give the
-  // preferred move
+  // preferred move.
   if (classification && MISTAKE_BAND.has(classification)) {
     return <MistakeNote classification={classification} betterMove={betterMove} />;
   }
   if (idea) return <IdeaCard idea={idea} />;
   if (summary && summary !== 'solid move') return <MoveSummary text={summary} />;
   if (opening) return <OpeningCard opening={opening} />;
-  return <div style={{ color: 'var(--muted)', fontSize: 13 }}>No teaching topic for this move.</div>;
+  return <div className="teaching-panel__empty">No teaching topic for this move.</div>;
 }
 
-// The fallback explanation for a graded mistake: honest about the grade
+// The fallback explanation for a graded mistake: honest about the grade.
 function MistakeNote({ classification, betterMove }: { classification: string; betterMove?: string }) {
   const article = classification === 'inaccuracy' ? 'an' : 'a';
   return (
-    <div
-      data-testid="mistake-note"
-      style={{ border: '1px solid var(--border)', borderLeft: '3px solid #c53030', borderRadius: 8, padding: 10 }}
-    >
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+    <div data-testid="mistake-note" className="teaching-card teaching-card--mistake">
+      <div className="teaching-card__headline">
         This move is {article} {classification}.
       </div>
       {betterMove && (
-        <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
-          Better was <strong style={{ color: 'var(--text)' }}>{betterMove}</strong>.
+        <div className="teaching-card__text teaching-card__text--spaced">
+          Better was <strong className="teaching-card__strong">{betterMove}</strong>.
         </div>
       )}
     </div>
   );
 }
 
-// Render an insight as a clean sentence
+// Render an insight as a clean sentence.
 export function toSentence(text: string): string {
   const trimmed = text.replace(/\s*\.+\s*$/, '');
   return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}.`;
@@ -167,7 +145,7 @@ export function toSentence(text: string): string {
 
 function MoveSummary({ text }: { text: string }) {
   return (
-    <div data-testid="move-summary" style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+    <div data-testid="move-summary" className="teaching-panel__summary">
       {toSentence(text)}
     </div>
   );
@@ -176,26 +154,12 @@ function MoveSummary({ text }: { text: string }) {
 function IdeaCard({ idea }: { idea: MoveIdea }) {
   const label = idea.kind === 'fork' ? 'Fork' : idea.kind === 'pin' ? 'Pin' : 'Winning capture';
   return (
-    <div
-      data-testid="idea-card"
-      style={{ border: '1px solid var(--border)', borderLeft: '3px solid #2f855a', borderRadius: 8, padding: 10 }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>This move’s idea</span>
-        <span
-          style={{
-            marginLeft: 'auto',
-            fontSize: 10,
-            color: '#fff',
-            background: '#2f855a',
-            padding: '1px 6px',
-            borderRadius: 4,
-          }}
-        >
-          {label}
-        </span>
+    <div data-testid="idea-card" className="teaching-card teaching-card--idea">
+      <div className="teaching-card__header">
+        <span className="teaching-card__title">This move{'\u2019'}s idea</span>
+        <span className="teaching-card__badge teaching-card__badge--idea">{label}</span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>{idea.text}</div>
+      <div className="teaching-card__text">{idea.text}</div>
     </div>
   );
 }
@@ -203,52 +167,25 @@ function IdeaCard({ idea }: { idea: MoveIdea }) {
 export function OpeningCard({ opening }: { opening: DetectedOpening }) {
   const { info } = opening;
   return (
-    <div
-      data-testid="opening-card"
-      style={{
-        border: '1px solid var(--border)',
-        borderLeft: '3px solid #3182ce',
-        borderRadius: 8,
-        padding: 10,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{info.name}</span>
-        {info.eco && (
-          <span
-            style={{
-              fontFamily: 'var(--mono)',
-              fontSize: 10,
-              color: 'var(--text-soft)',
-              border: '1px solid var(--border)',
-              borderRadius: 4,
-              padding: '1px 5px',
-            }}
-          >
-            {info.eco}
-          </span>
-        )}
-        <span
-          title="Opening book knowledge — not engine analysis"
-          style={{
-            marginLeft: 'auto',
-            fontSize: 10,
-            color: '#fff',
-            background: '#3182ce',
-            padding: '1px 6px',
-            borderRadius: 4,
-          }}
-        >
+    <div data-testid="opening-card" className="teaching-card teaching-card--opening">
+      <div className="teaching-card__header teaching-card__header--wrap">
+        <span className="teaching-card__title">{info.name}</span>
+        {info.eco && <span className="teaching-card__eco">{info.eco}</span>}
+        <span title="Opening book knowledge - not engine analysis" className="teaching-card__badge teaching-card__badge--opening">
           Opening book
         </span>
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-soft)', marginBottom: info.ideas.length ? 6 : 0 }}>
+      <div
+        className={`teaching-card__text teaching-card__opening-summary${
+          info.ideas.length ? ' has-ideas' : ''
+        }`}
+      >
         {info.summary}
       </div>
       {info.ideas.length > 0 && (
-        <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <ul className="teaching-card__ideas">
           {info.ideas.map((idea) => (
-            <li key={idea} style={{ fontSize: 12, color: 'var(--text-soft)' }}>
+            <li key={idea} className="teaching-card__idea">
               {idea}
             </li>
           ))}
