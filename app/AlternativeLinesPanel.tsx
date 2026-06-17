@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import type { AlternativeLine, AlternativeLineMove } from './arrow-analysis-store';
-import { evalColor } from './arrow-analysis-store';
-import { TeachingNodeCard } from './TeachingNodeCard';
 import { Chess } from 'chess.js';
+import type { AlternativeLine, AlternativeLineMove } from './arrow-analysis-store';
+import { TeachingNodeCard } from './TeachingNodeCard';
+
+type DiffTone = 'good' | 'bad' | 'warn' | 'muted';
+
+function cx(...parts: Array<string | false | null | undefined>): string {
+  return parts.filter(Boolean).join(' ');
+}
 
 function qualityLabel(m: AlternativeLineMove): string {
   switch (m.moveQuality) {
@@ -34,7 +39,7 @@ function formatMoveScore(m: AlternativeLineMove): string {
     const sign = val > 0 ? '+' : '';
     score = `${sign}${val.toFixed(2)}`;
   }
-  return ` (${score}${label ? ` · ${label}` : ''})`;
+  return ` (${score}${label ? ` - ${label}` : ''})`;
 }
 
 function moveScoreTitle(m: AlternativeLineMove): string | undefined {
@@ -43,7 +48,32 @@ function moveScoreTitle(m: AlternativeLineMove): string | undefined {
   if (m.bestMoveSan) parts.push(`Best available: ${m.bestMoveSan}`);
   if (m.cpLoss !== undefined) parts.push(`Move loss: ${(m.cpLoss / 100).toFixed(2)} pawns`);
   if (m.legalMoveCount === 1) parts.push('Only legal move');
-  return parts.join(' · ');
+  return parts.join(' - ');
+}
+
+function scoreToneClass(m: AlternativeLineMove): string {
+  if (
+    m.moveQuality === 'forced' ||
+    m.moveQuality === 'best' ||
+    m.moveQuality === 'best-resistance' ||
+    m.moveQuality === 'equivalent'
+  ) {
+    return 'alternative-lines__move-score--good';
+  }
+  if (m.cpLoss !== undefined) {
+    if (m.cpLoss <= 50) return 'alternative-lines__move-score--good';
+    if (m.cpLoss <= 100) return 'alternative-lines__move-score--warn';
+    if (m.cpLoss <= 200) return 'alternative-lines__move-score--mistake';
+    return 'alternative-lines__move-score--bad';
+  }
+  if (m.mate !== undefined && m.mate !== null) {
+    return m.mate < 0 ? 'alternative-lines__move-score--bad' : 'alternative-lines__move-score--good';
+  }
+  if (m.scoreCp === undefined) return 'alternative-lines__move-score--warn';
+  if (m.scoreCp >= -50) return 'alternative-lines__move-score--good';
+  if (m.scoreCp >= -100) return 'alternative-lines__move-score--warn';
+  if (m.scoreCp >= -200) return 'alternative-lines__move-score--mistake';
+  return 'alternative-lines__move-score--bad';
 }
 
 function moveOriginLabel(alt: AlternativeLine, move: AlternativeLineMove): string {
@@ -60,12 +90,10 @@ function getPlayerMoveLabel(rootFen: string, idx: number): string {
     if (idx % 2 === 0) {
       return `${startFullMove + Math.floor(idx / 2)}.`;
     }
-  } else {
-    if (idx === 0) {
-      return `${startFullMove}...`;
-    } else if (idx % 2 === 1) {
-      return `${startFullMove + Math.floor((idx + 1) / 2)}.`;
-    }
+  } else if (idx === 0) {
+    return `${startFullMove}...`;
+  } else if (idx % 2 === 1) {
+    return `${startFullMove + Math.floor((idx + 1) / 2)}.`;
   }
   return '';
 }
@@ -127,11 +155,7 @@ function formatPv(startFen: string, pv: string[]): string[] {
       i++;
     }
 
-    if (blackSan) {
-      lines.push(`${currentFullMove} ${whiteSan} ${blackSan}`);
-    } else {
-      lines.push(`${currentFullMove} ${whiteSan}`);
-    }
+    lines.push(blackSan ? `${currentFullMove} ${whiteSan} ${blackSan}` : `${currentFullMove} ${whiteSan}`);
     currentFullMove++;
   }
 
@@ -181,87 +205,46 @@ export function AlternativeLinesPanel({
     return (scoreCp / 100).toFixed(2);
   };
 
-  const getDiffText = (alt: AlternativeLine): { text: string; color: string } | null => {
+  const getDiffText = (alt: AlternativeLine): { text: string; tone: DiffTone } | null => {
     if (!mainLineEval) return null;
-    
-    // Mate comparisons are complex, let's focus on CP comparisons when possible
+
     if (alt.mate !== null || mainLineEval.mate !== null) {
       if (alt.mate !== null && mainLineEval.mate !== null) {
         const diff = alt.mate - mainLineEval.mate;
-        if (diff === 0) return { text: 'Equivalent', color: 'var(--good, #4cae6e)' };
+        if (diff === 0) return { text: 'Equivalent', tone: 'good' };
         return {
           text: diff > 0 ? `+${diff} ply mate` : `${diff} ply mate`,
-          color: diff > 0 ? 'var(--good, #4cae6e)' : 'var(--bad, #e0635e)',
+          tone: diff > 0 ? 'good' : 'bad',
         };
       }
-      return { text: 'Evaluation diff unavailable', color: 'var(--muted)' };
+      return { text: 'Evaluation diff unavailable', tone: 'muted' };
     }
 
     const diff = (alt.scoreCp - mainLineEval.scoreCp) / 100;
     if (Math.abs(diff) < 0.05) {
-      return { text: 'Equivalent', color: 'var(--good, #4cae6e)' };
+      return { text: 'Equivalent', tone: 'good' };
     }
     if (diff < 0) {
-      return { text: `${diff.toFixed(2)}`, color: diff < -1.5 ? 'var(--bad, #e0635e)' : 'var(--warn, #e8923b)' };
+      return { text: `${diff.toFixed(2)}`, tone: diff < -1.5 ? 'bad' : 'warn' };
     }
-    return { text: `+${diff.toFixed(2)}`, color: 'var(--good, #4cae6e)' };
+    return { text: `+${diff.toFixed(2)}`, tone: 'good' };
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-        marginTop: 16,
-        borderTop: '1px solid var(--border, #444)',
-        paddingTop: 16,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <h3
-          style={{
-            margin: 0,
-            fontSize: '14px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            fontFamily: 'var(--mono)',
-            color: 'var(--text-soft)',
-          }}
-        >
-          Alternative Lines / Variations
-        </h3>
-        <span style={{ fontSize: '11px', color: 'var(--muted)', marginLeft: 'auto' }}>
+    <div className="alternative-lines">
+      <div className="alternative-lines__header">
+        <h3 className="alternative-lines__title">Alternative Lines / Variations</h3>
+        <span className="alternative-lines__hint">
           Right-drag on board to draw sequential calculation steps
         </span>
       </div>
 
       {onGenerateBestLine && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            flexWrap: 'wrap',
-            padding: '8px 10px',
-            border: '1px solid var(--border, #444)',
-            borderRadius: 8,
-            background: 'var(--card2, #1f1f1f)',
-          }}
-        >
+        <div className="alternative-lines__generator">
           <button
+            className="alternative-lines__primary-action"
             onClick={() => onGenerateBestLine(bestLinePlies)}
             disabled={generatingBestLine}
-            style={{
-              fontSize: 12,
-              padding: '5px 10px',
-              borderRadius: 6,
-              background: 'var(--accent, #b87333)',
-              color: '#fff',
-              border: 'none',
-              cursor: generatingBestLine ? 'wait' : 'pointer',
-              fontWeight: 700,
-            }}
           >
             {generatingBestLine
               ? 'Generating...'
@@ -269,369 +252,192 @@ export function AlternativeLinesPanel({
                 ? 'Generate next best line'
                 : 'Generate best line'}
           </button>
-          <label
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              color: 'var(--text-soft)',
-              fontSize: 12,
-            }}
-          >
-            <span style={{ minWidth: 72 }}>Line {bestLinePlies} ply{bestLinePlies === 1 ? '' : 's'}</span>
+          <label className="alternative-lines__range-control">
+            <span className="alternative-lines__range-label">
+              Line {bestLinePlies} ply{bestLinePlies === 1 ? '' : 's'}
+            </span>
             <input
+              className="alternative-lines__range"
               type="range"
               min={1}
               max={12}
               step={1}
               value={bestLinePlies}
               onChange={(event) => setBestLinePlies(Number(event.currentTarget.value))}
-              style={{ width: 150 }}
             />
           </label>
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="alternative-lines__list">
         {alternatives.length === 0 ? (
-          <div style={{ color: 'var(--muted)', fontSize: 12, padding: '0 2px' }}>
-            No variations yet.
-          </div>
-        ) : alternatives.map((alt) => {
-          const diffInfo = getDiffText(alt);
-          const canRefute = alt.moves.some(
-            (move) => !!move.bestMoveUci && move.bestMoveUci !== move.uci && (move.cpLoss ?? 0) > 50,
-          );
-          return (
-            <div
-              key={alt.id}
-              onMouseEnter={() => onHoverAlternative?.(alt)}
-              onMouseLeave={() => onHoverAlternative?.(null)}
-              style={{
-                border: '1px solid var(--border, #444)',
-                borderRadius: '8px',
-                background: 'var(--card2, #1f1f1f)',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                transition: 'border-color 0.2s, box-shadow 0.2s',
-              }}
-              className="csvAltCard"
-            >
-              {/* Header / Info Row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      background: 'rgba(212, 149, 106, 0.12)',
-                      color: 'var(--accent-light, #d4956a)',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      marginRight: 4,
-                      fontFamily: 'var(--mono)',
-                      userSelect: 'none',
-                    }}
-                  >
-                    ply {getPlyFromFen(alt.rootFen)}
-                  </span>
-                  {alt.moves.map((m, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        fontFamily: 'var(--mono)',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        color: 'var(--accent-light, #d4956a)',
-                        background: 'rgba(255,255,255,0.04)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      {getPlayerMoveLabel(alt.rootFen, idx) ? `${getPlayerMoveLabel(alt.rootFen, idx)} ` : ''}{m.san}
-                      {alt.revealed && (m.scoreCp !== undefined || m.mate !== undefined) && (
-                        <span
-                          title={moveScoreTitle(m)}
-                          style={{ fontSize: '11px', color: evalColor(m) ?? 'var(--warn, #e8923b)', marginLeft: 2 }}
-                        >
-                          {formatMoveScore(m)}
-                        </span>
-                      )}
-                      <span style={{ fontSize: '9px', fontWeight: 400, color: 'var(--text-soft)', opacity: 0.7 }}>
-                        ({moveOriginLabel(alt, m)})
+          <div className="alternative-lines__empty">No variations yet.</div>
+        ) : (
+          alternatives.map((alt) => {
+            const diffInfo = getDiffText(alt);
+            const canRefute = alt.moves.some(
+              (move) =>
+                !!move.bestMoveUci && move.bestMoveUci !== move.uci && (move.cpLoss ?? 0) > 50,
+            );
+            const endFen = alt.moves.length > 0 ? alt.moves[alt.moves.length - 1].fenAfter : alt.rootFen;
+            const pvLines = alt.pv && alt.pv.length > 0 ? formatPv(endFen, alt.pv) : [];
+
+            return (
+              <div
+                key={alt.id}
+                onMouseEnter={() => onHoverAlternative?.(alt)}
+                onMouseLeave={() => onHoverAlternative?.(null)}
+                className="alternative-lines__card"
+              >
+                <div className="alternative-lines__card-header">
+                  <div className="alternative-lines__move-strip">
+                    <span className="alternative-lines__ply">ply {getPlyFromFen(alt.rootFen)}</span>
+                    {alt.moves.map((m, idx) => (
+                      <span key={idx} className="alternative-lines__move">
+                        {getPlayerMoveLabel(alt.rootFen, idx)
+                          ? `${getPlayerMoveLabel(alt.rootFen, idx)} `
+                          : ''}
+                        {m.san}
+                        {alt.revealed && (m.scoreCp !== undefined || m.mate !== undefined) && (
+                          <span
+                            title={moveScoreTitle(m)}
+                            className={cx(
+                              'alternative-lines__move-score',
+                              scoreToneClass(m),
+                            )}
+                          >
+                            {formatMoveScore(m)}
+                          </span>
+                        )}
+                        <span className="alternative-lines__origin">({moveOriginLabel(alt, m)})</span>
+                        {onDeleteMove && (
+                          <button
+                            className="alternative-lines__delete-move"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDeleteMove(alt.id, idx);
+                            }}
+                            title="Delete this move and subsequent moves"
+                          >
+                            x
+                          </button>
+                        )}
                       </span>
-                      {onDeleteMove && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteMove(alt.id, idx);
-                          }}
-                          title={`Delete this move and subsequent moves`}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            color: 'var(--muted, #888)',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            padding: '0 2px',
-                            marginLeft: '2px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'color 0.15s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--bad, #e0635e)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted, #888)'; }}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-
-                {alt.isAnalyzing && (
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      color: 'var(--warn, #e8923b)',
-                      fontFamily: 'var(--mono)',
-                      animation: 'csvBlink 1s infinite',
-                      marginRight: 8,
-                    }}
-                  >
-                    Analyzing...
-                  </span>
-                )}
-
-                {/* Card Management Controls */}
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button
-                    onClick={() => onPinToggle(alt.id)}
-                    style={{
-                      fontSize: '12px',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      background: alt.pinned ? 'var(--accent, #b87333)' : 'var(--card, #2a2a2a)',
-                      color: alt.pinned ? '#fff' : 'var(--text)',
-                      border: '1px solid var(--border)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {alt.pinned ? 'Pinned' : 'Pin'}
-                  </button>
-
-                  {onEnterVariation && (
-                    <button
-                      onClick={() => onEnterVariation(alt)}
-                      disabled={alt.isAnalyzing}
-                      style={{
-                        fontSize: '12px',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        background: 'var(--accent-light, #d4956a)',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Preview
-                    </button>
-                  )}
-
-                  {onRefuteLine && (
-                    <button
-                      onClick={() => onRefuteLine(alt.id)}
-                      disabled={alt.isAnalyzing || !canRefute}
-                      title={
-                        canRefute
-                          ? 'Branch at the first move Stockfish improves on.'
-                          : 'No refutation found; the line is best or close to best so far.'
-                      }
-                      style={{
-                        fontSize: '12px',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        background: canRefute ? 'var(--card, #2a2a2a)' : 'transparent',
-                        color: canRefute ? 'var(--text)' : 'var(--muted)',
-                        border: '1px solid var(--border)',
-                        cursor: alt.isAnalyzing || !canRefute ? 'default' : 'pointer',
-                        opacity: alt.isAnalyzing || !canRefute ? 0.65 : 1,
-                      }}
-                    >
-                      Refute line
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => onDelete(alt.id)}
-                    style={{
-                      fontSize: '12px',
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      background: 'none',
-                      color: 'var(--bad, #e0635e)',
-                      border: '1px solid var(--bad, #e0635e)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-
-              {/* Spoiler / Analysis Section */}
-              {alt.revealed ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    borderTop: '1px dashed var(--border, #444)',
-                    paddingTop: 8,
-                    marginTop: 4,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: 'var(--text)',
-                        fontFamily: 'var(--mono)',
-                      }}
-                    >
-                      Engine Score: {formatScore(alt.scoreCp, alt.mate)}
-                    </span>
-                    {diffInfo && (
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: diffInfo.color,
-                          fontFamily: 'var(--mono)',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: 'rgba(255,255,255,0.05)',
-                        }}
-                      >
-                        {diffInfo.text}
-                      </span>
-                    )}
-
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-                      <button
-                        onClick={() => onDeepen(alt.id)}
-                        disabled={alt.isAnalyzing || alt.depth >= 20}
-                        style={{
-                          fontSize: '11px',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          background: 'var(--card, #2a2a2a)',
-                          color: 'var(--text)',
-                          border: '1px solid var(--border)',
-                          cursor: alt.isAnalyzing ? 'wait' : 'pointer',
-                        }}
-                      >
-                        {alt.depth >= 20 ? 'Max Depth' : 'Deepen'}
-                      </button>
-
-                      {onToggleReveal && (
-                        <button
-                          onClick={() => onToggleReveal(alt.id)}
-                          style={{
-                            fontSize: '11px',
-                            padding: '3px 6px',
-                            borderRadius: '4px',
-                            background: 'var(--card, #2a2a2a)',
-                            color: 'var(--text-soft)',
-                            border: '1px solid var(--border)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Hide Analysis
-                        </button>
-                      )}
-                    </div>
+                    ))}
                   </div>
 
-                  {alt.pv && alt.pv.length > 0 && (() => {
-                    const endFen = alt.moves.length > 0 ? alt.moves[alt.moves.length - 1].fenAfter : alt.rootFen;
-                    const pvLines = formatPv(endFen, alt.pv);
-                    return (
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--text-soft)',
-                          fontFamily: 'var(--mono)',
-                          padding: '8px 10px',
-                          background: 'rgba(0,0,0,0.15)',
-                          borderRadius: '4px',
-                          whiteSpace: 'pre-line',
-                          lineHeight: '1.4',
-                        }}
+                  {alt.isAnalyzing && <span className="alternative-lines__analyzing">Analyzing...</span>}
+
+                  <div className="alternative-lines__actions">
+                    <button
+                      className={cx(
+                        'alternative-lines__button',
+                        'alternative-lines__button--pin',
+                        alt.pinned && 'is-active',
+                      )}
+                      onClick={() => onPinToggle(alt.id)}
+                    >
+                      {alt.pinned ? 'Pinned' : 'Pin'}
+                    </button>
+
+                    {onEnterVariation && (
+                      <button
+                        className="alternative-lines__button alternative-lines__button--preview"
+                        onClick={() => onEnterVariation(alt)}
+                        disabled={alt.isAnalyzing}
                       >
-                        <div style={{ color: 'var(--muted)', marginBottom: '4px', fontWeight: 'bold' }}>Engine PV:</div>
+                        Preview
+                      </button>
+                    )}
+
+                    {onRefuteLine && (
+                      <button
+                        className="alternative-lines__button alternative-lines__button--refute"
+                        onClick={() => onRefuteLine(alt.id)}
+                        disabled={alt.isAnalyzing || !canRefute}
+                        title={
+                          canRefute
+                            ? 'Branch at the first move Stockfish improves on.'
+                            : 'No refutation found; the line is best or close to best so far.'
+                        }
+                      >
+                        Refute line
+                      </button>
+                    )}
+
+                    <button
+                      className="alternative-lines__button alternative-lines__button--delete"
+                      onClick={() => onDelete(alt.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {alt.revealed ? (
+                  <div className="alternative-lines__analysis">
+                    <div className="alternative-lines__analysis-row">
+                      <span className="alternative-lines__engine-score">
+                        Engine Score: {formatScore(alt.scoreCp, alt.mate)}
+                      </span>
+                      {diffInfo && (
+                        <span
+                          className={`alternative-lines__diff alternative-lines__diff--${diffInfo.tone}`}
+                        >
+                          {diffInfo.text}
+                        </span>
+                      )}
+
+                      <div className="alternative-lines__analysis-actions">
+                        <button
+                          className="alternative-lines__small-button"
+                          onClick={() => onDeepen(alt.id)}
+                          disabled={alt.isAnalyzing || alt.depth >= 20}
+                        >
+                          {alt.depth >= 20 ? 'Max Depth' : 'Deepen'}
+                        </button>
+
+                        {onToggleReveal && (
+                          <button
+                            className="alternative-lines__small-button alternative-lines__small-button--muted"
+                            onClick={() => onToggleReveal(alt.id)}
+                          >
+                            Hide Analysis
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {pvLines.length > 0 && (
+                      <div className="alternative-lines__pv">
+                        <div className="alternative-lines__pv-title">Engine PV:</div>
                         {pvLines.join('\n')}
                       </div>
-                    );
-                  })()}
+                    )}
 
-                  {alt.teachingNodes && alt.teachingNodes.length > 0 && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                        marginTop: 4,
-                      }}
+                    {alt.teachingNodes && alt.teachingNodes.length > 0 && (
+                      <div className="alternative-lines__teaching-nodes">
+                        {alt.teachingNodes.map((node) => (
+                          <TeachingNodeCard key={node.id} node={node} focused={false} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="alternative-lines__spoiler">
+                    <button
+                      className="alternative-lines__reveal"
+                      onClick={() => onToggleReveal?.(alt.id)}
+                      disabled={alt.isAnalyzing}
                     >
-                      {alt.teachingNodes.map((node) => (
-                        <TeachingNodeCard key={node.id} node={node} focused={false} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0, 0, 0, 0.25)',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    marginTop: 4,
-                    border: '1px dashed rgba(255, 255, 255, 0.05)',
-                  }}
-                >
-                  <button
-                    onClick={() => onToggleReveal?.(alt.id)}
-                    disabled={alt.isAnalyzing}
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      background: 'var(--card, #2a2a2a)',
-                      color: 'var(--accent-light, #d4956a)',
-                      border: '1px solid var(--border)',
-                      cursor: alt.isAnalyzing ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                    }}
-                  >
-                    Reveal Engine Analysis
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                      Reveal Engine Analysis
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
