@@ -1,86 +1,39 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-
-type TrainingPhase = 'idle' | 'importing' | 'training' | 'done' | 'error' | 'stopped';
-
-interface TrainingConfig {
-  mode: 'import-train' | 'train-only';
-  input: string;
-  datasetOut: string;
-  weightsOut: string;
-  reportOut: string;
-  depth: number;
-  limit: number;
-  maxPlies: number;
-  minElo: number;
-  sampleEvery: number;
-  epochs: number;
-}
-
-interface TrainingStatus {
-  phase: TrainingPhase;
-  active: boolean;
-  startedAt: string | null;
-  endedAt: string | null;
-  config: TrainingConfig;
-  import: { seen: number; imported: number; skipped: number; rows: number; limit: number };
-  train: { trainRows: number; holdoutRows: number; baselineTop1: number | null; tunedTop1: number | null };
-  error: string;
-  logs: string[];
-}
-
-const DEFAULT_TRAINING_REVIEW_DEPTH = 24;
-
-const DEFAULT_CONFIG: TrainingConfig = {
-  mode: 'import-train',
-  input: 'fixtures/sample-game.pgn',
-  datasetOut: 'arena/out/lichess-master-dataset.jsonl',
-  weightsOut: 'arena/out/weights.json',
-  reportOut: 'arena/out/train-report.json',
-  depth: DEFAULT_TRAINING_REVIEW_DEPTH,
-  limit: 50,
-  maxPlies: 80,
-  minElo: 2200,
-  sampleEvery: 1,
-  epochs: 120,
-};
-
-const IDLE_STATUS: TrainingStatus = {
-  phase: 'idle',
-  active: false,
-  startedAt: null,
-  endedAt: null,
-  config: DEFAULT_CONFIG,
-  import: { seen: 0, imported: 0, skipped: 0, rows: 0, limit: DEFAULT_CONFIG.limit },
-  train: { trainRows: 0, holdoutRows: 0, baselineTop1: null, tunedTop1: null },
-  error: '',
-  logs: [],
-};
+import {
+  DEFAULT_TRAINING_CONFIG,
+  IDLE_TRAINING_STATUS,
+  fetchTrainingStatus,
+  openTrainingEvents,
+  startTraining,
+  stopTraining,
+  type TrainingConfig,
+  type TrainingPhase,
+} from './training-client';
 
 export function TrainingMonitor() {
-  const [status, setStatus] = useState<TrainingStatus>(IDLE_STATUS);
-  const [config, setConfig] = useState<TrainingConfig>(DEFAULT_CONFIG);
+  const [status, setStatus] = useState(IDLE_TRAINING_STATUS);
+  const [config, setConfig] = useState<TrainingConfig>(DEFAULT_TRAINING_CONFIG);
   const [requestError, setRequestError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
-    fetch('/api/training/status')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((s: TrainingStatus | null) => {
+    fetchTrainingStatus()
+      .then((s) => {
         if (!alive || !s) return;
         setStatus(s);
         setConfig(s.config);
       })
       .catch((e) => alive && setRequestError(String((e as Error)?.message ?? e)));
 
-    const events = new EventSource('/api/training/events');
-    events.onmessage = (ev) => {
-      const next = JSON.parse(ev.data) as TrainingStatus;
-      setStatus(next);
-      if (!next.active) setConfig(next.config);
-    };
-    events.onerror = () => setRequestError('Training event stream disconnected.');
+    const events = openTrainingEvents(
+      (next) => {
+        setStatus(next);
+        if (!next.active) setConfig(next.config);
+      },
+      () => setRequestError('Training event stream disconnected.'),
+    );
     return () => {
       alive = false;
       events.close();
@@ -116,14 +69,7 @@ export function TrainingMonitor() {
     setSubmitting(true);
     setRequestError('');
     try {
-      const res = await fetch('/api/training/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'start failed');
-      setStatus(body as TrainingStatus);
+      setStatus(await startTraining(config));
     } catch (e) {
       setRequestError(String((e as Error)?.message ?? e));
     } finally {
@@ -135,10 +81,7 @@ export function TrainingMonitor() {
     setSubmitting(true);
     setRequestError('');
     try {
-      const res = await fetch('/api/training/stop', { method: 'POST' });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? 'stop failed');
-      setStatus(body as TrainingStatus);
+      setStatus(await stopTraining());
     } catch (e) {
       setRequestError(String((e as Error)?.message ?? e));
     } finally {
