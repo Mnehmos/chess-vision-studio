@@ -45,6 +45,7 @@ import { PlayBoardHeader } from './PlayBoardHeader';
 import { PlayCommentaryPanel } from './PlayCommentaryPanel';
 import { PlayGameReview } from './PlayGameReview';
 import { PlayMoveHistory } from './PlayMoveHistory';
+import { PlayOpponentControls } from './PlayOpponentControls';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
@@ -797,57 +798,15 @@ export function PlayMode({
           onNewGame={newGame}
         />
 
-        {/* Engine opponent: play vs CVS or Stockfish, or leave off to play both sides. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--muted)', marginRight: 2 }}>Opponent</span>
-          {(['none', 'cvs', 'stockfish'] as Opponent[]).map((o) => {
-            const disabled =
-              o === 'cvs' ? !cvsHealth?.available : o === 'stockfish' ? !engineReady : false;
-            const label = o === 'none' ? 'Off (both sides)' : o === 'cvs' ? 'CVS' : 'Stockfish';
-            return (
-              <button
-                key={o}
-                data-testid={`opponent-${o}`}
-                disabled={disabled}
-                onClick={() => setOpponent(o)}
-                title={
-                  disabled
-                    ? o === 'cvs'
-                      ? 'Rust engine unavailable'
-                      : 'Stockfish not loaded'
-                    : undefined
-                }
-                style={o === opponent ? modeBtnActive : disabled ? modeBtnDisabled : modeBtn}
-              >
-                {label}
-              </button>
-            );
-          })}
-          {opponent !== 'none' && (
-            <>
-              <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8, marginRight: 2 }}>
-                You play
-              </span>
-              {(['w', 'b'] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => choosePlayerSide(s)}
-                  style={s === playerSide ? modeBtnActive : modeBtn}
-                >
-                  {s === 'w' ? 'White' : 'Black'}
-                </button>
-              ))}
-              {thinking && (
-                <span
-                  data-testid="opponent-thinking"
-                  style={{ fontSize: 11, color: 'var(--accent)', marginLeft: 6 }}
-                >
-                  Engine thinking…
-                </span>
-              )}
-            </>
-          )}
-        </div>
+        <PlayOpponentControls
+          opponent={opponent}
+          cvsAvailable={!!cvsHealth?.available}
+          stockfishAvailable={engineReady}
+          playerSide={playerSide}
+          thinking={thinking}
+          onOpponentChange={setOpponent}
+          onPlayerSideChange={choosePlayerSide}
+        />
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center', width: '100%' }}>
           {MODES.map((m) => {

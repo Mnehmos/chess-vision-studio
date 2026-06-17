@@ -341,6 +341,43 @@ select {
   color: #fff;
 }
 
+.play-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.play-control-label {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.play-control-label--side {
+  margin-left: 8px;
+}
+
+.play-mode-button {
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+.play-mode-button.is-active {
+  border-color: var(--accent);
+  background: rgba(184, 115, 51, 0.18);
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.play-opponent-thinking {
+  margin-left: 6px;
+  color: var(--accent);
+  font-size: 11px;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
