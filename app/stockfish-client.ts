@@ -29,11 +29,11 @@ export async function getStockfishHealth(): Promise<StockfishHealth> {
   return (await response.json()) as StockfishHealth;
 }
 
-export async function analyzeWithStockfish(fen: string, depth?: number): Promise<StockfishResult> {
+export async function analyzeWithStockfish(fen: string, depth?: number, forcedMove?: string): Promise<StockfishResult> {
   const response = await fetch('/api/stockfish/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fen, depth }),
+    body: JSON.stringify({ fen, depth, forcedMove }),
   });
   const body = (await response.json()) as StockfishResult | { error?: string };
   if (!response.ok) throw new Error((body as { error?: string }).error || `Stockfish analyze failed (${response.status})`);

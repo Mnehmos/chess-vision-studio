@@ -54,7 +54,7 @@ describe('Board2D', () => {
       />,
     );
     const lines = container.querySelectorAll('svg line');
-    expect(lines.length).toBe(3);
+    expect(lines.length).toBe(6);
     // the numbered threat arrow renders its sequence label
     expect(container.querySelector('svg text')?.textContent).toBe('1');
   });

@@ -12,18 +12,20 @@ export function MateCard({ proof, fen }: { proof: MateProof; fen: string }) {
     <div
       style={{
         marginTop: 12,
-        border: '2px solid #7a1010',
+        border: '1px solid rgba(210, 60, 60, 0.4)',
+        borderLeft: '3px solid #d43b3b',
         borderRadius: 8,
         padding: '10px 12px',
-        background: '#fbf1f1',
+        background: 'var(--card2, #1f1f1f)',
         minWidth: 300,
         fontSize: 14,
+        color: 'var(--text, #e8e0d8)',
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 6, color: '#7a1010' }}>
+      <div style={{ fontWeight: 700, marginBottom: 6, color: '#e0635e' }}>
         Forced mate — mate in {proof.mateInMoves}
       </div>
-      <div style={{ fontFamily: 'ui-monospace, monospace', marginBottom: 8 }}>
+      <div style={{ fontFamily: 'ui-monospace, monospace', marginBottom: 8, color: 'var(--text-soft, #b0a898)', fontSize: 13 }}>
         {formatLine(proof.line, moveNo, matingIsWhite)}
       </div>
       <Obligation label="Critical attacker" value={`${proof.matingPiece} (checks via ${proof.checkingLine})`} />
@@ -39,8 +41,9 @@ export function MateCard({ proof, fen }: { proof: MateProof; fen: string }) {
 
 function Obligation({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ lineHeight: 1.5 }}>
-      <span style={{ color: 'var(--muted)' }}>{label}:</span> {value}
+    <div style={{ lineHeight: 1.5, fontSize: 13 }}>
+      <span style={{ color: 'var(--muted, #888)' }}>{label}:</span>{' '}
+      <span style={{ color: 'var(--text-soft, #b0a898)' }}>{value}</span>
     </div>
   );
 }

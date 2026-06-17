@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { allSquares } from '../engine/led';
 import type { LedColor, LedMap, Square } from '../engine/types';
@@ -56,15 +56,15 @@ function canonicalDropUci(fen: string, from: Square, to: Square): string | null 
 // Interactive two-stage lesson. The solver drags the solution move on a real
 // board (same Board2D + onPieceDrop the analysis view uses); a correct move
 // advances the stage. Grading is the pure isPuzzleSolution.
-export function TeachingPuzzle({
-  puzzle,
-  onClose,
-  gradeAlternative,
-}: {
+export const TeachingPuzzle = forwardRef<HTMLElement, {
   puzzle: Puzzle;
   onClose: () => void;
   gradeAlternative?: (stage: PuzzleStage, uci: string) => Promise<boolean>;
-}) {
+}>(function TeachingPuzzle({
+  puzzle,
+  onClose,
+  gradeAlternative,
+}, ref) {
   const [stageIndex, setStageIndex] = useState(0);
   const [status, setStatus] = useState<'solving' | 'checking' | 'wrong' | 'solved'>('solving');
   const [selected, setSelected] = useState<Square | undefined>(undefined);
@@ -90,7 +90,7 @@ export function TeachingPuzzle({
 
   if (!stage) {
     return (
-      <section data-testid="teaching-puzzle" style={CARD}>
+      <section ref={ref} data-testid="teaching-puzzle" style={CARD}>
         <Header title="Lesson complete" onClose={onClose} />
         <div style={{ color: '#3fbf5f', fontSize: 13 }}>✓ Solved — nice work.</div>
       </section>
@@ -149,7 +149,7 @@ export function TeachingPuzzle({
   const lastStage = stageIndex + 1 >= puzzle.stages.length;
 
   return (
-    <section data-testid="teaching-puzzle" style={CARD}>
+    <section ref={ref} data-testid="teaching-puzzle" style={CARD}>
       <Header title={`Puzzle · stage ${stageIndex + 1}/${puzzle.stages.length}`} onClose={onClose} />
       <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>{stage.prompt}</div>
       <Board2D
@@ -161,6 +161,7 @@ export function TeachingPuzzle({
         orientation={stage.sideToMove}
         draggable={status === 'solving' || status === 'wrong'}
         onPieceDrop={onDrop}
+        squareSizeCss="clamp(26px, min(5.2vw, 42px), 42px)"
       />
       <div style={{ marginTop: 8, fontSize: 13, minHeight: 22, display: 'flex', gap: 8, alignItems: 'center' }}>
         {status === 'checking' && <span style={{ color: 'var(--muted)' }}>Checking alternative...</span>}
@@ -177,7 +178,7 @@ export function TeachingPuzzle({
       </div>
     </section>
   );
-}
+});
 
 const btn: React.CSSProperties = {
   border: '1px solid var(--border)',

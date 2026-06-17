@@ -110,7 +110,7 @@ export function computeAnalytics(entries: AnalyzedEntry[]): GameAnalytics {
       classification: e.analysis.classification,
       mateIn: e.analysis.mateProof?.mateInMoves,
     }))
-    .filter((m) => m.cpLoss >= 1) // only real mistakes
+    .filter((m) => m.cpLoss > 0.5) // inaccuracy-or-worse teaching moments
     .sort((a, b) => b.cpLoss - a.cpLoss);
 
   const worstMoves = ranked.slice(0, 5);

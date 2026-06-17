@@ -47,11 +47,12 @@ export async function getCvsEngineHealth(): Promise<CvsEngineHealth> {
 export async function analyzeWithCvsEngine(
   fen: string,
   depth?: number,
+  forcedMove?: string,
 ): Promise<CvsEngineAnalysis> {
   const response = await fetch('/api/cvs-engine/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fen, depth }),
+    body: JSON.stringify({ fen, depth, forcedMove }),
   });
   const body = (await response.json()) as CvsEngineAnalysis | { error?: string };
   if (!response.ok) throw new Error(body.error || `CVS Engine analyze failed (${response.status})`);

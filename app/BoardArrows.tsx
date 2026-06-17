@@ -11,6 +11,9 @@ export interface Arrow {
   dashed?: boolean;
   move?: boolean; // the played move — subtle slate, thin, small arrowhead
   dim?: boolean; // de-emphasized (focus mode)
+  pulse?: boolean;
+  promotion?: string;
+  deletable?: boolean;
 }
 
 // The app's visual grammar (consistent everywhere):
@@ -36,7 +39,15 @@ function center(sq: Square, orientation: 'white' | 'black'): { x: number; y: num
   return { x: col * CELL + CELL / 2, y: row * CELL + CELL / 2 };
 }
 
-export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]; orientation?: 'white' | 'black' }) {
+export function BoardArrows({
+  arrows,
+  orientation = 'white',
+  onArrowRightClick,
+}: {
+  arrows: Arrow[];
+  orientation?: 'white' | 'black';
+  onArrowRightClick?: (from: Square, to: Square, promotion?: string) => void;
+}) {
   const colors = Array.from(new Set(arrows.map((a) => a.color)));
   return (
     <svg
@@ -46,6 +57,12 @@ export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]
       preserveAspectRatio="xMidYMid meet"
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
     >
+      <style>{`
+        @keyframes csvPulse {
+          0% { r: 6; opacity: 1; }
+          100% { r: 18; opacity: 0; }
+        }
+      `}</style>
       <defs>
         {colors.map((c) => (
           <marker
@@ -87,8 +104,24 @@ export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]
         const y1 = A.y + uy * 16;
         const x2 = B.x - ux * 20;
         const y2 = B.y - uy * 20;
+        const outlineColor =
+          a.color === '#1a1a1a' || a.color === 'black'
+            ? 'rgba(255, 255, 255, 0.7)'
+            : 'rgba(16, 24, 40, 0.35)';
         return (
           <g key={i}>
+            {/* Outline line to ensure high contrast against any light/dark board square */}
+            <line
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={outlineColor}
+              strokeWidth={(a.move ? 3 : 4) + 1.5}
+              strokeOpacity={a.dim ? 0.18 : a.move ? 0.5 : 0.85}
+              strokeLinecap="round"
+              strokeDasharray={a.dashed ? '6 5' : undefined}
+            />
             <line
               x1={x1}
               y1={y1}
@@ -101,21 +134,68 @@ export function BoardArrows({ arrows, orientation = 'white' }: { arrows: Arrow[]
               strokeDasharray={a.dashed ? '6 5' : undefined}
               markerEnd={`url(#ah${a.move ? 's' : ''}-${a.color.replace('#', '')})`}
             />
-            {a.label && (
-              <>
-                <circle cx={x1} cy={y1} r={8} fill={a.color} />
-                <text
-                  x={x1}
-                  y={y1 + 3.5}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fontWeight="700"
-                  fill="#fff"
-                >
-                  {a.label}
-                </text>
-              </>
+            {a.deletable && onArrowRightClick && (
+              <line
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="transparent"
+                strokeWidth={14}
+                style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onArrowRightClick(a.from, a.to, a.promotion);
+                }}
+              />
             )}
+            {a.pulse && (
+              <circle
+                cx={x2}
+                cy={y2}
+                r={8}
+                fill="none"
+                stroke={a.color}
+                strokeWidth={2}
+                style={{
+                  animation: 'csvPulse 1.2s cubic-bezier(0.16, 1, 0.3, 1) infinite',
+                  transformOrigin: `${x2}px ${y2}px`,
+                }}
+              />
+            )}
+            {a.label && (() => {
+              const mx = (x1 + x2) / 2;
+              const my = (y1 + y2) / 2;
+              const textLen = a.label.length;
+              const pillW = Math.max(18, textLen * 7 + 6);
+              const pillH = 14;
+              return (
+                <>
+                  <rect
+                    x={mx - pillW / 2}
+                    y={my - pillH / 2}
+                    width={pillW}
+                    height={pillH}
+                    rx={4}
+                    fill="rgba(0,0,0,0.72)"
+                    stroke={a.color}
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={mx}
+                    y={my + 3.5}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fontWeight="700"
+                    fill="#fff"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {a.label}
+                  </text>
+                </>
+              );
+            })()}
           </g>
         );
       })}

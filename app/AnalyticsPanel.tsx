@@ -60,6 +60,7 @@ export function AnalyticsPanel({
   onComputeThemes,
   onJumpTeaching,
   teachingGameLabel,
+  onGeneratePuzzle,
 }: {
   entries: AnalyzedEntry[];
   features?: FeatureEntry[];
@@ -72,6 +73,7 @@ export function AnalyticsPanel({
   // game key, and each example is tagged with a human-readable game label.
   onJumpTeaching?: (gameKey: string, ply: number) => void;
   teachingGameLabel?: (gameKey: string) => string;
+  onGeneratePuzzle?: (ply: number) => void;
 }) {
   const [scope, setScope] = useState<Scope>('game');
   const [reviewView, setReviewView] = useState<ReviewView>('coach');
@@ -225,9 +227,15 @@ export function AnalyticsPanel({
           critical={critical}
           brief={brief}
           onJump={onJump}
+          onGeneratePuzzle={onGeneratePuzzle}
         />
       ) : reviewView === 'moments' ? (
-        <MomentsView focus={focus} entries={focusEntries} onJump={onJump} />
+        <MomentsView
+          focus={focus}
+          entries={focusEntries}
+          onJump={onJump}
+          onGeneratePuzzle={onGeneratePuzzle}
+        />
       ) : (
         <DataView
           analytics={analytics}
@@ -250,6 +258,7 @@ function CoachView({
   critical,
   brief,
   onJump,
+  onGeneratePuzzle,
 }: {
   focus: Side;
   stats: SideStats;
@@ -259,6 +268,7 @@ function CoachView({
   critical: AnalyzedEntry[];
   brief: CoachBrief;
   onJump: (ply: number) => void;
+  onGeneratePuzzle?: (ply: number) => void;
 }) {
   const solidMoves = stats.byClass.best + stats.byClass.excellent;
   return (
@@ -356,9 +366,14 @@ function CoachView({
         </div>
       </div>
       {critical.length ? (
-        critical
-          .slice(0, 3)
-          .map((entry) => <MomentCard key={entry.ply} entry={entry} onJump={onJump} />)
+        critical.map((entry) => (
+          <MomentCard
+            key={entry.ply}
+            entry={entry}
+            onJump={onJump}
+            onGeneratePuzzle={onGeneratePuzzle}
+          />
+        ))
       ) : (
         <PanelCard className="cvs-review-full">
           <div style={{ color: 'var(--good)', fontWeight: 700 }}>
@@ -527,10 +542,12 @@ function MomentsView({
   focus,
   entries,
   onJump,
+  onGeneratePuzzle,
 }: {
   focus: Side;
   entries: AnalyzedEntry[];
   onJump: (ply: number) => void;
+  onGeneratePuzzle?: (ply: number) => void;
 }) {
   const moments = teachingMoments(entries, 12);
   return (
@@ -544,7 +561,14 @@ function MomentsView({
       </div>
       <div className="cvs-review-grid">
         {moments.length ? (
-          moments.map((entry) => <MomentCard key={entry.ply} entry={entry} onJump={onJump} />)
+          moments.map((entry) => (
+            <MomentCard
+              key={entry.ply}
+              entry={entry}
+              onJump={onJump}
+              onGeneratePuzzle={onGeneratePuzzle}
+            />
+          ))
         ) : (
           <PanelCard className="cvs-review-full">
             No adverse moments were detected for this side.
@@ -555,7 +579,15 @@ function MomentsView({
   );
 }
 
-function MomentCard({ entry, onJump }: { entry: AnalyzedEntry; onJump: (ply: number) => void }) {
+function MomentCard({
+  entry,
+  onJump,
+  onGeneratePuzzle,
+}: {
+  entry: AnalyzedEntry;
+  onJump: (ply: number) => void;
+  onGeneratePuzzle?: (ply: number) => void;
+}) {
   const analysis = entry.analysis;
   return (
     <PanelCard className="cvs-review-moment">
@@ -610,6 +642,11 @@ function MomentCard({ entry, onJump }: { entry: AnalyzedEntry; onJump: (ply: num
         <button onClick={() => onJump(Math.max(0, entry.ply - 1))} style={primaryAction}>
           Try from here
         </button>
+        {onGeneratePuzzle && (
+          <button onClick={() => onGeneratePuzzle(entry.ply)} style={secondaryAccentAction}>
+            Generate puzzle
+          </button>
+        )}
         <button onClick={() => onJump(entry.ply)} style={secondaryAction}>
           Show played move
         </button>
@@ -743,15 +780,11 @@ function buildCoachBrief(
   };
 }
 
-function teachingMoments(entries: AnalyzedEntry[], limit = 4): AnalyzedEntry[] {
+function teachingMoments(entries: AnalyzedEntry[], limit = Number.POSITIVE_INFINITY): AnalyzedEntry[] {
   const ranked = [...entries]
     .filter((entry) => entry.analysis.classification !== 'unclassified')
     .sort((a, b) => b.analysis.cpLoss - a.analysis.cpLoss);
-  const adverse = ranked.filter((entry) => entry.analysis.cpLoss >= 0.8);
-  return (adverse.length ? adverse : ranked.filter((entry) => entry.analysis.cpLoss > 0)).slice(
-    0,
-    limit,
-  );
+  return ranked.filter((entry) => entry.analysis.cpLoss > 0.5).slice(0, limit);
 }
 
 function phaseByLoss(profile: PatternProfile, order: 'best' | 'worst'): Phase | null {
@@ -932,6 +965,14 @@ const secondaryAction: React.CSSProperties = {
   padding: '6px 9px',
   fontSize: 12,
 };
+const secondaryAccentAction: React.CSSProperties = {
+  border: '1px solid var(--accent)',
+  background: 'rgba(184,115,51,.16)',
+  color: 'var(--accent-light)',
+  padding: '6px 9px',
+  fontSize: 12,
+  fontWeight: 700,
+};
 
 function SideCard({ title, color, s }: { title: string; color: string; s: SideStats }) {
   const total = s.moves || 1;
@@ -993,7 +1034,7 @@ function MistakeColumn({
     <div>
       <h4 style={{ margin: '0 0 7px', color }}>{title}</h4>
       {moves.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No mistakes of at least one pawn.</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>No losses above half a pawn.</div>
       ) : (
         <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
           {moves.map((move) => (

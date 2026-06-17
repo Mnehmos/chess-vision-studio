@@ -38,6 +38,10 @@ import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
+import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove, getMoveSan, evalColor } from './arrow-analysis-store';
+import { AlternativeLinesPanel } from './AlternativeLinesPanel';
+import { AnnotationCommandList } from './AnnotationCommandList';
+import { getPositionAfterMove } from '../engine/teaching/node';
 import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
 import { EngineComparisonPanel } from './EngineComparisonPanel';
@@ -51,13 +55,17 @@ import { buildBoardExport, boardExportFilename, downloadJson } from './exportSta
 import { plyRecordToUci, sanLineToUci } from '../engine/adapters/uci-line';
 import type {
   PositionFacts,
-  TeachingAnalysis,
-  TeachingEvent,
   TeachingFactBundleV1,
   TeachingFactsRequestV1,
 } from '../engine/teaching/types';
-import { compileTeachingEvents } from '../engine/teaching/compile';
 import {
+  proposeTeachingHypotheses,
+  verifyTeachingHypotheses,
+  commitTeachingNodes,
+  type TeachingNode,
+} from '../engine/teaching/node';
+import {
+  buildBestMovePuzzle,
   buildTeachingPuzzle,
   isAlternativePuzzleSolution,
   type PuzzleStage,
@@ -81,6 +89,8 @@ import { describeMoveIdea, type MoveIdea } from '../engine/teaching/moveIdea';
 import { TeachingPuzzle } from './TeachingPuzzle';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate, narrateTeachingPlan } from '../llm/narrate';
+import { exportElementGif } from './gif-export';
+import { PreviewTeachingCard } from './PreviewTeachingCard';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -144,6 +154,7 @@ export function App() {
   const [showAllThreats, setShowAllThreats] = useState(false);
   const [cascade, setCascade] = useState(true);
   const [followMove, setFollowMove] = useState(true);
+  const [hideOverlays, setHideOverlays] = useState(false);
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
@@ -161,8 +172,11 @@ export function App() {
   const [teachingFacts, setTeachingFacts] = useState<TeachingFactBundleV1 | null>(null);
   const [teachingFactsBusy, setTeachingFactsBusy] = useState(false);
   const [teachingFactsError, setTeachingFactsError] = useState('');
-  const [teachingFocus, setTeachingFocus] = useState<TeachingEvent | null>(null);
-  const [puzzleEvent, setPuzzleEvent] = useState<TeachingEvent | null>(null);
+  const [teachingFocus, setTeachingFocus] = useState<TeachingNode | null>(null);
+  const [puzzleEvent, setPuzzleEvent] = useState<TeachingNode | null>(null);
+  const [requestedPuzzlePly, setRequestedPuzzlePly] = useState<number | null>(null);
+  const [bestMovePuzzlePly, setBestMovePuzzlePly] = useState<number | null>(null);
+  const [teachingNodes, setTeachingNodes] = useState<TeachingNode[]>([]);
   const [teachingThemes, setTeachingThemes] = useState<TeachingProfile | null>(null);
   const [teachingThemesJob, setTeachingThemesJob] = useState<TeachingThemesJob>({
     running: false,
@@ -184,6 +198,16 @@ export function App() {
   // analysisCacheRef is a ref (stable identity), so bump this to signal the dataset
   // views that its contents changed (after a load, a saved game, or a single ply).
   const [cacheVersion, setCacheVersion] = useState(0);
+  const [previewLine, setPreviewLine] = useState<{ alt: AlternativeLine; currentIndex: number } | null>(null);
+  const [hoveredAltId, setHoveredAltId] = useState<string | null>(null);
+  const gifCaptureRef = useRef<HTMLDivElement | null>(null);
+  const puzzleRef = useRef<HTMLElement | null>(null);
+  const [gifJob, setGifJob] = useState<{ running: boolean; done: number; total: number }>({
+    running: false,
+    done: 0,
+    total: 0,
+  });
+  const [scrollPuzzleOnOpen, setScrollPuzzleOnOpen] = useState(false);
   const enginePoolRef = useRef<EnginePool | null>(null);
   const [featureVersion, setFeatureVersion] = useState(0);
   const datasetRunRef = useRef(0);
@@ -325,6 +349,163 @@ export function App() {
     view === 0
       ? (currentGame?.initialFen ?? plies[0]?.fenBefore ?? START_FEN)
       : plies[view - 1].fenAfter;
+
+  const {
+    arrows: analysisArrows,
+    alternatives,
+    handleArrowDrawn,
+    togglePin,
+    deleteAlternative,
+    deleteMove,
+    deepenAlternative,
+    generateBestLine,
+    generatingBestLine,
+    refuteLine,
+    toggleReveal,
+  } = useArrowAnalysis(fen, cvsEngineHealth, engineState === 'ready');
+
+  const previewPositions = useMemo(() => {
+    if (!previewLine) return [];
+    const out: { fen: string; san: string; uci: string }[] = [];
+    let currFen = previewLine.alt.rootFen;
+    const moves = [...previewLine.alt.moves.map(m => m.uci), ...previewLine.alt.pv];
+    for (const moveUci of moves) {
+      const san = getMoveSan(currFen, moveUci.slice(0, 2) as Square, moveUci.slice(2, 4) as Square, moveUci.slice(4) || undefined);
+      const nextFen = getPositionAfterMove(currFen, moveUci);
+      if (!nextFen) break;
+      out.push({ fen: currFen, san, uci: moveUci });
+      currFen = nextFen;
+    }
+    out.push({ fen: currFen, san: '', uci: '' });
+    return out;
+  }, [previewLine]);
+
+  const activeFen = previewLine
+    ? (previewPositions[previewLine.currentIndex]?.fen ?? fen)
+    : fen;
+
+  const previewArrows = useMemo<Arrow[]>(() => {
+    if (!previewLine) return [];
+    const alt = previewLine.alt;
+    const moves = [
+      ...alt.moves.map(m => ({ from: m.from, to: m.to, promotion: m.promotion, fenBefore: m.fenBefore, moveData: m })),
+      ...alt.pv.map((uci, idx) => {
+        const fenBefore = idx === 0
+          ? (alt.moves.length > 0 ? alt.moves[alt.moves.length - 1].fenAfter : alt.rootFen)
+          : (previewPositions[alt.moves.length + idx - 1]?.fen ?? '');
+        return {
+          from: uci.slice(0, 2) as Square,
+          to: uci.slice(2, 4) as Square,
+          promotion: uci.slice(4) || undefined,
+          fenBefore,
+          moveData: null as AlternativeLineMove | null,
+        };
+      })
+    ];
+
+    const out: Arrow[] = [];
+    for (let i = previewLine.currentIndex + 1; i < moves.length; i++) {
+      const m = moves[i];
+      if (!m || !m.fenBefore) continue;
+      const sideToMove = new Chess(m.fenBefore).turn();
+      const isEngineMove = i >= alt.moves.length;
+      // Only show eval-based colors when analysis is revealed (no spoilers)
+      const defaultColor = sideToMove === 'w' ? '#ffffff' : '#1a1a1a';
+      const playerColor = (alt.revealed && m.moveData) ? (evalColor(m.moveData) ?? defaultColor) : defaultColor;
+      out.push({
+        from: m.from,
+        to: m.to,
+        color: isEngineMove ? '#dd6b20' : playerColor,
+        dashed: isEngineMove,
+        pulse: i === previewLine.currentIndex + 1,
+        promotion: m.promotion,
+        label: String(i + 1),
+      });
+    }
+    return out;
+  }, [previewLine, previewPositions]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!previewLine) return;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (previewLine.currentIndex < previewPositions.length - 1) {
+          setPreviewLine(prev => prev ? { ...prev, currentIndex: prev.currentIndex + 1 } : null);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (previewLine.currentIndex > 0) {
+          setPreviewLine(prev => prev ? { ...prev, currentIndex: prev.currentIndex - 1 } : null);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setPreviewLine(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewLine, previewPositions]);
+
+  const saveVariation = () => {
+    if (!currentGame || !previewLine) return;
+    const prefix = plies.slice(0, view);
+    let currChess = new Chess(previewLine.alt.rootFen);
+    const moves = [...previewLine.alt.moves.map(m => m.uci), ...previewLine.alt.pv];
+    const nextPlies = [...prefix];
+    for (const moveUci of moves) {
+      const before = currChess.fen();
+      const moveNumber = currChess.moveNumber();
+      let moved: any = null;
+      try {
+        moved = currChess.move({
+          from: moveUci.slice(0, 2),
+          to: moveUci.slice(2, 4),
+          promotion: moveUci.slice(4) || undefined,
+        });
+      } catch {
+        break;
+      }
+      if (!moved) break;
+      nextPlies.push({
+        ply: nextPlies.length + 1,
+        moveNumber,
+        san: moved.san,
+        color: moved.color,
+        from: moved.from,
+        to: moved.to,
+        fenBefore: before,
+        fenAfter: currChess.fen(),
+      });
+    }
+
+    const branchIndex = games.length;
+    const origin =
+      view > 0
+        ? `${plies[view - 1]?.moveNumber}${plies[view - 1]?.color === 'w' ? '.' : '...'} ${plies[view - 1]?.san}`
+        : 'start';
+    const firstMoveSan = nextPlies[prefix.length]?.san || '';
+    const branch: ParsedGame = {
+      index: branchIndex,
+      headers: {
+        ...currentGame.headers,
+        Result: '*',
+        CVSBranch: 'analysis',
+        CVSBranchFrom: currentGame.label,
+        CVSBranchParentIndex: String(gameIndex),
+        CVSBranchAtPly: String(view),
+        CVSBranchOrigin: origin,
+      },
+      initialFen: currentGame.initialFen,
+      plies: nextPlies,
+      label: `#${branchIndex + 1}  branch after ${origin}: ${firstMoveSan} (variation)`,
+    };
+
+    setGames([...games, branch]);
+    setGameIndex(branchIndex);
+    setView(nextPlies.length);
+    setPreviewLine(null);
+  };
   // Always-on legal-move hints: whatever lens is active, clicking a piece
   // shows where it can go (chess.js from the current FEN).
   const legalDots = useMemo(() => {
@@ -596,15 +777,64 @@ export function App() {
     setFocused(null);
     setTeachingFocus(null);
     setPuzzleEvent(null);
+    setBestMovePuzzlePly(null);
     if (followMove) setSelected(view > 0 ? (plies[view - 1]?.to as Square) : undefined);
   }, [view, plies, followMove]);
 
-  // Compile Rust facts + the Stockfish grade into committed teaching events.
-  const teachingAnalysis = useMemo<TeachingAnalysis | null>(
-    () =>
-      teachingFacts && analysis ? compileTeachingEvents({ analysis, facts: teachingFacts }) : null,
-    [teachingFacts, analysis],
-  );
+  // Compile Rust facts + the Stockfish grade into committed teaching events and run progressive verification.
+  useEffect(() => {
+    if (!teachingFacts || !analysis || !plies[view - 1]) {
+      setTeachingNodes([]);
+      return;
+    }
+    const ply = plies[view - 1];
+    const playedMoveUci = plyRecordToUci(ply);
+    const bestLine = analysis ? sanLineToUci(ply.fenBefore, analysis.evalBefore.pv) : [];
+
+    const defaultPolicy = {
+      tacticalClaims: 'required' as const,
+      counterfactualClaims: 'required' as const,
+      betterMoveClaims: 'required' as const,
+      structuralClaims: 'deterministic-or-engine' as const,
+      minimumDepth: 14,
+      timeoutMs: 1000,
+    };
+
+    const request = {
+      rootFen: ply.fenBefore,
+      subjectMove: playedMoveUci,
+      resultingFen: ply.fenAfter,
+      principalVariation: bestLine,
+      verificationPolicy: defaultPolicy,
+      facts: teachingFacts,
+    };
+
+    // 1. Propose immediately
+    const hypotheses = proposeTeachingHypotheses(teachingFacts, request);
+    const initialNodes = commitTeachingNodes(teachingFacts, hypotheses);
+    setTeachingNodes(initialNodes);
+
+    let alive = true;
+    const engine = engineRef.current;
+
+    if (engine && engineState === 'ready') {
+      (async () => {
+        // Run verification using the engine
+        const verified = await verifyTeachingHypotheses(
+          { ...request, engine },
+          hypotheses,
+          teachingFacts
+        );
+        if (!alive) return;
+        const committed = commitTeachingNodes(teachingFacts, verified);
+        setTeachingNodes(committed);
+      })();
+    }
+
+    return () => {
+      alive = false;
+    };
+  }, [teachingFacts, analysis, view, plies, engineState]);
 
   // What the played move accomplishes (fork/pin/winning capture) — shown when the
   // move wasn't a mistake, so strong moves aren't reported as "no teaching topic".
@@ -633,9 +863,10 @@ export function App() {
         classification: a.classification,
         cpLoss: a.cpLoss,
         betterMove: a.evalBefore.pv[0],
-        teaching: current ? teachingAnalysis : null,
+        teaching: null,
+        nodes: current ? teachingNodes : [],
         idea: current ? teachingIdea : null,
-        hazardNote: current && teachingFacts ? hangingNote(teachingFacts, teachingAnalysis) : undefined,
+        hazardNote: current && teachingFacts ? hangingNote(teachingFacts, teachingNodes) : undefined,
         summary: a.topExplanation,
         evalText: whiteEvalText(a, side),
         evalCp: whiteEvalCp(a, side),
@@ -645,7 +876,7 @@ export function App() {
     }
     return turns;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plies, analyses, view, teachingAnalysis, teachingIdea, cacheVersion]);
+  }, [plies, analyses, view, teachingNodes, teachingIdea, cacheVersion]);
 
   // The engine PositionFacts matching the board right now — Square facts reads the
   // inspected piece's attackers/defenders/SEE from here (matched by piece placement).
@@ -664,11 +895,46 @@ export function App() {
     return null;
   }, [teachingFacts, fen]);
 
-  // A two-stage practice puzzle for the event the user chose to drill.
-  const teachingPuzzle = useMemo(
-    () => (puzzleEvent && teachingFacts ? buildTeachingPuzzle(puzzleEvent, teachingFacts) : null),
-    [puzzleEvent, teachingFacts],
+  const bestMovePuzzle = useMemo(
+    () =>
+      bestMovePuzzlePly === view && teachingFacts ? buildBestMovePuzzle(teachingFacts) : null,
+    [bestMovePuzzlePly, view, teachingFacts],
   );
+
+  // A two-stage practice puzzle for a named teaching event, falling back to a
+  // single-stage best-move drill for plain inaccuracies.
+  const teachingPuzzle = useMemo(() => {
+    const eventPuzzle =
+      puzzleEvent && teachingFacts ? buildTeachingPuzzle(puzzleEvent, teachingFacts) : null;
+    return eventPuzzle ?? bestMovePuzzle;
+  }, [puzzleEvent, teachingFacts, bestMovePuzzle]);
+
+  useEffect(() => {
+    if (requestedPuzzlePly === null || requestedPuzzlePly !== view) return;
+    if (teachingFactsBusy || !teachingFacts) return;
+
+    const event = teachingNodes.find((node) => buildTeachingPuzzle(node, teachingFacts));
+    if (event) {
+      setPuzzleEvent(event);
+      setBestMovePuzzlePly(null);
+      setRequestedPuzzlePly(null);
+      return;
+    }
+
+    if (buildBestMovePuzzle(teachingFacts)) {
+      setPuzzleEvent(null);
+      setBestMovePuzzlePly(view);
+      setRequestedPuzzlePly(null);
+    }
+  }, [requestedPuzzlePly, view, teachingFactsBusy, teachingFacts, teachingNodes]);
+
+  useEffect(() => {
+    if (!teachingPuzzle || !scrollPuzzleOnOpen) return;
+    window.setTimeout(() => {
+      puzzleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setScrollPuzzleOnOpen(false);
+    }, 80);
+  }, [teachingPuzzle, scrollPuzzleOnOpen]);
 
   const gradePuzzleAlternative = async (stage: PuzzleStage, uci: string): Promise<boolean> => {
     const engine = engineRef.current;
@@ -828,6 +1094,17 @@ export function App() {
     setTab('board');
   };
 
+  const generatePuzzleFromPly = (ply: number) => {
+    if (!cvsEngineHealth.available) return;
+    const target = Math.max(1, Math.min(plies.length, ply));
+    setRequestedPuzzlePly(target);
+    setPuzzleEvent(null);
+    setBestMovePuzzlePly(null);
+    setScrollPuzzleOnOpen(true);
+    setView(target);
+    setTab('board');
+  };
+
   // A human-readable tag for an example's source game (cross-game profiles list
   // examples from many games). Prefers "White–Black", falls back to the label.
   const teachingGameLabel = (gameKey: string): string => {
@@ -841,17 +1118,19 @@ export function App() {
 
   // LED: a focused teaching event or insight overrides the mode overlay.
   const ledMap = useMemo(() => {
+    if (hideOverlays) return { mode: 'off' as any, squares: {} };
     if (teachingFocus) return teachingLedMap(teachingFocus);
     if (focused) return focusLedMap(focused);
     return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
-  }, [modeId, fen, selected, analysis, focused, teachingFocus]);
+  }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays]);
 
   // Annotation arrows:
   //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
   //     OWN attacks raycast OUTWARD (magenta out)
   //   • threat lines — the top refutation's call-and-response sequence, or ALL of
   //     them, each numbered and colored by the moving side
-  const arrows = useMemo<Arrow[]>(() => {
+  const baseArrows = useMemo<Arrow[]>(() => {
+    if (hideOverlays) return [];
     // TEACHING FOCUS: a clicked teaching event draws its played move, punishment,
     // and correction and suppresses everything else.
     if (teachingFocus) return teachingArrows(teachingFocus);
@@ -895,11 +1174,34 @@ export function App() {
     followMove,
     view,
     plies,
+    hideOverlays,
   ]);
+
+  const arrows = useMemo(() => {
+    if (previewLine) return previewArrows;
+
+    if (hoveredAltId) {
+      const alt = alternatives.find((x) => x.id === hoveredAltId);
+      if (alt) {
+        return [...baseArrows, ...analysisArrows].map((a) => {
+          const isFromAlt = alt.moves.some(
+            (m) => m.from === a.from && m.to === a.to && m.promotion === a.promotion
+          );
+          const isBase = baseArrows.includes(a);
+          return {
+            ...a,
+            dim: !isBase && !isFromAlt,
+          };
+        });
+      }
+    }
+    return [...baseArrows, ...analysisArrows];
+  }, [baseArrows, analysisArrows, hoveredAltId, previewLine, previewArrows]);
 
   // Keyboard navigation: ← → step, Home/End jump.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (previewLine) return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
       if (e.key === 'ArrowLeft') setView((v) => Math.max(0, v - 1));
       else if (e.key === 'ArrowRight') setView((v) => Math.min(plies.length, v + 1));
@@ -949,6 +1251,33 @@ export function App() {
     resetViewState(analysisCacheRef.current.get(gameCacheKey(parent)) ?? new Map());
     setView(Math.max(0, Math.min(parent.plies.length, Number.isFinite(atPly) ? atPly : 0)));
   };
+
+  const exportPreviewGif = async () => {
+    if (!previewLine || !gifCaptureRef.current || gifJob.running) return;
+    const originalIndex = previewLine.currentIndex;
+    setGifJob({ running: true, done: 0, total: previewPositions.length });
+    try {
+      await exportElementGif({
+        element: gifCaptureRef.current,
+        frameCount: previewPositions.length,
+        filename: `cvs-teaching-${Date.now()}.gif`,
+        setFrame: (index) =>
+          setPreviewLine((current) => (current ? { ...current, currentIndex: index } : current)),
+        onProgress: (done, total) => setGifJob({ running: true, done, total }),
+      });
+    } finally {
+      setPreviewLine((current) =>
+        current
+          ? {
+              ...current,
+              currentIndex: Math.min(originalIndex, Math.max(0, previewPositions.length - 1)),
+            }
+          : current,
+      );
+      setGifJob({ running: false, done: 0, total: 0 });
+    }
+  };
+
   const applyAnalysisMove = (from: Square, to: Square, promotion?: string) => {
     if (!currentGame) return;
     const before = fen;
@@ -1351,13 +1680,14 @@ export function App() {
         h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
         input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
         @keyframes csvBlink{50%{opacity:0.1}}
-        .cvs-workspace{display:grid;grid-template-columns:480px minmax(0,1fr) 300px;gap:20px;align-items:start}
-        @media (max-width:1180px){.cvs-workspace{grid-template-columns:480px minmax(0,1fr)}}
-        @media (max-width:820px){.cvs-workspace{grid-template-columns:1fr}}
+        .cvs-workspace{display:grid;grid-template-columns:auto 480px minmax(300px,320px) 300px;gap:20px;align-items:start}
+        .cvs-gif-capture{grid-column:2 / span 2;display:grid;grid-template-columns:480px minmax(300px,320px);gap:20px;align-items:start;justify-self:start;width:max-content;max-width:none}
+        @media (max-width:1380px){.cvs-workspace{grid-template-columns:auto 480px minmax(300px,1fr)}.cvs-gif-capture{grid-column:2 / span 2;grid-template-columns:480px minmax(300px,1fr)}.cvs-side-column{grid-column:2 / span 2}}
+        @media (max-width:980px){.cvs-workspace{grid-template-columns:1fr}.cvs-gif-capture,.cvs-side-column{grid-column:auto}.cvs-gif-capture{grid-template-columns:1fr;width:100%;max-width:100%}}
       `}</style>
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: 1500,
           margin: '0 auto',
           padding: '20px clamp(10px, 3vw, 24px) 56px',
           overflowX: 'hidden',
@@ -1482,6 +1812,8 @@ export function App() {
         ) : (
           <>
             <div className="cvs-workspace">
+              <AnnotationCommandList />
+              <div ref={gifCaptureRef} className="cvs-gif-capture">
               {/* Left: board + nav */}
               <div
                 style={{
@@ -1492,17 +1824,26 @@ export function App() {
                   boxSizing: 'border-box',
                 }}
               >
-                <ModeBar modeId={modeId} onPick={setModeId} engineReady={engineState === 'ready'} />
+                <div data-gif-crop="true">
+                <ModeBar
+                  modeId={modeId}
+                  onPick={setModeId}
+                  engineReady={engineState === 'ready'}
+                  hideOverlays={hideOverlays}
+                  setHideOverlays={setHideOverlays}
+                />
                 <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
                   <Board2D
-                    legalDots={legalDots}
-                    fen={fen}
-                    ledMap={ledMap}
-                    selected={selected}
-                    onSelect={onAnalysisSquareClick}
+                    legalDots={previewLine || hideOverlays ? undefined : legalDots}
+                    fen={activeFen}
+                    ledMap={previewLine || hideOverlays ? { mode: 'off' as any, squares: {} } : ledMap}
+                    selected={previewLine || hideOverlays ? undefined : selected}
+                    onSelect={previewLine ? () => {} : onAnalysisSquareClick}
                     arrows={arrows}
-                    draggable
-                    onPieceDrop={(from, to) => tryAnalysisMove(from, to)}
+                    draggable={!previewLine}
+                    onPieceDrop={previewLine ? undefined : (from, to) => tryAnalysisMove(from, to)}
+                    onArrowDrawn={previewLine ? undefined : handleArrowDrawn}
+                    onArrowRightClick={previewLine ? undefined : handleArrowDrawn}
                   />
                   {analysisPromo && (
                     <div
@@ -1555,6 +1896,132 @@ export function App() {
                   )}
                 </div>
                 <Nav view={view} total={plies.length} setView={setView} />
+                {previewLine && (
+                  <div
+                    style={{
+                      ...cardStyle,
+                      padding: '12px',
+                      marginTop: '12px',
+                      background: 'rgba(184, 115, 51, 0.08)',
+                      border: '1.5px solid var(--accent)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--accent-light)', fontSize: '14px' }}>
+                        Previewing Variation
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'var(--muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                        Step: {previewLine.currentIndex + 1} / {previewPositions.length}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '4px 6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-soft)' }}>
+                      {previewPositions.map((pos, idx) => {
+                        if (!pos.san) return null;
+                        const active = idx === previewLine.currentIndex;
+                        return (
+                          <span
+                            key={idx}
+                            onClick={() => setPreviewLine({ ...previewLine, currentIndex: idx })}
+                            style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontWeight: active ? 700 : 400,
+                              background: active ? 'var(--accent)' : 'transparent',
+                              color: active ? '#fff' : 'var(--text-soft)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {pos.san}
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
+                      <button
+                        onClick={() => setPreviewLine({ ...previewLine, currentIndex: 0 })}
+                        disabled={previewLine.currentIndex === 0}
+                        style={{ ...primaryBtn, width: '40px', padding: '6px 0' }}
+                      >
+                        ⏮
+                      </button>
+                      <button
+                        onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewLine.currentIndex - 1 })}
+                        disabled={previewLine.currentIndex === 0}
+                        style={{ ...primaryBtn, width: '40px', padding: '6px 0' }}
+                      >
+                        ◀
+                      </button>
+                      <button
+                        onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewLine.currentIndex + 1 })}
+                        disabled={previewLine.currentIndex === previewPositions.length - 1}
+                        style={{ ...primaryBtn, width: '40px', padding: '6px 0' }}
+                      >
+                        ▶
+                      </button>
+                      <button
+                        onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewPositions.length - 1 })}
+                        disabled={previewLine.currentIndex === previewPositions.length - 1}
+                        style={{ ...primaryBtn, width: '40px', padding: '6px 0' }}
+                      >
+                        ⏭
+                      </button>
+
+                      <button
+                        onClick={saveVariation}
+                        data-gif-exclude="true"
+                        style={{
+                          ...primaryBtn,
+                          background: 'var(--accent)',
+                          color: '#fff',
+                          marginLeft: 'auto',
+                          padding: '6px 12px',
+                        }}
+                      >
+                        Save Variation
+                      </button>
+                      <button
+                        onClick={exportPreviewGif}
+                        disabled={gifJob.running}
+                        data-gif-exclude="true"
+                        style={{ ...primaryBtn, padding: '6px 12px' }}
+                      >
+                        {gifJob.running
+                          ? `GIF ${gifJob.done}/${gifJob.total}`
+                          : 'Export GIF'}
+                      </button>
+                      <button
+                        onClick={() => setPreviewLine(null)}
+                        data-gif-exclude="true"
+                        style={{ ...primaryBtn, background: 'var(--muted)', padding: '6px 12px' }}
+                      >
+                        Exit (Esc)
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </div>
+                <div data-gif-exclude="true">
+                <AlternativeLinesPanel
+                  alternatives={alternatives}
+                  mainLineEval={analysis ? { scoreCp: analysis.evalBefore.cp ?? 0, mate: analysis.evalBefore.mate ?? null } : null}
+                  onPinToggle={togglePin}
+                  onDelete={deleteAlternative}
+                  onDeleteMove={deleteMove}
+                  onDeepen={deepenAlternative}
+                  onEnterVariation={(alt) => setPreviewLine({ alt, currentIndex: 0 })}
+                  onHoverAlternative={(alt) => setHoveredAltId(alt?.id ?? null)}
+                  onToggleReveal={toggleReveal}
+                  onGenerateBestLine={generateBestLine}
+                  generatingBestLine={generatingBestLine}
+                  onRefuteLine={refuteLine}
+                />
                 <button
                   onClick={exportAnalysis}
                   disabled={exporting}
@@ -1589,12 +2056,19 @@ export function App() {
                   setFollowMove={setFollowMove}
                   hasSelection={!!selected}
                   onClear={() => setSelected(undefined)}
+                  hideOverlays={hideOverlays}
+                  setHideOverlays={setHideOverlays}
                 />
                 <Legend modeId={modeId} />
+                </div>
               </div>
 
               {/* Middle: Teaching (board-level) · facts · engine */}
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div data-gif-crop="true">
+                {gifJob.running && previewLine ? (
+                  <PreviewTeachingCard previewLine={previewLine} />
+                ) : (
                 <TeachingLog
                   log={analyzeLog}
                   title="Teaching"
@@ -1606,13 +2080,20 @@ export function App() {
                   onPractice={setPuzzleEvent}
                   emptyHint="Step through the game — each move is taught here, newest at the bottom."
                 />
-                {teachingPuzzle && (
+                )}
+                {!(gifJob.running && previewLine) && teachingPuzzle && (
                   <TeachingPuzzle
+                    ref={puzzleRef}
                     puzzle={teachingPuzzle}
-                    onClose={() => setPuzzleEvent(null)}
+                    onClose={() => {
+                      setPuzzleEvent(null);
+                      setBestMovePuzzlePly(null);
+                    }}
                     gradeAlternative={gradePuzzleAlternative}
                   />
                 )}
+                </div>
+                <div data-gif-exclude="true">
                 <FactsPanel
                   fen={fen}
                   selected={selected}
@@ -1655,10 +2136,13 @@ export function App() {
                   onGenerateAll={generateAllCommentary}
                   totalAnalyzed={analyses.size}
                 />
+                </div>
+              </div>
               </div>
 
               {/* Right: LED twin + move list */}
               <div
+                className="cvs-side-column"
                 style={{
                   width: '100%',
                   minWidth: 0,
@@ -1699,6 +2183,7 @@ export function App() {
                 onComputeThemes={cvsEngineHealth.available ? runTeachingThemes : undefined}
                 onJumpTeaching={jumpToTeachingExample}
                 teachingGameLabel={teachingGameLabel}
+                onGeneratePuzzle={cvsEngineHealth.available ? generatePuzzleFromPly : undefined}
               />
             )}
           </>
@@ -1730,25 +2215,43 @@ function withRepetitionWarning(
 
 // Board overlay for a focused teaching event: the played move (slate), the
 // opponent's punishment (red), and the correction (green, dashed).
-function teachingArrows(event: TeachingEvent): Arrow[] {
+function teachingArrows(node: TeachingNode): Arrow[] {
   const out: Arrow[] = [];
   const arrow = (uci: string, color: string, extra?: Partial<Arrow>): void => {
     if (uci.length < 4) return;
     out.push({ from: uci.slice(0, 2) as Square, to: uci.slice(2, 4) as Square, color, ...extra });
   };
-  arrow(event.playedMove, ARROW.move, { move: true });
-  if (event.punishment) arrow(event.punishment.move, ARROW.attack, { label: '!' });
-  if (event.correction) arrow(event.correction.move, ARROW.defend, { dashed: true });
+  arrow(node.subjectMove, ARROW.move, { move: true });
+
+  if (node.boardPayload.arrows) {
+    for (const arr of node.boardPayload.arrows) {
+      out.push({
+        from: arr.from as Square,
+        to: arr.to as Square,
+        color: arr.color === 'red' ? ARROW.attack : ARROW.defend,
+        dashed: arr.style === 'dashed',
+      });
+    }
+  } else {
+    if (node.verification.expectedMove) {
+      arrow(node.verification.expectedMove, ARROW.attack, { label: '!' });
+    }
+  }
   return out;
 }
 
-// LED overlay for a focused teaching event: its squares lit orange, the acting
-// pieces (e.g. the forking/pinning piece) purple.
-function teachingLedMap(event: TeachingEvent): LedMap {
+function teachingLedMap(node: TeachingNode): LedMap {
   const squares: Record<string, LedColor> = {};
   for (const sq of allSquares()) squares[sq] = 'off';
-  for (const sq of event.squares) squares[sq] = 'orange';
-  for (const actor of event.actors) squares[actor.square] = 'purple';
+  if (node.boardPayload.squares) {
+    for (const sq of node.boardPayload.squares) {
+      squares[sq.square] = sq.color === 'red' ? 'red' : sq.color === 'gray' ? 'off' : 'orange';
+    }
+  } else {
+    for (const sq of node.involvedSquares) {
+      squares[sq] = 'orange';
+    }
+  }
   return { mode: 'focus', squares };
 }
 
@@ -2046,10 +2549,14 @@ function ModeBar({
   modeId,
   onPick,
   engineReady,
+  hideOverlays,
+  setHideOverlays,
 }: {
   modeId: string;
   onPick: (id: (typeof MODES)[number]['id']) => void;
   engineReady: boolean;
+  hideOverlays: boolean;
+  setHideOverlays: (v: boolean) => void;
 }) {
   return (
     <div
@@ -2059,6 +2566,7 @@ function ModeBar({
         gap: 4,
         marginBottom: 8,
         maxWidth: 'min(460px, 100%)',
+        alignItems: 'center',
       }}
     >
       {MODES.map((m) => {
@@ -2086,6 +2594,23 @@ function ModeBar({
           </button>
         );
       })}
+      <button
+        onClick={() => setHideOverlays(!hideOverlays)}
+        style={{
+          padding: '6px 10px',
+          fontSize: 13,
+          fontWeight: hideOverlays ? 600 : 500,
+          border: hideOverlays ? '1px solid var(--accent)' : '1px solid var(--border)',
+          borderBottom: hideOverlays ? '2px solid var(--accent)' : '1px solid var(--border)',
+          background: hideOverlays ? 'rgba(184,115,51,0.18)' : 'var(--card2)',
+          color: hideOverlays ? 'var(--accent-light)' : 'var(--muted)',
+          borderRadius: 6,
+          cursor: 'pointer',
+          marginLeft: 'auto',
+        }}
+      >
+        {hideOverlays ? 'Show Overlays' : 'Hide Overlays'}
+      </button>
     </div>
   );
 }

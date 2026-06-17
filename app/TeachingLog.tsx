@@ -1,8 +1,9 @@
-import type { CSSProperties } from 'react';
-import type { TeachingAnalysis, TeachingEvent, TeachingFactBundleV1 } from '../engine/teaching/types';
+import { useEffect, useRef, type CSSProperties } from 'react';
+import type { TeachingFactBundleV1, TeachingAnalysis } from '../engine/teaching/types';
 import type { MoveIdea } from '../engine/teaching/moveIdea';
 import type { DetectedOpening } from '../engine/teaching/openings';
 import type { MoveAnalysis } from '../engine/types';
+import type { TeachingNode } from '../engine/teaching/node';
 import { TeachingMoveBody, OpeningCard } from './TeachingPanel';
 
 // The running teaching log — ONE component for every surface (play vs an engine,
@@ -29,6 +30,7 @@ export interface CoachTurn {
   cpLoss?: number;
   betterMove?: string; // engine's preferred move (SAN), shown when this move is a mistake
   teaching: TeachingAnalysis | null;
+  nodes?: TeachingNode[]; // Unified nodes list
   idea: MoveIdea | null; // what the move accomplishes (fork/pin/winning capture)
   summary: string; // the move's top ranked-insight ("Gains the center on d5")
   evalText: string; // position eval after the move, ALWAYS White's perspective ("+1.2")
@@ -46,15 +48,11 @@ function namePieces(refs: { pieceType: string; square: string }[]): string {
   return `the ${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
-// Surface a hanging piece the move left behind, straight from the facts (the same
-// SEE-losing data the Square Facts panel shows): name the piece, how much it costs,
-// and who attacks it. Skipped when the compiler already committed a hanging/defense
-// topic, so it's a pure fallback for the gap where a move leaves material hanging
-// but matched no named pattern.
-export function hangingNote(facts: TeachingFactBundleV1, teaching: TeachingAnalysis | null): string | undefined {
+// Surface a hanging piece the move left behind, straight from the facts: name the piece, how much it costs,
+// and who attacks it.
+export function hangingNote(facts: TeachingFactBundleV1, nodes: TeachingNode[]): string | undefined {
   if (
-    teaching?.computed &&
-    teaching.events.some((e) => e.topicId === 'failed_defense' || e.topicId === 'missed_hanging_piece')
+    nodes.some((n) => n.conceptCode === 'failed_defense' || n.conceptCode === 'missed_hanging_piece')
   ) {
     return undefined;
   }
@@ -114,11 +112,27 @@ export function TeachingLog({
   thinking?: boolean;
   latestPly: number;
   focusedId: string | null;
-  onShow: (event: TeachingEvent | null) => void;
+  onShow: (node: TeachingNode | null) => void;
   scrollRef?: { current: HTMLDivElement | null };
   emptyHint?: string;
-  onPractice?: (event: TeachingEvent) => void;
+  onPractice?: (node: TeachingNode) => void;
 }) {
+  const internalScrollRef = useRef<HTMLDivElement | null>(null);
+  const setScrollElement = (node: HTMLDivElement | null) => {
+    internalScrollRef.current = node;
+    if (scrollRef) scrollRef.current = node;
+  };
+
+  useEffect(() => {
+    const node = scrollRef?.current ?? internalScrollRef.current;
+    if (!node) return;
+    if (typeof node.scrollTo === 'function') {
+      node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
+    } else {
+      node.scrollTop = node.scrollHeight;
+    }
+  }, [log.length, latestPly, thinking, focusedId, scrollRef]);
+
   const labelFor = (turn: CoachTurn) =>
     bothSides ? (turn.side === 'w' ? 'White' : 'Black') : turn.who === 'you' ? 'You' : coachName ?? 'Coach';
   const accentFor = (turn: CoachTurn) =>
@@ -148,7 +162,7 @@ export function TeachingLog({
         </div>
       ) : (
         <div
-          ref={scrollRef}
+          ref={setScrollElement}
           style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}
         >
           {log.length > COACH_WINDOW && (
@@ -193,12 +207,12 @@ function TeachingLogRow({
   accent: string;
   canShow: boolean;
   focusedId: string | null;
-  onShow: (event: TeachingEvent | null) => void;
-  onPractice?: (event: TeachingEvent) => void;
+  onShow: (node: TeachingNode | null) => void;
+  onPractice?: (node: TeachingNode) => void;
 }) {
   const moveNo = Math.floor(turn.ply / 2) + 1;
   const marker = turn.ply % 2 === 0 ? `${moveNo}.` : `${moveNo}…`;
-  const events = turn.teaching?.computed ? turn.teaching.events : [];
+  const nodes = turn.nodes || [];
   return (
     <div
       data-testid="coach-turn"
@@ -220,7 +234,7 @@ function TeachingLogRow({
         <div style={{ fontSize: 12, color: 'var(--muted)' }}>analyzing…</div>
       ) : (
         <TeachingMoveBody
-          events={events}
+          nodes={nodes}
           idea={turn.idea}
           summary={turn.summary}
           opening={turn.opening}

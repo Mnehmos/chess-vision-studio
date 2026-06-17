@@ -64,6 +64,7 @@ interface CvsEngineAnalyzeRequest {
   fen?: string;
   depth?: number;
   movetimeMs?: number;
+  forcedMove?: string;
 }
 
 interface CvsEnginePending {
@@ -309,9 +310,21 @@ function cvsEngineProxy(env: Record<string, string>): Plugin {
                 error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
               });
             const proc = acquireEngine(cfg);
-            const line = body.movetimeMs
-              ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}`
-              : fen;
+            const forcedMove = body.forcedMove?.trim();
+            let line = '';
+            if (forcedMove) {
+              const reqObj = {
+                cmd: body.movetimeMs ? 'go' : 'analyze',
+                fen: fen,
+                budgetMs: body.movetimeMs ? Math.max(50, Math.round(body.movetimeMs)) : undefined,
+                forcedMoveUci: forcedMove,
+              };
+              line = JSON.stringify(reqObj);
+            } else {
+              line = body.movetimeMs
+                ? `go ${Math.max(50, Math.round(body.movetimeMs))} ${fen}`
+                : fen;
+            }
             const out = await requestEngine(proc, line);
             let parsed: unknown;
             try {
@@ -416,6 +429,7 @@ interface SfPending {
   fen: string;
   depth: number;
   movetimeMs?: number;
+  forcedMove?: string;
   resolve: (r: SfResult) => void;
   reject: (e: Error) => void;
   timer: NodeJS.Timeout;
@@ -471,12 +485,13 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     const req = proc.queue.shift() as SfPending;
     proc.current = req;
     proc.busy = true;
+    const searchmoves = req.forcedMove ? ` searchmoves ${req.forcedMove}` : '';
     send(
       proc,
       'ucinewgame',
       'setoption name Clear Hash',
       `position fen ${req.fen}`,
-      req.movetimeMs ? `go movetime ${req.movetimeMs}` : `go depth ${req.depth}`,
+      req.movetimeMs ? `go movetime ${req.movetimeMs}${searchmoves}` : `go depth ${req.depth}${searchmoves}`,
     );
   };
 
@@ -617,6 +632,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
     fen: string,
     depth: number,
     movetimeMs?: number,
+    forcedMove?: string,
   ): Promise<SfResult> =>
     new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -624,7 +640,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
         if (ix >= 0) proc.queue.splice(ix, 1);
         reject(new Error('Stockfish request timed out'));
       }, 30_000);
-      proc.queue.push({ fen, depth, movetimeMs, resolve, reject, timer, best: null });
+      proc.queue.push({ fen, depth, movetimeMs, forcedMove, resolve, reject, timer, best: null });
       pump(proc);
     });
 
@@ -649,7 +665,7 @@ function stockfishProxy(env: Record<string, string>): Plugin {
       });
       server.middlewares.use('/api/stockfish/analyze', (req, res) => {
         if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
-        readJsonBody<{ fen?: string; depth?: number; movetimeMs?: number }>(req)
+        readJsonBody<{ fen?: string; depth?: number; movetimeMs?: number; forcedMove?: string }>(req)
           .then(async (body) => {
             const fen = body.fen?.trim();
             if (!fen) return json(res, 400, { error: 'fen is required' });
@@ -662,7 +678,8 @@ function stockfishProxy(env: Record<string, string>): Plugin {
             const movetimeMs = body.movetimeMs
               ? Math.max(10, Math.min(10_000, Math.round(body.movetimeMs)))
               : undefined;
-            const out = await request(acquireSf(cfg), fen, depth, movetimeMs);
+            const forcedMove = body.forcedMove?.trim();
+            const out = await request(acquireSf(cfg), fen, depth, movetimeMs, forcedMove);
             return json(res, 200, out);
           })
           .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));

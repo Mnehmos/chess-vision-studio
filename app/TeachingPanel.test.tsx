@@ -1,72 +1,62 @@
 // @vitest-environment jsdom
 import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { TeachingAnalysis, TeachingEvent } from '../engine/teaching/types';
+import type { TeachingNode } from '../engine/teaching/node';
 import { TeachingPanel } from './TeachingPanel';
 
-const EVENT: TeachingEvent = {
-  id: 'allowed_fork:e2e4:e1-f3-g1',
-  topicId: 'allowed_fork',
-  family: 'tactics',
-  action: 'allowed',
-  mechanism: 'fork',
-  side: 'white',
-  playedMove: 'e2e4',
-  actors: [{ id: 'black-knight-f3', side: 'black', pieceType: 'knight', square: 'f3' }],
-  targets: [{ id: 'white-king-g1', side: 'white', pieceType: 'king', square: 'g1' }],
-  squares: ['e1', 'f3', 'g1'],
-  consequence: { cpLoss: 5, materialLoss: 5 },
-  punishment: { move: 'g5f3', line: ['g5f3'] },
-  correction: { move: 'g1h1', avoidedFacts: [], createdFacts: [] },
-  proof: {
-    validators: ['fork_validation'],
-    evidence: [],
-    attribution: 'proven_refutation',
-    badge: 'engine_line',
-  },
-  saliency: 0.9,
-  plan: {
-    topic: 'Allowed Fork',
-    headline: 'e4 allowed a knight fork.',
-    cause: 'Knight to f3 attacks the king on g1 and the rook on e1.',
-    consequence: 'White gives check, so the rook on e1 cannot be saved.',
-    correction: 'Kh1 prevents the fork.',
-  },
-};
-
-const ANALYSIS: TeachingAnalysis = {
-  computed: true,
+const NODE: TeachingNode = {
   schemaVersion: 1,
-  events: [EVENT],
-  primaryEvent: EVENT,
+  id: 'fork:e2e4:g5f3',
+  rootPositionKey: 'startpos',
+  subjectMove: 'e2e4',
+  kind: 'tactic',
+  conceptCode: 'knight_multi_attack',
+  claimStatus: 'confirmed',
+  confidence: 1.0,
+  title: 'Knight Fork',
+  summary: 'e4 allowed a knight fork.',
+  why: 'Knight to f3 attacks the king on g1 and the rook on e1.',
+  involvedSquares: ['e1', 'f3', 'g1'],
+  boardPayload: {
+    arrows: [{ from: 'f3', to: 'e1', color: 'red' }, { from: 'f3', to: 'g1', color: 'red' }],
+    squares: [{ square: 'e1' }, { square: 'f3' }, { square: 'g1' }]
+  },
+  verification: {
+    required: true,
+    status: 'confirmed',
+    expectedMove: 'g5f3',
+  },
+  provenance: {
+    factIds: [],
+    detectorIds: [],
+    pipelineVersion: '1',
+  }
 };
 
 describe('TeachingPanel', () => {
-  it('renders the committed event card with its proof badge and verdict', () => {
+  it('renders the committed event card with its proof badge and status', () => {
     const { getByText, getByTestId } = render(
-      <TeachingPanel analysis={ANALYSIS} busy={false} error="" focusedId={null} onShow={() => {}} />,
+      <TeachingPanel nodes={[NODE]} busy={false} error="" focusedId={null} onShow={() => {}} />,
     );
-    expect(getByTestId('teaching-card')).toBeTruthy();
-    expect(getByText('Allowed Fork')).toBeTruthy();
+    expect(getByTestId('teaching-node-card')).toBeTruthy();
+    expect(getByText('Knight Fork')).toBeTruthy();
     expect(getByText('e4 allowed a knight fork.')).toBeTruthy();
-    expect(getByText('Engine line')).toBeTruthy();
-    expect(getByText('Allowed')).toBeTruthy();
+    expect(getByText('Confirmed')).toBeTruthy();
     expect(getByText(/Knight to f3 attacks/)).toBeTruthy();
   });
 
-  it('fires onShow with the event when Show on board is clicked', () => {
+  it('fires onShow with the node when Show on board is clicked', () => {
     const onShow = vi.fn();
     const { getByText } = render(
-      <TeachingPanel analysis={ANALYSIS} busy={false} error="" focusedId={null} onShow={onShow} />,
+      <TeachingPanel nodes={[NODE]} busy={false} error="" focusedId={null} onShow={onShow} />,
     );
     fireEvent.click(getByText('Show on board'));
-    expect(onShow).toHaveBeenCalledWith(EVENT);
+    expect(onShow).toHaveBeenCalledWith(NODE);
   });
 
   it('shows a quiet message when no topic was committed', () => {
-    const empty: TeachingAnalysis = { computed: true, schemaVersion: 1, events: [] };
     const { getByText } = render(
-      <TeachingPanel analysis={empty} busy={false} error="" focusedId={null} onShow={() => {}} />,
+      <TeachingPanel nodes={[]} busy={false} error="" focusedId={null} onShow={() => {}} />,
     );
     expect(getByText(/No teaching topic/)).toBeTruthy();
   });

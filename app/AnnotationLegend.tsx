@@ -14,6 +14,8 @@ export function AnnotationLegend({
   setFollowMove,
   hasSelection,
   onClear,
+  hideOverlays,
+  setHideOverlays,
 }: {
   showThreats: boolean;
   setShowThreats: (v: boolean) => void;
@@ -25,6 +27,8 @@ export function AnnotationLegend({
   setFollowMove: (v: boolean) => void;
   hasSelection: boolean;
   onClear: () => void;
+  hideOverlays?: boolean;
+  setHideOverlays?: (v: boolean) => void;
 }) {
   const swatch = (color: string, label: string) => (
     <span style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
@@ -63,12 +67,18 @@ export function AnnotationLegend({
           checked={showAllThreats}
           onChange={(e) => setShowAllThreats(e.target.checked)}
         />{' '}
-        all threats
+          all threats
       </label>
       <label style={{ marginLeft: 8, cursor: 'pointer' }} title="surface the next hop in the chain">
         <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} />{' '}
         cascade
       </label>
+      {setHideOverlays && (
+        <label style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--accent-light, #d4956a)', fontWeight: 600 }} title="hide all board overlay data, LEDs, and mode lines (except prediction arrows)">
+          <input type="checkbox" checked={!!hideOverlays} onChange={(e) => setHideOverlays(e.target.checked)} />{' '}
+          hide overlays
+        </label>
+      )}
       {hasSelection && (
         <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>
           clear selection

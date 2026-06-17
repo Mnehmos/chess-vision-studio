@@ -3,7 +3,7 @@
 // no-ops, and the game-over state is detected. Click-to-move is exercised here;
 // drag-and-drop funnels through the same tryMove() path.
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import allowedForkFixture from '../fixtures/teaching-facts/v1/allowed-fork.json';
 import type { UciEngine } from '../engine/evaluation';
 import type { TeachingFactBundleV1 } from '../engine/teaching/types';
@@ -148,8 +148,8 @@ describe('PlayMode — legal chess', () => {
     fireEvent.click(container.querySelector('[data-square="e4"]')!);
 
     await waitFor(() => expect(loadTeachingFacts).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(container.querySelector('[data-testid="teaching-card"]')).toBeTruthy());
-    expect(container.textContent).toContain('Allowed Fork');
+    await waitFor(() => expect(container.querySelector('[data-testid="teaching-node-card"]')).toBeTruthy());
+    expect(container.textContent).toContain('Apparent Knight Fork');
   });
 
   it('vs an engine opponent, builds a running dialogue — your move persists when the coach replies', async () => {
@@ -180,7 +180,7 @@ describe('PlayMode — legal chess', () => {
 
     // Dialogue appears with your move and its native teaching headline.
     await waitFor(() => expect(container.querySelector('[data-testid="teaching-log"]')).toBeTruthy());
-    await waitFor(() => expect(container.textContent).toContain('allowed a knight fork'));
+    await waitFor(() => expect(container.textContent).toContain('Apparent Knight Fork'));
 
     // The coach replies — now TWO turns, and YOUR move's teaching is still on screen.
     await waitFor(() => expect(container.querySelectorAll('[data-testid="coach-turn"]').length).toBe(2), {
@@ -189,7 +189,7 @@ describe('PlayMode — legal chess', () => {
     expect(engine.bestMove).toHaveBeenCalled();
     expect(container.textContent).toContain('You');
     expect(container.textContent).toContain('Stockfish');
-    expect(container.textContent).toContain('allowed a knight fork'); // persisted, not overwritten
+    expect(container.textContent).toContain('Apparent Knight Fork'); // persisted, not overwritten
   });
 
   it('detects checkmate (fool’s mate: 1.f3 e5 2.g4 Qh4#)', () => {
@@ -209,5 +209,218 @@ describe('PlayMode — legal chess', () => {
     const status = container.querySelector('[data-testid="play-status"]')!.textContent!;
     expect(status).toContain('Checkmate');
     expect(status).toContain('Black wins');
+  });
+
+  it('supports drawing sequential calculation arrows alternating turn colors', async () => {
+    const engine = {
+      evaluate: vi.fn(async () => ({ cp: 0, depth: 14, pv: [] })),
+      dispose: vi.fn(),
+    } as unknown as UciEngine;
+
+    const { container } = render(
+      <PlayMode engine={engine} engineReady cvsHealth={{ ok: true, available: true }} />
+    );
+
+    // Mock document.elementFromPoint and pointer capture APIs for jsdom
+    let mockElement: Element | null = null;
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = () => mockElement;
+
+    const originalSetPointerCapture = window.Element.prototype.setPointerCapture;
+    const originalReleasePointerCapture = window.Element.prototype.releasePointerCapture;
+    window.Element.prototype.setPointerCapture = vi.fn();
+    window.Element.prototype.releasePointerCapture = vi.fn();
+
+    try {
+      const boardContainer = container.querySelector('[data-square="e2"]')!.parentElement!;
+
+      // Helper to dispatch native pointer event via MouseEvent fallback for JSDOM
+      const dispatchPointer = (target: Element, type: string, init: any = {}) => {
+        const ev = new window.MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          button: init.button ?? 0,
+          buttons: init.buttons ?? 0,
+        });
+        Object.defineProperty(ev, 'pointerId', { value: 1 });
+        target.dispatchEvent(ev);
+      };
+
+      // 1. Draw e2 -> e4 (White arrow)
+      mockElement = container.querySelector('[data-square="e2"]');
+      act(() => {
+        dispatchPointer(mockElement!, 'pointerdown', { button: 2, buttons: 2 });
+      });
+      
+      mockElement = container.querySelector('[data-square="e4"]');
+      act(() => {
+        dispatchPointer(boardContainer, 'pointermove');
+      });
+      act(() => {
+        dispatchPointer(boardContainer, 'pointerup');
+      });
+
+      // 2. Draw e7 -> e5 (Black arrow, legal on the board after e4)
+      mockElement = container.querySelector('[data-square="e7"]');
+      act(() => {
+        dispatchPointer(mockElement!, 'pointerdown', { button: 2, buttons: 2 });
+      });
+      
+      mockElement = container.querySelector('[data-square="e5"]');
+      act(() => {
+        dispatchPointer(boardContainer, 'pointermove');
+      });
+      act(() => {
+        dispatchPointer(boardContainer, 'pointerup');
+      });
+
+      // Verify arrows exist and alternate colors
+      await waitFor(() => {
+        const lines = container.querySelectorAll('svg line');
+        expect(lines.length).toBeGreaterThanOrEqual(2);
+      });
+
+      const lines = Array.from(container.querySelectorAll('svg line'));
+      const lineColors = lines.map(line => line.getAttribute('stroke'));
+      
+      expect(lineColors).toContain('#ffffff');
+      expect(lineColors).toContain('#1a1a1a');
+
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+      window.Element.prototype.setPointerCapture = originalSetPointerCapture;
+      window.Element.prototype.releasePointerCapture = originalReleasePointerCapture;
+    }
+  });
+
+  it('supports sequential calculation line and spoiler mode toggling', async () => {
+    const engine = {
+      evaluate: vi.fn(async () => ({ cp: 0, depth: 14, pv: [] })),
+      dispose: vi.fn(),
+    } as unknown as UciEngine;
+
+    const { container, getByText } = render(
+      <PlayMode engine={engine} engineReady cvsHealth={{ ok: true, available: true }} />
+    );
+
+    // Mock document.elementFromPoint and pointer capture APIs for jsdom
+    let mockElement: Element | null = null;
+    const originalElementFromPoint = document.elementFromPoint;
+    document.elementFromPoint = () => mockElement;
+
+    const originalSetPointerCapture = window.Element.prototype.setPointerCapture;
+    const originalReleasePointerCapture = window.Element.prototype.releasePointerCapture;
+    window.Element.prototype.setPointerCapture = vi.fn();
+    window.Element.prototype.releasePointerCapture = vi.fn();
+
+    try {
+      const boardContainer = container.querySelector('[data-square="e2"]')!.parentElement!;
+
+      // Helper to dispatch native pointer event via MouseEvent fallback for JSDOM
+      const dispatchPointer = (target: Element, type: string, init: any = {}) => {
+        const ev = new window.MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          button: init.button ?? 0,
+          buttons: init.buttons ?? 0,
+        });
+        Object.defineProperty(ev, 'pointerId', { value: 1 });
+        target.dispatchEvent(ev);
+      };
+
+      // 1. Draw e2 -> e4 (White arrow)
+      mockElement = container.querySelector('[data-square="e2"]');
+      act(() => {
+        dispatchPointer(mockElement!, 'pointerdown', { button: 2, buttons: 2 });
+      });
+      
+      mockElement = container.querySelector('[data-square="e4"]');
+      act(() => {
+        dispatchPointer(boardContainer, 'pointermove');
+      });
+      act(() => {
+        dispatchPointer(boardContainer, 'pointerup');
+      });
+
+      // Verify variation card is rendered and in spoiler mode (shows "Reveal Engine Analysis")
+      await waitFor(() => {
+        expect(container.textContent).toContain('e4');
+        expect(container.textContent).toContain('(player)');
+      });
+      const revealBtn = getByText('Reveal Engine Analysis');
+      expect(revealBtn).toBeTruthy();
+      expect(container.textContent).not.toContain('Engine Score');
+
+      // Click "Reveal Engine Analysis"
+      act(() => {
+        revealBtn.click();
+      });
+
+      // Verify analysis is revealed
+      await waitFor(() => {
+        expect(container.textContent).toContain('Engine Score');
+        expect(container.textContent).toContain('Hide Analysis');
+      });
+
+      // 2. Draw e7 -> e5 (Black arrow, legal on the board after e4)
+      mockElement = container.querySelector('[data-square="e7"]');
+      act(() => {
+        dispatchPointer(mockElement!, 'pointerdown', { button: 2, buttons: 2 });
+      });
+      
+      mockElement = container.querySelector('[data-square="e5"]');
+      act(() => {
+        dispatchPointer(boardContainer, 'pointermove');
+      });
+      act(() => {
+        dispatchPointer(boardContainer, 'pointerup');
+      });
+
+      // Verify that e5 is appended in the same card (1. e4 e5) and spoiler mode resets
+      await waitFor(() => {
+        expect(container.textContent).toContain('e4');
+        expect(container.textContent).toContain('e5');
+        // Engine Analysis should be hidden again!
+        expect(container.textContent).toContain('Reveal Engine Analysis');
+        expect(container.textContent).not.toContain('Engine Score');
+      });
+
+    } finally {
+      document.elementFromPoint = originalElementFromPoint;
+      window.Element.prototype.setPointerCapture = originalSetPointerCapture;
+      window.Element.prototype.releasePointerCapture = originalReleasePointerCapture;
+    }
+  });
+
+  it('supports hiding overlays via the hide overlays toggle', () => {
+    const { container, getByText } = render(<PlayMode />);
+    
+    // initially, select e2 to draw selection/move overlays
+    const e2 = container.querySelector('[data-square="e2"]')! as HTMLElement;
+    fireEvent.click(e2);
+
+    // expect e2 to have selection box shadow style (outline)
+    expect(e2.style.boxShadow).toContain('inset 0 0 0 3px');
+    
+    // check that there are overlays/arrows drawn (e.g. svg line)
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0);
+
+    // toggle hide overlays checkbox
+    const label = getByText('hide overlays');
+    const toggle = label.closest('label')?.querySelector('input');
+    expect(toggle).toBeTruthy();
+    
+    fireEvent.click(toggle!);
+
+    // selection style should be gone
+    expect(e2.style.boxShadow).toBe('');
+    
+    // base arrows (like defend/attack) should be hidden
+    expect(container.querySelectorAll('svg line').length).toBe(0);
+
+    // untoggle
+    fireEvent.click(toggle!);
+    expect(e2.style.boxShadow).toContain('inset 0 0 0 3px');
+    expect(container.querySelectorAll('svg line').length).toBeGreaterThan(0);
   });
 });

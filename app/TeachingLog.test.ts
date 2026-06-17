@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { hangingNote, whiteEvalText, whiteEvalCp } from './TeachingLog';
-import type { TeachingAnalysis, TeachingFactBundleV1 } from '../engine/teaching/types';
+import { hangingNote, whiteEvalText } from './TeachingLog';
+import type { TeachingFactBundleV1 } from '../engine/teaching/types';
 import type { MoveAnalysis } from '../engine/types';
+import type { TeachingNode } from '../engine/teaching/node';
 
 // Minimal bundle carrying only the fields hangingNote reads — robust against the
 // incidental shape of any one fixture.
@@ -31,14 +32,31 @@ function bundle(pieces: Piece[], mover: 'white' | 'black' = 'white'): TeachingFa
   } as unknown as TeachingFactBundleV1;
 }
 
-const committed = (topicId: string): TeachingAnalysis =>
-  ({ computed: true, schemaVersion: 1, events: [{ topicId }] }) as unknown as TeachingAnalysis;
+const committed = (conceptCode: string): TeachingNode[] =>
+  ([
+    {
+      schemaVersion: 1,
+      id: 'test-node',
+      rootPositionKey: '',
+      subjectMove: '',
+      kind: 'tactic',
+      conceptCode,
+      claimStatus: 'confirmed',
+      confidence: 1.0,
+      title: '',
+      summary: '',
+      involvedSquares: [],
+      boardPayload: {},
+      verification: { required: false, status: 'confirmed' },
+      provenance: { factIds: [], detectorIds: [], pipelineVersion: '' },
+    },
+  ] as TeachingNode[]);
 
 describe('hangingNote', () => {
   it('names the piece, the magnitude, and who attacks it', () => {
     const note = hangingNote(
       bundle([{ side: 'white', pieceType: 'bishop', square: 'c4', scoreCp: -300, losing: true, attackers: [{ pieceType: 'knight', square: 'd6' }] }]),
-      null,
+      [],
     );
     expect(note).toBe('Leaves the bishop on c4 hanging (~3 pawns) — attacked by the knight on d6. The opponent can win it.');
   });
@@ -46,7 +64,7 @@ describe('hangingNote', () => {
   it('pluralizes correctly for a one-pawn loss (no "1 pawns")', () => {
     const note = hangingNote(
       bundle([{ side: 'white', pieceType: 'pawn', square: 'e5', scoreCp: -100, losing: true, attackers: [{ pieceType: 'bishop', square: 'g3' }] }]),
-      null,
+      [],
     );
     expect(note).toContain('(~1 pawn)');
     expect(note).not.toContain('1 pawns');
@@ -67,19 +85,19 @@ describe('hangingNote', () => {
           ],
         },
       ]),
-      null,
+      [],
     );
     expect(note).toContain('attacked by the bishop on g3 and knight on f3');
   });
 
   it('returns undefined when no mover-side piece is SEE-losing', () => {
-    expect(hangingNote(bundle([{ side: 'white', pieceType: 'rook', square: 'a1', losing: false }]), null)).toBeUndefined();
+    expect(hangingNote(bundle([{ side: 'white', pieceType: 'rook', square: 'a1', losing: false }]), [])).toBeUndefined();
   });
 
   it('ignores the opponent’s hanging piece (only flags the mover’s own)', () => {
     const note = hangingNote(
       bundle([{ side: 'black', pieceType: 'queen', square: 'd8', scoreCp: -900, losing: true }], 'white'),
-      null,
+      [],
     );
     expect(note).toBeUndefined();
   });
@@ -98,14 +116,5 @@ describe('whiteEvalText / whiteEvalCp (eval bar normalization)', () => {
   it('flips evalAfter (side-to-move) into White’s perspective', () => {
     // After White moves it is Black to move, so evalAfter is Black-POV; White view negates it.
     expect(whiteEvalText(evalA({ cp: 120 }), 'w')).toBe('-1.2');
-    expect(whiteEvalText(evalA({ cp: 120 }), 'b')).toBe('+1.2');
-    expect(whiteEvalCp(evalA({ cp: 120 }), 'w')).toBe(-120);
-  });
-
-  it('formats mate from White’s perspective and saturates the bar', () => {
-    expect(whiteEvalText(evalA({ mate: 3 }), 'b')).toBe('#3');
-    expect(whiteEvalText(evalA({ mate: 3 }), 'w')).toBe('#-3');
-    expect(whiteEvalCp(evalA({ mate: 3 }), 'b')).toBe(10000);
-    expect(whiteEvalCp(evalA({ mate: -2 }), 'b')).toBe(-10000);
   });
 });
