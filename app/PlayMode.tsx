@@ -17,12 +17,11 @@ import {
   type CvsEngineHealth,
 } from './cvs-engine-client';
 import { TeachingLog, whiteEvalText, whiteEvalCp, hangingNote, type CoachTurn } from './TeachingLog';
-import { allSquares, computeLedMap, type ModeId } from '../engine/led';
+import { computeLedMap, type ModeId } from '../engine/led';
 import { MODES, LED_CSS } from './modes';
 import { selectionArrows, lineArrows } from './annotate';
 import { AnnotationLegend } from './AnnotationLegend';
 import { analyzeMoveLive } from '../engine/analyze';
-import { sanLineToUci } from '../engine/adapters/uci-line';
 import { extractPlyFeatures, type PlyFeatures } from '../engine/features';
 import type { UciEngine } from '../engine/evaluation';
 import { compileTeachingEvents } from '../engine/teaching/compile';
@@ -34,9 +33,9 @@ import type {
   TeachingFactBundleV1,
   TeachingFactsRequestV1,
 } from '../engine/teaching/types';
-import { buildTeachingNodes, type TeachingNode, getPositionAfterMove } from '../engine/teaching/node';
-import type { InsightCandidate, LedMap, MoveAnalysis, Square } from '../engine/types';
-import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove, getMoveSan, evalColor } from './arrow-analysis-store';
+import { buildTeachingNodes, type TeachingNode } from '../engine/teaching/node';
+import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
+import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove } from './arrow-analysis-store';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
@@ -44,6 +43,16 @@ import { buildBoardExport, downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import type { PlyRecord } from '../engine/position';
+import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
+import {
+  legalDotsFor,
+  legalMovesFrom,
+  teachingLedMap,
+  teachingNodeArrows,
+  teachingRequestForLiveMove,
+  validateExposedTactics,
+  type VerboseMove,
+} from './play-mode-helpers';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // Engine-opponent search depth (Stockfish; CVS uses its configured depth) and a
@@ -52,86 +61,12 @@ const OPPONENT_DEPTH = 12;
 const OPPONENT_THINK_MS = 500;
 type Opponent = 'none' | 'cvs' | 'stockfish';
 
-type VerboseMove = { from: string; to: string; san: string; flags: string; promotion?: string };
 type HistEntry = { san: string; fen: string; from: Square; to: Square; uci: string };
 const PROMO_PIECES = ['q', 'r', 'n', 'b'] as const;
 const PROMO_GLYPH: Record<string, Record<string, string>> = {
   w: { q: '♕', r: '♖', n: '♘', b: '♗' },
   b: { q: '♛', r: '♜', n: '♞', b: '♝' },
 };
-function legalMovesFrom(fen: string, sq: Square): VerboseMove[] {
-  try {
-    return new Chess(fen).moves({ square: sq as never, verbose: true }) as unknown as VerboseMove[];
-  } catch {
-    return [];
-  }
-}
-
-const TACTIC_TOPICS = new Set(['allowed_fork', 'allowed_pin', 'failed_defense', 'missed_hanging_piece']);
-
-function firstMotifMove(c: { status: string; items?: { moveUci: string }[] }): string | undefined {
-  return c.status === 'computed' ? c.items?.[0]?.moveUci : undefined;
-}
-
-function appliedFen(fen: string, uci: string | undefined): string | null {
-  if (!uci || uci.length < 4) return null;
-  try {
-    const board = new Chess(fen);
-    const moved = board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4) || undefined });
-    return moved ? board.fen() : null;
-  } catch {
-    return null;
-  }
-}
-
-// The position right after the punishing move a callout names — the move we re-grade.
-// Fork/pin: apply the motif move. Failed defense: the refutation is already played.
-// Missed hanging: the capture the engine wanted is the best move.
-function tacticPositionAfter(event: TeachingEvent, facts: TeachingFactBundleV1): string | null {
-  switch (event.topicId) {
-    case 'allowed_fork':
-      return appliedFen(facts.played.fenAfter, firstMotifMove(facts.played.position.availableMotifs));
-    case 'allowed_pin':
-      return appliedFen(facts.played.fenAfter, firstMotifMove(facts.played.position.availablePins));
-    case 'failed_defense':
-      return facts.refutation?.fenAfter ?? null;
-    case 'missed_hanging_piece':
-      return facts.best?.fenAfter ?? null;
-    default:
-      return null;
-  }
-}
-
-// "A fork is exposed" doesn't make it good. Re-grade EVERY exposed tactic against the
-// engine: play its punishing move, evaluate, and attach the attacker's score so each
-// callout can show confirmed (winning) or refuted (not winning). attackerCp negates
-// the eval because the side to move after the punishing move is the victim. Returns
-// the teaching unchanged on any failure.
-async function validateExposedTactics(
-  teaching: TeachingAnalysis | null,
-  facts: TeachingFactBundleV1,
-  engine: UciEngine,
-  depth: number,
-): Promise<TeachingAnalysis | null> {
-  if (!teaching?.computed) return teaching;
-  const events = await Promise.all(
-    teaching.events.map(async (event) => {
-      if (!TACTIC_TOPICS.has(event.topicId)) return event;
-      const fen = tacticPositionAfter(event, facts);
-      if (!fen) return event;
-      try {
-        const ev = await engine.evaluate({ fen, depth });
-        if (ev.status === 'unavailable') return event;
-        const cp = typeof ev.mate === 'number' ? (ev.mate > 0 ? 100000 : -100000) : (ev.cp ?? 0);
-        return { ...event, engineCheck: { attackerCp: -cp, depth } };
-      } catch {
-        return event;
-      }
-    }),
-  );
-  return { ...teaching, events };
-}
-
 export interface ReviewMoment {
   id: string;
   ply: number;
@@ -397,21 +332,7 @@ export function PlayMode({
   }, []);
 
   const previewPositions = useMemo(() => {
-    if (!previewLine) return [];
-    const out: { fen: string; san?: string }[] = [];
-    let currFen = previewLine.alt.rootFen;
-    const moves = [...previewLine.alt.moves.map(m => m.uci), ...previewLine.alt.pv];
-    for (const move of moves) {
-      const resulting = getPositionAfterMove(currFen, move);
-      if (!resulting) break;
-      const from = move.slice(0, 2) as Square;
-      const to = move.slice(2, 4) as Square;
-      const promo = move.slice(4) || undefined;
-      const san = getMoveSan(currFen, from, to, promo);
-      out.push({ fen: resulting, san });
-      currFen = resulting;
-    }
-    return out;
+    return previewLine ? buildVariationPreviewPositions(previewLine.alt) : [];
   }, [previewLine]);
 
   const activeFen = previewLine
@@ -642,44 +563,13 @@ export function PlayMode({
   }, [fen, selected, liveAnalysis, showThreats, showAllThreats, cascade, focused, teachingFocus, followMove, last, hideOverlays]);
 
   const previewArrows = useMemo(() => {
-    if (!previewLine) return [];
-    const alt = previewLine.alt;
-    const moves = [
-      ...alt.moves.map(m => ({ from: m.from, to: m.to, promotion: m.promotion, fenBefore: m.fenBefore, moveData: m })),
-      ...alt.pv.map((uci, idx) => {
-        const fenBefore = idx === 0
-          ? (alt.moves.length > 0 ? alt.moves[alt.moves.length - 1].fenAfter : alt.rootFen)
-          : (previewPositions[alt.moves.length + idx - 1]?.fen ?? '');
-        return {
-          from: uci.slice(0, 2) as Square,
-          to: uci.slice(2, 4) as Square,
-          promotion: uci.slice(4) || undefined,
-          fenBefore,
-          moveData: null as AlternativeLineMove | null,
-        };
-      })
-    ];
-
-    const out: Arrow[] = [];
-    for (let i = previewLine.currentIndex + 1; i < moves.length; i++) {
-      const m = moves[i];
-      if (!m || !m.fenBefore) continue;
-      const sideToMove = new Chess(m.fenBefore).turn();
-      const isEngineMove = i >= alt.moves.length;
-      // Only show eval-based colors when analysis is revealed (no spoilers)
-      const defaultColor = sideToMove === 'w' ? '#ffffff' : '#1a1a1a';
-      const playerColor = (alt.revealed && m.moveData) ? (evalColor(m.moveData) ?? defaultColor) : defaultColor;
-      out.push({
-        from: m.from,
-        to: m.to,
-        color: isEngineMove ? '#dd6b20' : playerColor,
-        dashed: isEngineMove,
-        pulse: i === previewLine.currentIndex + 1,
-        promotion: m.promotion,
-        label: String(i + 1),
-      });
-    }
-    return out;
+    return previewLine
+      ? buildVariationPreviewArrows({
+          alt: previewLine.alt,
+          previewPositions,
+          currentIndex: previewLine.currentIndex,
+        })
+      : [];
   }, [previewLine, previewPositions]);
 
   const arrows = useMemo<Arrow[]>(() => {
@@ -1525,66 +1415,6 @@ export function PlayMode({
   );
 }
 
-function teachingRequestForLiveMove(
-  fenBefore: string,
-  playedMoveUci: string,
-  analysis: MoveAnalysis,
-): TeachingFactsRequestV1 | null {
-  const bestLine = sanLineToUci(fenBefore, analysis.evalBefore.pv);
-  const refutationLine = sanLineToUci(analysis.positionAfter, analysis.evalAfter.pv);
-  if (analysis.evalBefore.pv.length !== bestLine.length) return null;
-  if (analysis.evalAfter.pv.length !== refutationLine.length) return null;
-  return {
-    schemaVersion: 1,
-    fenBefore,
-    playedMoveUci,
-    ...(bestLine[0] ? { bestMoveUci: bestLine[0] } : {}),
-    ...(refutationLine[0] ? { refutationUci: refutationLine[0] } : {}),
-    ...(bestLine.length ? { principalVariationUci: bestLine } : {}),
-    options: { includeMotifOpportunities: true, includeCounterfactual: true },
-  };
-}
-
-function teachingNodeArrows(node: TeachingNode): Arrow[] {
-  const out: Arrow[] = [];
-  const arrow = (uci: string, color: string, extra?: Partial<Arrow>): void => {
-    if (uci.length < 4) return;
-    out.push({ from: uci.slice(0, 2) as Square, to: uci.slice(2, 4) as Square, color, ...extra });
-  };
-  arrow(node.subjectMove, ARROW.move, { move: true });
-
-  if (node.boardPayload.arrows) {
-    for (const arr of node.boardPayload.arrows) {
-      out.push({
-        from: arr.from as Square,
-        to: arr.to as Square,
-        color: arr.color === 'red' ? ARROW.attack : ARROW.defend,
-        dashed: arr.style === 'dashed',
-      });
-    }
-  } else {
-    if (node.verification.expectedMove) {
-      arrow(node.verification.expectedMove, ARROW.attack, { label: '!' });
-    }
-  }
-  return out;
-}
-
-function teachingLedMap(node: TeachingNode): LedMap {
-  const squares = {} as LedMap['squares'];
-  for (const square of allSquares()) squares[square] = 'off';
-  if (node.boardPayload.squares) {
-    for (const sq of node.boardPayload.squares) {
-      squares[sq.square as Square] = sq.color === 'red' ? 'red' : sq.color === 'gray' ? 'off' : 'orange';
-    }
-  } else {
-    for (const square of node.involvedSquares) {
-      squares[square as Square] = 'orange';
-    }
-  }
-  return { mode: 'teaching', squares };
-}
-
 function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
   return (
     <div
@@ -1662,14 +1492,3 @@ const modeBtnDisabled: CSSProperties = {
   opacity: 0.45,
   cursor: 'not-allowed',
 };
-
-// Always-on legal destinations for the clicked piece, regardless of lens.
-function legalDotsFor(fen: string, sq: Square): Square[] | undefined {
-  try {
-    const c = new Chess(fen);
-    const ms = c.moves({ square: sq as never, verbose: true }) as unknown as { to: string }[];
-    return ms.length ? (ms.map((m) => m.to) as Square[]) : undefined;
-  } catch {
-    return undefined;
-  }
-}

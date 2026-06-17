@@ -38,10 +38,9 @@ import { MODES, LED_CSS } from './modes';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
-import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove, getMoveSan, evalColor } from './arrow-analysis-store';
+import { useArrowAnalysis, type AlternativeLine } from './arrow-analysis-store';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
-import { getPositionAfterMove } from '../engine/teaching/node';
 import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
 import { EngineComparisonPanel } from './EngineComparisonPanel';
@@ -91,6 +90,7 @@ import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate, narrateTeachingPlan } from '../llm/narrate';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
+import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -366,19 +366,9 @@ export function App() {
   } = useArrowAnalysis(fen, cvsEngineHealth, engineState === 'ready');
 
   const previewPositions = useMemo(() => {
-    if (!previewLine) return [];
-    const out: { fen: string; san: string; uci: string }[] = [];
-    let currFen = previewLine.alt.rootFen;
-    const moves = [...previewLine.alt.moves.map(m => m.uci), ...previewLine.alt.pv];
-    for (const moveUci of moves) {
-      const san = getMoveSan(currFen, moveUci.slice(0, 2) as Square, moveUci.slice(2, 4) as Square, moveUci.slice(4) || undefined);
-      const nextFen = getPositionAfterMove(currFen, moveUci);
-      if (!nextFen) break;
-      out.push({ fen: currFen, san, uci: moveUci });
-      currFen = nextFen;
-    }
-    out.push({ fen: currFen, san: '', uci: '' });
-    return out;
+    return previewLine
+      ? buildVariationPreviewPositions(previewLine.alt, { includeRootPosition: true })
+      : [];
   }, [previewLine]);
 
   const activeFen = previewLine
@@ -386,44 +376,13 @@ export function App() {
     : fen;
 
   const previewArrows = useMemo<Arrow[]>(() => {
-    if (!previewLine) return [];
-    const alt = previewLine.alt;
-    const moves = [
-      ...alt.moves.map(m => ({ from: m.from, to: m.to, promotion: m.promotion, fenBefore: m.fenBefore, moveData: m })),
-      ...alt.pv.map((uci, idx) => {
-        const fenBefore = idx === 0
-          ? (alt.moves.length > 0 ? alt.moves[alt.moves.length - 1].fenAfter : alt.rootFen)
-          : (previewPositions[alt.moves.length + idx - 1]?.fen ?? '');
-        return {
-          from: uci.slice(0, 2) as Square,
-          to: uci.slice(2, 4) as Square,
-          promotion: uci.slice(4) || undefined,
-          fenBefore,
-          moveData: null as AlternativeLineMove | null,
-        };
-      })
-    ];
-
-    const out: Arrow[] = [];
-    for (let i = previewLine.currentIndex + 1; i < moves.length; i++) {
-      const m = moves[i];
-      if (!m || !m.fenBefore) continue;
-      const sideToMove = new Chess(m.fenBefore).turn();
-      const isEngineMove = i >= alt.moves.length;
-      // Only show eval-based colors when analysis is revealed (no spoilers)
-      const defaultColor = sideToMove === 'w' ? '#ffffff' : '#1a1a1a';
-      const playerColor = (alt.revealed && m.moveData) ? (evalColor(m.moveData) ?? defaultColor) : defaultColor;
-      out.push({
-        from: m.from,
-        to: m.to,
-        color: isEngineMove ? '#dd6b20' : playerColor,
-        dashed: isEngineMove,
-        pulse: i === previewLine.currentIndex + 1,
-        promotion: m.promotion,
-        label: String(i + 1),
-      });
-    }
-    return out;
+    return previewLine
+      ? buildVariationPreviewArrows({
+          alt: previewLine.alt,
+          previewPositions,
+          currentIndex: previewLine.currentIndex,
+        })
+      : [];
   }, [previewLine, previewPositions]);
 
   useEffect(() => {
