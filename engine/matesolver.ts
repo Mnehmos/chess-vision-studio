@@ -83,8 +83,9 @@ function search(
   tt: Map<string, number>,
   ctx: NodeCtx,
 ): number {
-  // Check the deadline every 2048 nodes (Date.now() per node would itself be costly).
-  if ((++ctx.nodes & 2047) === 0 && Date.now() > ctx.deadline) throw ABORT;
+  // Check often enough that wide no-mate positions respect the wall-clock budget.
+  // Date.now() per node is costly, but 128-node chunks keep abort latency bounded.
+  if ((++ctx.nodes & 127) === 0 && Date.now() > ctx.deadline) throw ABORT;
   if (chess.isCheckmate()) return -MATE + ply; // side to move is mated
   if (chess.isStalemate() || chess.isInsufficientMaterial() || chess.isDraw()) return 0;
   if (depth <= 0) return 0; // bound reached without a proven mate

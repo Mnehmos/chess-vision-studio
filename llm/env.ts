@@ -13,6 +13,7 @@ export interface LlmConfig {
   analysisDepth: number;
   concurrency: number;
   maxPlies: number; // 0 = whole game
+  liveEval: boolean;
 }
 
 function parseDotenv(text: string): Record<string, string> {
@@ -37,6 +38,10 @@ export function loadEnv(): LlmConfig {
     return { ...acc, ...parseDotenv(readFileSync(path, 'utf8')) };
   }, {});
   const get = (k: string, d = '') => process.env[k] ?? fileVars[k] ?? d;
+  const bool = (k: string, d = false) => {
+    const v = get(k, d ? '1' : '0').trim().toLowerCase();
+    return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+  };
   return {
     apiKey: get('OPENAI_API_KEY'),
     model: get('OPENAI_MODEL', 'gpt-5.5'),
@@ -44,6 +49,7 @@ export function loadEnv(): LlmConfig {
     analysisDepth: Number(get('LLM_ANALYSIS_DEPTH', '14')) || 14,
     concurrency: Number(get('LLM_CONCURRENCY', '4')) || 4,
     maxPlies: Number(get('LLM_MAX_PLIES', '0')) || 0,
+    liveEval: bool('LLM_LIVE_EVAL') || bool('LLM_EVAL_LIVE'),
   };
 }
 

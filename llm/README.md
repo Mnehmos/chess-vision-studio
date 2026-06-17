@@ -41,17 +41,18 @@ npm run llm:commentary -- --mode game --dry-run
 ## Run the batch eval (one clamped call per ply)
 
 ```bash
-npm run llm:eval
+LLM_LIVE_EVAL=1 npm run llm:eval
 ```
 
 Analyzes the sample game with Stockfish, then narrates **every ply** as a batched,
 clamped LLM call (`LLM_CONCURRENCY` at a time), and writes
 `fixtures/llm-eval-output.json` (`{ model, plies: [{ ply, move, classification,
 cpLoss, topExplanation, narration }] }`). Set `LLM_MAX_PLIES` to limit scope while
-testing.
+testing. This live eval is intentionally opt-in because it performs real OpenAI
+calls.
 
-If `OPENAI_API_KEY` is unset/placeholder the eval is **skipped** (the clamp unit
-tests still run, no key needed).
+If `OPENAI_API_KEY` is unset/placeholder, or `LLM_LIVE_EVAL=1` is not set, the
+eval test is **skipped** (the clamp unit tests still run, no key needed).
 
 ## Modules
 

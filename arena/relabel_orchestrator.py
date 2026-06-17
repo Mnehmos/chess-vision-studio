@@ -95,7 +95,7 @@ def main():
     for i in range(args.shards):
         shard_str = f"{i:02d}"
         in_path = os.path.join(TOOLS, f"ourq-{shard_str}.jsonl")
-        out_path = os.path.join(TOOLS, f"ourq-d24-{shard_str}.jsonl")
+        out_path = os.path.join(TOOLS, f"ourq-d{args.depth}-{shard_str}.jsonl")
         
         if not os.path.exists(in_path):
             print(f"  Warning: Shard {shard_str} input file does not exist at {in_path}. Skipping.")
