@@ -91,6 +91,7 @@ import { narrate, narrateTeachingPlan } from '../llm/narrate';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
+import { factsRequestForPly } from './teaching-facts-request';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -1922,33 +1923,6 @@ function safePlyUci(ply: PlyRecord | undefined): string | undefined {
     return plyRecordToUci(ply);
   } catch {
     return undefined;
-  }
-}
-
-// Build a teaching-facts request for one analyzed ply (mirrors the per-ply Analyze
-// effect). Returns null when the Stockfish line can't be fully replayed to UCI.
-function factsRequestForPly(
-  ply: PlyRecord,
-  analysis: MoveAnalysis,
-): TeachingFactsRequestV1 | null {
-  try {
-    const playedMoveUci = plyRecordToUci(ply);
-    const bestLine = sanLineToUci(ply.fenBefore, analysis.evalBefore.pv);
-    if (analysis.evalBefore.pv.length && bestLine.length !== analysis.evalBefore.pv.length) {
-      return null;
-    }
-    const refLine = sanLineToUci(ply.fenAfter, analysis.evalAfter.pv);
-    return {
-      schemaVersion: 1,
-      fenBefore: ply.fenBefore,
-      playedMoveUci,
-      bestMoveUci: bestLine[0],
-      refutationUci: refLine[0],
-      principalVariationUci: bestLine.length ? bestLine : undefined,
-      options: { includeMotifOpportunities: true, includeCounterfactual: true },
-    };
-  } catch {
-    return null;
   }
 }
 
