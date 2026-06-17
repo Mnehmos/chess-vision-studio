@@ -795,6 +795,123 @@ select {
   font-size: 12px;
 }
 
+.teaching-node-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.teaching-node-card.is-focused {
+  border-color: var(--accent);
+}
+
+.teaching-node-card__header,
+.teaching-node-card__footer,
+.teaching-node-card__verification {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.teaching-node-card__header {
+  gap: 8px;
+}
+
+.teaching-node-card__title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teaching-node-card__badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+}
+
+.teaching-node-card__badge--confirmed {
+  background: #2f855a;
+}
+
+.teaching-node-card__badge--refuted {
+  background: #d43b3b;
+}
+
+.teaching-node-card__badge--unverified {
+  background: #dd6b20;
+}
+
+.teaching-node-card__badge--unavailable {
+  background: var(--muted);
+}
+
+.teaching-node-card__summary {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.teaching-node-card__text,
+.teaching-node-card__narration {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.teaching-node-card__muted {
+  color: var(--muted);
+}
+
+.teaching-node-card__verification {
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.teaching-node-card__narration {
+  margin-top: 6px;
+}
+
+.teaching-node-card__footer {
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.teaching-node-card__square {
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.teaching-node-card__action {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.teaching-node-card__action--push {
+  margin-left: auto;
+}
+
+.teaching-node-card__action.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);
