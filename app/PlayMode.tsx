@@ -4,7 +4,7 @@
 // inspect card for any square, and — once the engine is loaded — a per-move
 // analysis (classification + What-Changed) plus deterministic teaching events
 // compiled from Stockfish judgment and Rust facts.
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
@@ -787,7 +787,7 @@ export function PlayMode({
         ref={gifCaptureRef}
         className="cvs-gif-capture"
       >
-        <div style={{ ...card, padding: 12, boxSizing: 'border-box', width: '100%', maxWidth: 480 }}>
+        <div className="play-board-card">
         <div data-gif-crop="true">
         <PlayBoardHeader
           status={status}
@@ -818,7 +818,7 @@ export function PlayMode({
 
         <PlayTurnPlate color={topSide} active={!status.over && turn === topSide} />
 
-        <div style={{ position: 'relative', width: '100%' }}>
+        <div className="play-board-stage">
           <Board2D
             legalDots={(previewLine || hideOverlays) ? undefined : (selected ? legalDotsFor(activeFen, selected) : undefined)}
             fen={activeFen}
@@ -896,7 +896,7 @@ export function PlayMode({
       </div>
 
       {/* ── Right column: Teaching (board-level) · Facts · Engine · Moves ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 300, boxSizing: 'border-box' }}>
+      <div className="play-side-column">
         <div data-gif-crop="true">
         {gifJob.running && previewLine ? (
           <PreviewTeachingCard previewLine={previewLine} />
@@ -973,9 +973,3 @@ export function PlayMode({
   );
 }
 
-const card: CSSProperties = {
-  background: 'var(--card)',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  boxShadow: 'var(--panel-shadow)',
-};

@@ -330,6 +330,30 @@ select {
   gap: 6px;
 }
 
+.play-board-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--panel-shadow);
+}
+
+.play-board-stage {
+  position: relative;
+  width: 100%;
+}
+
+.play-side-column {
+  display: flex;
+  min-width: 300px;
+  min-height: 0;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .play-button {
   padding: 6px 10px;
   font-size: 13px;
@@ -593,6 +617,10 @@ select {
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
     max-width: 100%;
+  }
+
+  .play-side-column {
+    min-width: 0;
   }
 }
 
