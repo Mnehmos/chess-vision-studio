@@ -12,46 +12,21 @@ export function TeachingFactsDebugPanel({
   error: string;
 }) {
   return (
-    <section
-      data-testid="teaching-facts-debug"
-      style={{
-        background: 'var(--card)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        padding: 12,
-      }}
-    >
+    <section data-testid="teaching-facts-debug" className="teaching-facts-debug">
       <details>
-        <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+        <summary className="teaching-facts-debug__summary">
           Teaching facts JSON{' '}
-          <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(developer)</span>
+          <span className="teaching-facts-debug__summary-note">(developer)</span>
         </summary>
-        <div style={{ marginTop: 9, fontSize: 12 }}>
+        <div className="teaching-facts-debug__body">
           {busy ? (
-            <div style={{ color: 'var(--muted)' }}>requesting Rust facts...</div>
+            <div className="teaching-facts-debug__muted">requesting Rust facts...</div>
           ) : error ? (
-            <div style={{ color: 'var(--bad)', wordBreak: 'break-word' }}>{error}</div>
+            <div className="teaching-facts-debug__error">{error}</div>
           ) : facts ? (
-            <pre
-              style={{
-                margin: 0,
-                maxHeight: 420,
-                overflow: 'auto',
-                padding: 10,
-                borderRadius: 7,
-                background: '#12100e',
-                color: 'var(--text-soft)',
-                fontFamily: 'var(--mono)',
-                fontSize: 10,
-                lineHeight: 1.45,
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'anywhere',
-              }}
-            >
-              {JSON.stringify(facts, null, 2)}
-            </pre>
+            <pre className="teaching-facts-debug__pre">{JSON.stringify(facts, null, 2)}</pre>
           ) : (
-            <div style={{ color: 'var(--muted)' }}>
+            <div className="teaching-facts-debug__muted">
               {request ? 'No fact bundle returned.' : 'Play or select a move to request facts.'}
             </div>
           )}

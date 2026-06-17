@@ -551,6 +551,91 @@ select {
   text-align: right;
 }
 
+.teaching-facts-debug {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.teaching-facts-debug__summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teaching-facts-debug__summary-note {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.teaching-facts-debug__body {
+  margin-top: 9px;
+  font-size: 12px;
+}
+
+.teaching-facts-debug__muted {
+  color: var(--muted);
+}
+
+.teaching-facts-debug__error {
+  color: var(--bad);
+  word-break: break-word;
+}
+
+.teaching-facts-debug__pre {
+  max-height: 420px;
+  margin: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 10px;
+  border-radius: 7px;
+  background: #12100e;
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.mate-card {
+  min-width: 300px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(210, 60, 60, 0.4);
+  border-left: 3px solid #d43b3b;
+  border-radius: 8px;
+  background: var(--card2);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.mate-card__title {
+  margin-bottom: 6px;
+  color: #e0635e;
+  font-weight: 700;
+}
+
+.mate-card__line {
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.mate-card__obligation {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mate-card__label {
+  color: var(--muted);
+}
+
+.mate-card__value {
+  color: var(--text-soft);
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);
