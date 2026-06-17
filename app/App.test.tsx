@@ -27,8 +27,8 @@ const FEN_ONLY_PGN = `[Event "?"]
 describe('App — move history + navigation', () => {
   it('renders the full game move history (grouped notation)', () => {
     const { container, getAllByText } = render(<App />);
-    const boardCard = container.querySelector('.cvs-workspace')?.firstElementChild as HTMLElement | null;
-    expect(boardCard?.style.boxSizing).toBe('border-box');
+    const legend = container.querySelector('.cvs-workspace')?.firstElementChild as HTMLElement | null;
+    expect(legend?.classList.contains('annotation-command-list')).toBe(true);
     // 61 half-moves → ≥ 31 rows in the grouped move-history table.
     const rows = container.querySelectorAll('table tr');
     expect(rows.length).toBeGreaterThanOrEqual(31);

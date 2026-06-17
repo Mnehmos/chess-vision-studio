@@ -295,6 +295,135 @@ select {
   padding: 20px clamp(10px, 3vw, 24px) 56px;
 }
 
+.annotation-command-list {
+  display: flex;
+  width: 180px;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--text-soft);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.annotation-command-list__title {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent-light);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.annotation-command-list__items,
+.annotation-command-list__shortcut-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.annotation-command-list__items {
+  gap: 12px;
+}
+
+.annotation-command-list__term {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+
+.annotation-command-list__shortcuts {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.annotation-command-list__shortcut-title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.annotation-command-list__shortcut-list {
+  gap: 6px;
+}
+
+.annotation-command-list__shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.annotation-command-list__shortcut-key {
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.annotation-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.annotation-legend__title {
+  margin-right: 6px;
+}
+
+.annotation-legend__swatch-item {
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.annotation-legend__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  margin-right: 4px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+.annotation-legend__swatch--attack {
+  background: #c53030;
+}
+
+.annotation-legend__swatch--defend {
+  background: #2f855a;
+}
+
+.annotation-legend__swatch--tactical {
+  background: #dd6b20;
+}
+
+.annotation-legend__swatch--move {
+  background: #4a5568;
+}
+
+.annotation-legend__toggle {
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.annotation-legend__toggle--accent {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+.annotation-legend__clear {
+  margin-left: 6px;
+  font-size: 11px;
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);

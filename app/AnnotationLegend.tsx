@@ -1,7 +1,8 @@
 // The arrow legend + annotation toggles, shared by the analysis Board view and
 // Play mode. Color key (attacks / defends / tactical line / played move) plus the
 // four switches: follow move, threat line, all threats, cascade.
-import { ARROW } from './BoardArrows';
+
+type SwatchKind = 'attack' | 'defend' | 'tactical' | 'move';
 
 export function AnnotationLegend({
   showThreats,
@@ -30,57 +31,67 @@ export function AnnotationLegend({
   hideOverlays?: boolean;
   setHideOverlays?: (v: boolean) => void;
 }) {
-  const swatch = (color: string, label: string) => (
-    <span style={{ marginRight: 12, whiteSpace: 'nowrap' }}>
-      <span
-        style={{
-          display: 'inline-block',
-          width: 14,
-          height: 4,
-          background: color,
-          borderRadius: 2,
-          marginRight: 4,
-          verticalAlign: 'middle',
-        }}
-      />
+  const swatch = (kind: SwatchKind, label: string) => (
+    <span className="annotation-legend__swatch-item">
+      <span className={`annotation-legend__swatch annotation-legend__swatch--${kind}`} />
       {label}
     </span>
   );
+
   return (
-    <div style={{ marginTop: 8, fontSize: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-      <strong style={{ marginRight: 6 }}>Arrows:</strong>
-      {swatch(ARROW.attack, 'attacks / threats')}
-      {swatch(ARROW.defend, 'defends / protects')}
-      {swatch(ARROW.tactical, 'tactical line (1·2·3)')}
-      {swatch(ARROW.move, 'played move')}
-      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="track the move that just happened">
-        <input type="checkbox" checked={followMove} onChange={(e) => setFollowMove(e.target.checked)} />{' '}
+    <div className="annotation-legend">
+      <strong className="annotation-legend__title">Arrows:</strong>
+      {swatch('attack', 'attacks / threats')}
+      {swatch('defend', 'defends / protects')}
+      {swatch('tactical', 'tactical line (1-2-3)')}
+      {swatch('move', 'played move')}
+      <label className="annotation-legend__toggle" title="track the move that just happened">
+        <input
+          type="checkbox"
+          checked={followMove}
+          onChange={(event) => setFollowMove(event.target.checked)}
+        />{' '}
         follow move
       </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
-        <input type="checkbox" checked={showThreats} onChange={(e) => setShowThreats(e.target.checked)} />{' '}
+      <label className="annotation-legend__toggle">
+        <input
+          type="checkbox"
+          checked={showThreats}
+          onChange={(event) => setShowThreats(event.target.checked)}
+        />{' '}
         threat line
       </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }}>
+      <label className="annotation-legend__toggle">
         <input
           type="checkbox"
           checked={showAllThreats}
-          onChange={(e) => setShowAllThreats(e.target.checked)}
+          onChange={(event) => setShowAllThreats(event.target.checked)}
         />{' '}
-          all threats
+        all threats
       </label>
-      <label style={{ marginLeft: 8, cursor: 'pointer' }} title="surface the next hop in the chain">
-        <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} />{' '}
+      <label className="annotation-legend__toggle" title="surface the next hop in the chain">
+        <input
+          type="checkbox"
+          checked={cascade}
+          onChange={(event) => setCascade(event.target.checked)}
+        />{' '}
         cascade
       </label>
       {setHideOverlays && (
-        <label style={{ marginLeft: 8, cursor: 'pointer', color: 'var(--accent-light, #d4956a)', fontWeight: 600 }} title="hide all board overlay data, LEDs, and mode lines (except prediction arrows)">
-          <input type="checkbox" checked={!!hideOverlays} onChange={(e) => setHideOverlays(e.target.checked)} />{' '}
+        <label
+          className="annotation-legend__toggle annotation-legend__toggle--accent"
+          title="hide all board overlay data, LEDs, and mode lines (except prediction arrows)"
+        >
+          <input
+            type="checkbox"
+            checked={!!hideOverlays}
+            onChange={(event) => setHideOverlays(event.target.checked)}
+          />{' '}
           hide overlays
         </label>
       )}
       {hasSelection && (
-        <button onClick={onClear} style={{ marginLeft: 6, fontSize: 11 }}>
+        <button className="annotation-legend__clear" onClick={onClear}>
           clear selection
         </button>
       )}
