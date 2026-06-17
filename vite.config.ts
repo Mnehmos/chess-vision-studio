@@ -17,6 +17,7 @@ import {
   type TrainingStartConfig,
   type TrainingStatus,
 } from './arena/dev-server/training-state';
+import { parseStockfishBestMove, parseStockfishInfoLine } from './arena/dev-server/stockfish-uci';
 
 interface CvsEngineAnalyzeRequest {
   fen?: string;
@@ -454,29 +455,13 @@ function stockfishProxy(env: Record<string, string>): Plugin {
         pump(proc);
         return;
       }
-      if (
-        proc.current &&
-        line.startsWith('info ') &&
-        line.includes(' score ') &&
-        line.includes(' pv ')
-      ) {
-        const t = line.split(/\s+/);
-        const di = t.indexOf('depth');
-        const si = t.indexOf('score');
-        const pi = t.indexOf('pv');
-        let scoreCp = 0;
-        let mate: number | null = null;
-        if (si >= 0 && t[si + 1] === 'cp') scoreCp = Number(t[si + 2]);
-        else if (si >= 0 && t[si + 1] === 'mate') mate = Number(t[si + 2]);
-        proc.current.best = {
-          depth: di >= 0 ? Number(t[di + 1]) : 0,
-          scoreCp,
-          mate,
-          pv: pi >= 0 ? t.slice(pi + 1) : [],
-        };
+      const info = parseStockfishInfoLine(line);
+      if (proc.current && info) {
+        proc.current.best = info;
         return;
       }
-      if (line.startsWith('bestmove')) finish(proc, line.split(/\s+/)[1] ?? '(none)');
+      const bestMove = parseStockfishBestMove(line);
+      if (bestMove) finish(proc, bestMove);
     });
     child.stderr.on('data', (d) => {
       proc.stderr = [
