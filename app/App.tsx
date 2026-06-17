@@ -35,22 +35,12 @@ import {
 import { MODES } from './modes';
 import { AppHeader } from './AppHeader';
 import { AppSourceBar } from './AppSourceBar';
-import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
 import { useArrowAnalysis, type AlternativeLine } from './arrow-analysis-store';
-import {
-  AnalysisModeBar as ModeBar,
-  AnalysisNav as Nav,
-  ControlBar,
-  MiniBadges,
-  ModeLegend as Legend,
-  MoveStrip,
-} from './AnalysisBoardPanel';
+import { AnalysisBoardPanel } from './AnalysisBoardPanel';
 import { AnalysisMoveHistory as MoveHistory } from './AnalysisMoveHistory';
-import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
-import { AnnotationLegend } from './AnnotationLegend';
 import { FactsPanel } from './FactsPanel';
 import { EngineComparisonPanel } from './EngineComparisonPanel';
 import { MateCard } from './MateCard';
@@ -99,7 +89,6 @@ import { createOpenAIClient, type ChatClient } from '../llm/openai';
 import { narrate, narrateTeachingPlan } from '../llm/narrate';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
-import { VariationPreviewPanel } from './VariationPreviewPanel';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 
 const env = import.meta.env as Record<string, string | undefined>;
@@ -107,27 +96,9 @@ const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_op
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 // ── design tokens ─────────────────────────────────────────────────────────────
-const cardStyle: React.CSSProperties = {
-  background: 'var(--card)',
-  border: '1px solid var(--border)',
-  borderRadius: 10,
-  boxShadow: 'var(--panel-shadow)',
-};
-const primaryBtn: React.CSSProperties = {
-  border: 'none',
-  background: 'var(--accent)',
-  color: '#fff',
-  borderRadius: 8,
-  padding: '8px 14px',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 type AppTab = 'board' | 'dataset' | 'play';
 type VerboseMove = { san: string; color: 'w' | 'b'; from: string; to: string; promotion?: string };
-const PROMOTION_PIECES = ['q', 'r', 'n', 'b'] as const;
 
 // "Analyze all games" progress. done/total count PLIES (drives the bar);
 // gamesDone/gamesTotal + currentGame give a human-meaningful "Game X/Y".
@@ -1678,160 +1649,70 @@ export function App() {
             <div className="cvs-workspace">
               <AnnotationCommandList />
               <div ref={gifCaptureRef} className="cvs-gif-capture">
-              {/* Left: board + nav */}
-              <div
-                style={{
-                  ...cardStyle,
-                  width: '100%',
-                  maxWidth: 480,
-                  padding: 12,
-                  boxSizing: 'border-box',
-                }}
-              >
-                <div data-gif-crop="true">
-                <ModeBar
-                  modeId={modeId}
-                  onPick={setModeId}
-                  engineReady={engineState === 'ready'}
-                  hideOverlays={hideOverlays}
-                  setHideOverlays={setHideOverlays}
-                />
-                <div style={{ position: 'relative', width: 'max-content', maxWidth: '100%' }}>
-                  <Board2D
-                    legalDots={previewLine || hideOverlays ? undefined : legalDots}
-                    fen={activeFen}
-                    ledMap={previewLine || hideOverlays ? { mode: 'off' as any, squares: {} } : ledMap}
-                    selected={previewLine || hideOverlays ? undefined : selected}
-                    onSelect={previewLine ? () => {} : onAnalysisSquareClick}
-                    arrows={arrows}
-                    draggable={!previewLine}
-                    onPieceDrop={previewLine ? undefined : (from, to) => tryAnalysisMove(from, to)}
-                    onArrowDrawn={previewLine ? undefined : handleArrowDrawn}
-                    onArrowRightClick={previewLine ? undefined : handleArrowDrawn}
-                  />
-                  {analysisPromo && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'rgba(16,24,40,0.55)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 5,
-                      }}
-                    >
-                      <div
-                        style={{
-                          ...cardStyle,
-                          padding: 10,
-                          display: 'flex',
-                          gap: 8,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <span style={{ fontSize: 13, color: 'var(--text-soft)', marginRight: 2 }}>
-                          Promote to
-                        </span>
-                        {PROMOTION_PIECES.map((piece) => (
-                          <button
-                            key={piece}
-                            onClick={() =>
-                              applyAnalysisMove(analysisPromo.from, analysisPromo.to, piece)
-                            }
-                            style={{
-                              ...primaryBtn,
-                              width: 42,
-                              padding: '8px 0',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            {piece}
-                          </button>
-                        ))}
-                        <button
-                          style={{ ...primaryBtn, background: 'var(--muted)' }}
-                          onClick={() => setAnalysisPromo(null)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <Nav view={view} total={plies.length} setView={setView} />
-                {previewLine && (
-                  <VariationPreviewPanel
-                    previewLine={previewLine}
-                    previewPositions={previewPositions}
-                    gifJob={gifJob}
-                    firstLabel={'\u23ee'}
-                    lastLabel={'\u23ed'}
-                    onStep={(currentIndex) => setPreviewLine({ ...previewLine, currentIndex })}
-                    onSave={saveVariation}
-                    onExportGif={exportPreviewGif}
-                    onExit={() => setPreviewLine(null)}
-                  />
-                )}
-                </div>
-                <div data-gif-exclude="true">
-                <AlternativeLinesPanel
-                  alternatives={alternatives}
-                  mainLineEval={analysis ? { scoreCp: analysis.evalBefore.cp ?? 0, mate: analysis.evalBefore.mate ?? null } : null}
-                  onPinToggle={togglePin}
-                  onDelete={deleteAlternative}
-                  onDeleteMove={deleteMove}
-                  onDeepen={deepenAlternative}
-                  onEnterVariation={(alt) => setPreviewLine({ alt, currentIndex: 0 })}
-                  onHoverAlternative={(alt) => setHoveredAltId(alt?.id ?? null)}
-                  onToggleReveal={toggleReveal}
-                  onGenerateBestLine={generateBestLine}
-                  generatingBestLine={generatingBestLine}
-                  onRefuteLine={refuteLine}
-                />
-                <button
-                  onClick={exportAnalysis}
-                  disabled={exporting}
-                  title="Download every ply (move, classification, insights, features, board control, coach) PLUS the deterministic teaching record per ply (Rust facts, committed topics, explanation, puzzle, provenance) as a JSON training corpus."
-                  style={{
-                    width: '100%',
-                    marginTop: 8,
-                    border: '1px solid var(--border)',
-                    background: 'var(--card)',
-                    color: 'var(--text)',
-                    borderRadius: 8,
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: exporting ? 'default' : 'pointer',
-                    opacity: exporting ? 0.7 : 1,
-                  }}
-                >
-                  {exporting ? '⏳ Building teaching records…' : '⬇ Export JSON + teaching corpus'}
-                </button>
-                <MiniBadges features={currentFeatures} />
-                <ControlBar features={currentFeatures} />
-                <MoveStrip plies={plies} view={view} setView={setView} />
-                <AnnotationLegend
-                  showThreats={showThreats}
-                  setShowThreats={setShowThreats}
-                  showAllThreats={showAllThreats}
-                  setShowAllThreats={setShowAllThreats}
-                  cascade={cascade}
-                  setCascade={setCascade}
-                  followMove={followMove}
-                  setFollowMove={setFollowMove}
-                  hasSelection={!!selected}
-                  onClear={() => setSelected(undefined)}
-                  hideOverlays={hideOverlays}
-                  setHideOverlays={setHideOverlays}
-                />
-                <Legend modeId={modeId} />
-                </div>
-              </div>
-
+              <AnalysisBoardPanel
+                modeId={modeId}
+                onModePick={setModeId}
+                engineReady={engineState === 'ready'}
+                hideOverlays={hideOverlays}
+                onHideOverlaysChange={setHideOverlays}
+                legalDots={previewLine || hideOverlays ? undefined : legalDots}
+                activeFen={activeFen}
+                ledMap={previewLine || hideOverlays ? ({ mode: 'off', squares: {} } as LedMap) : ledMap}
+                selected={previewLine || hideOverlays ? undefined : selected}
+                onSelect={previewLine ? () => {} : onAnalysisSquareClick}
+                arrows={arrows}
+                draggable={!previewLine}
+                onPieceDrop={previewLine ? undefined : (from, to) => tryAnalysisMove(from, to)}
+                onArrowDrawn={previewLine ? undefined : handleArrowDrawn}
+                onArrowRightClick={previewLine ? undefined : handleArrowDrawn}
+                promotion={analysisPromo}
+                onPromote={applyAnalysisMove}
+                onCancelPromotion={() => setAnalysisPromo(null)}
+                view={view}
+                totalPlies={plies.length}
+                onViewChange={setView}
+                previewLine={previewLine}
+                previewPositions={previewPositions}
+                gifJob={gifJob}
+                onPreviewStep={(currentIndex) =>
+                  previewLine && setPreviewLine({ ...previewLine, currentIndex })
+                }
+                onSaveVariation={saveVariation}
+                onExportPreviewGif={exportPreviewGif}
+                onExitPreview={() => setPreviewLine(null)}
+                alternatives={alternatives}
+                mainLineEval={
+                  analysis
+                    ? { scoreCp: analysis.evalBefore.cp ?? 0, mate: analysis.evalBefore.mate ?? null }
+                    : null
+                }
+                onPinToggle={togglePin}
+                onDeleteAlternative={deleteAlternative}
+                onDeleteMove={deleteMove}
+                onDeepenAlternative={deepenAlternative}
+                onEnterVariation={(alt) => setPreviewLine({ alt, currentIndex: 0 })}
+                onHoverAlternative={(alt) => setHoveredAltId(alt?.id ?? null)}
+                onToggleReveal={toggleReveal}
+                onGenerateBestLine={generateBestLine}
+                generatingBestLine={generatingBestLine}
+                onRefuteLine={refuteLine}
+                exporting={exporting}
+                onExportAnalysis={exportAnalysis}
+                features={currentFeatures}
+                plies={plies}
+                showThreats={showThreats}
+                setShowThreats={setShowThreats}
+                showAllThreats={showAllThreats}
+                setShowAllThreats={setShowAllThreats}
+                cascade={cascade}
+                setCascade={setCascade}
+                followMove={followMove}
+                setFollowMove={setFollowMove}
+                hasSelection={!!selected}
+                onClearSelection={() => setSelected(undefined)}
+              />
               {/* Middle: Teaching (board-level) · facts · engine */}
-              <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="analysis-detail-column">
                 <div data-gif-crop="true">
                 {gifJob.running && previewLine ? (
                   <PreviewTeachingCard previewLine={previewLine} />
@@ -1908,16 +1789,7 @@ export function App() {
               </div>
 
               {/* Right: LED twin + move list */}
-              <div
-                className="cvs-side-column"
-                style={{
-                  width: '100%',
-                  minWidth: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 16,
-                }}
-              >
+              <div className="cvs-side-column">
                 <LedPreview ledMap={ledMap} />
                 <MoveHistory
                   plies={plies}
