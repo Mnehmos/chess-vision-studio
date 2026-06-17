@@ -86,6 +86,7 @@ import { bookOpening } from '../engine/teaching/openings';
 import { describeMoveIdea, type MoveIdea } from '../engine/teaching/moveIdea';
 import { TeachingPuzzle } from './TeachingPuzzle';
 import { createOpenAIClient, type ChatClient } from '../llm/openai';
+import { getOpenAIProxyHealth } from './openai-client';
 import { narrate, narrateTeachingPlan } from '../llm/narrate';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
@@ -209,13 +210,8 @@ export function App() {
   // Discover the server-side key (kept in .env, never shipped to the browser).
   useEffect(() => {
     let alive = true;
-    fetch('/api/openai/health')
-      .then((r) => (r.ok ? r.json() : null))
-      .then(
-        (d) =>
-          alive &&
-          setProxy({ checked: true, hasKey: !!d?.hasKey, model: d?.model || OPENAI_MODEL }),
-      )
+    getOpenAIProxyHealth(OPENAI_MODEL)
+      .then((health) => alive && setProxy({ checked: true, hasKey: health.hasKey, model: health.model }))
       .catch(() => alive && setProxy((p) => ({ ...p, checked: true })));
     return () => {
       alive = false;
