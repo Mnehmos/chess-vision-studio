@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import samplePgn from '../fixtures/sample-game.pgn?raw';
 import { gamesFromPgn, type ParsedGame, type PlyRecord } from '../engine/position';
@@ -35,6 +35,7 @@ import {
   saveGameTeaching,
 } from './analysis-store';
 import { MODES, LED_CSS } from './modes';
+import { AppHeader } from './AppHeader';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
@@ -1632,87 +1633,18 @@ export function App() {
           overflowX: 'hidden',
         }}
       >
-        <header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 18,
-            marginBottom: 16,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 22,
-                letterSpacing: '-0.01em',
-                fontFamily: "'Space Grotesk','Inter',system-ui,sans-serif",
-              }}
-            >
-              Chess <span style={{ color: 'var(--accent-light)' }}>Vision</span> Studio
-            </h1>
-            <div
-              style={{
-                fontFamily: 'var(--mono)',
-                fontSize: 10,
-                letterSpacing: '.14em',
-                textTransform: 'uppercase',
-                color: 'var(--muted)',
-                marginTop: 2,
-              }}
-            >
-              perception engine · relations · see · saliency
-            </div>
-          </div>
-          <nav style={{ display: 'inline-flex', gap: 4, marginLeft: 8 }}>
-            <TabButton active={tab === 'board'} onClick={() => setTab('board')}>
-              Analyze
-            </TabButton>
-            <TabButton active={tab === 'play'} onClick={() => setTab('play')}>
-              Play
-            </TabButton>
-            <TabButton
-              active={tab === 'dataset'}
-              onClick={() => setTab('dataset')}
-              disabled={games.length <= 1}
-              title={
-                games.length <= 1
-                  ? 'Import a multi-game PGN (your Chess.com / Lichess export) to unlock cross-game insights'
-                  : undefined
-              }
-            >
-              {games.length <= 1
-                ? 'Insights'
-                : datasetJob.running
-                  ? `Insights · ${datasetJob.total ? Math.round((datasetJob.done / datasetJob.total) * 100) : 0}%`
-                  : `Insights · ${games.length}`}
-            </TabButton>
-          </nav>
-          <span
-            style={{
-              marginLeft: 'auto',
-              display: 'inline-flex',
-              gap: 8,
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}
-          >
-            <EngineBadge
-              label={sfNative ? 'Stockfish · native' : 'Stockfish'}
-              state={engineState}
-            />
-            <CvsEngineBadge health={cvsEngineHealth} busy={cvsEngineBusy} />
-            {engineState === 'ready' && analyses.size < plies.length && (
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                analyzing {analyses.size}/{plies.length}…
-              </span>
-            )}
-            {engineState === 'ready' && plies.length > 0 && analyses.size >= plies.length && (
-              <span style={{ fontSize: 12, color: '#3fbf5f' }}>analysis complete ✓</span>
-            )}
-          </span>
-        </header>
+        <AppHeader
+          tab={tab}
+          onTabChange={setTab}
+          gameCount={games.length}
+          datasetJob={datasetJob}
+          stockfishNative={sfNative}
+          engineState={engineState}
+          analysesCount={analyses.size}
+          plyCount={plies.length}
+          cvsHealth={cvsEngineHealth}
+          cvsBusy={cvsEngineBusy}
+        />
 
         <SourceBar
           games={games}
@@ -2308,82 +2240,6 @@ function SourceBar({
         </div>
       )}
     </section>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-  disabled,
-  title,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  disabled?: boolean;
-  title?: string;
-}) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      title={title}
-      style={{
-        border: '1px solid ' + (active ? 'var(--accent)' : 'transparent'),
-        background: active ? 'var(--card2)' : 'transparent',
-        color: active ? 'var(--text)' : 'var(--muted)',
-        padding: '6px 14px',
-        borderRadius: 8,
-        cursor: 'pointer',
-        fontSize: 14,
-        fontWeight: active ? 600 : 400,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function EngineBadge({ label, state }: { label: string; state: 'loading' | 'ready' | 'off' }) {
-  const text =
-    state === 'loading'
-      ? 'engine: loading…'
-      : state === 'ready'
-        ? 'engine: ready'
-        : 'engine: off (pure modes only)';
-  const bg = state === 'ready' ? '#3fbf5f' : state === 'loading' ? '#e8923b' : 'var(--muted)';
-  return (
-    <span
-      title={text}
-      style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}
-    >
-      {state === 'loading'
-        ? `${label}: loading`
-        : state === 'ready'
-          ? `${label}: ready`
-          : `${label}: off`}
-    </span>
-  );
-}
-
-function CvsEngineBadge({ health, busy }: { health: CvsEngineHealth; busy: boolean }) {
-  const checking = !health.ok && !health.error;
-  const text = checking
-    ? 'CVS Engine: checking'
-    : health.available
-      ? busy
-        ? 'CVS Engine: analyzing'
-        : 'CVS Engine: ready'
-      : 'CVS Engine: not found';
-  const bg = checking ? '#e8923b' : health.available ? 'var(--accent)' : 'var(--muted)';
-  return (
-    <span
-      title={health.error}
-      style={{ background: bg, color: '#fff', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}
-    >
-      {text}
-    </span>
   );
 }
 
