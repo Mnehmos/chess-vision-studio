@@ -36,6 +36,7 @@ import {
 } from './analysis-store';
 import { MODES, LED_CSS } from './modes';
 import { AppHeader } from './AppHeader';
+import { AppSourceBar } from './AppSourceBar';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { selectionArrows, lineArrows } from './annotate';
@@ -1646,7 +1647,7 @@ export function App() {
           cvsBusy={cvsEngineBusy}
         />
 
-        <SourceBar
+        <AppSourceBar
           games={games}
           gameIndex={gameIndex}
           onSelectGame={selectGame}
@@ -2135,114 +2136,6 @@ function getFeatureEntry(
   gameCache.set(plyIndex, { analysis, entry });
   return entry;
 }
-
-// The data entry point — front and center. Import any PGN (one game or a full
-// Chess.com / Lichess / OpeningTree export), pick a game, and flip to the dataset view.
-function SourceBar({
-  games,
-  gameIndex,
-  onSelectGame,
-  tab,
-  pgnText,
-  setPgnText,
-  onLoad,
-}: {
-  games: ParsedGame[];
-  gameIndex: number;
-  onSelectGame: (i: number) => void;
-  tab: AppTab;
-  pgnText: string;
-  setPgnText: (s: string) => void;
-  onLoad: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const multi = games.length > 1;
-  const loadedLabel = multi
-    ? `${games.length} games loaded`
-    : (games[gameIndex]?.label ?? 'Sample game');
-  return (
-    <section style={{ ...cardStyle, padding: 14, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        <button onClick={() => setOpen((o) => !o)} style={primaryBtn}>
-          ⬆ Import PGN
-        </button>
-        <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
-          <strong style={{ color: 'var(--text)' }}>{loadedLabel}</strong>
-          <span style={{ color: 'var(--muted)' }}>
-            {' '}
-            · paste your Chess.com / Lichess export to analyze your own games
-          </span>
-        </div>
-        <div
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}
-        >
-          {multi && tab === 'board' && (
-            <select
-              value={gameIndex}
-              onChange={(e) => onSelectGame(Number(e.target.value))}
-              style={{
-                maxWidth: 320,
-                fontSize: 13,
-                padding: '7px 8px',
-                borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--card)',
-              }}
-            >
-              {games.map((g, i) => (
-                <option key={i} value={i}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      </div>
-      {open && (
-        <div style={{ marginTop: 12 }}>
-          <textarea
-            value={pgnText}
-            onChange={(e) => setPgnText(e.target.value)}
-            placeholder="Paste a PGN — one game or a multi-game export (Chess.com / Lichess / OpeningTree)…"
-            style={{
-              width: '100%',
-              height: 120,
-              boxSizing: 'border-box',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 12,
-              padding: 10,
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              resize: 'vertical',
-            }}
-          />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-            <button
-              onClick={() => {
-                onLoad();
-                setOpen(false);
-              }}
-              style={primaryBtn}
-            >
-              Load games
-            </button>
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-              Multi-game exports open a Dataset view: opening tree, results over time, per-game
-              review.
-            </span>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
 function ModeBar({
   modeId,
   onPick,
