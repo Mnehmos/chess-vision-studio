@@ -477,6 +477,86 @@ select {
   color: var(--text);
 }
 
+.variation-preview-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(184, 115, 51, 0.08);
+  box-shadow: var(--panel-shadow);
+}
+
+.variation-preview-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.variation-preview-panel__title {
+  color: var(--accent-light);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.variation-preview-panel__step {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.variation-preview-panel__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.variation-preview-panel__move {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.variation-preview-panel__move.is-active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.variation-preview-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.variation-preview-panel__nav {
+  width: 40px;
+  padding: 6px 0;
+}
+
+.variation-preview-panel__save {
+  margin-left: auto;
+  padding: 6px 12px;
+  background: var(--accent);
+}
+
+.variation-preview-panel__command {
+  padding: 6px 12px;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {

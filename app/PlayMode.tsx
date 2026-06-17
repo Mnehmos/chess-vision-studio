@@ -51,6 +51,7 @@ import { PlayModeLegend } from './PlayModeLegend';
 import { PlayOpponentControls } from './PlayOpponentControls';
 import { PlayPromotionOverlay } from './PlayPromotionOverlay';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
+import { VariationPreviewPanel } from './VariationPreviewPanel';
 import { PlayTurnPlate } from './PlayTurnPlate';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import {
@@ -860,112 +861,15 @@ export function PlayMode({
         <PlayBoardHelp debug={debug} onDebugChange={setDebug} />
 
         {previewLine && (
-          <div
-            style={{
-              ...card,
-              padding: '12px',
-              marginTop: '12px',
-              background: 'rgba(184, 115, 51, 0.08)',
-              border: '1.5px solid var(--accent)',
-              borderRadius: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: 'var(--accent-light)', fontSize: '14px' }}>
-                Previewing Variation
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--muted)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                Step: {previewLine.currentIndex + 1} / {previewPositions.length}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '4px 6px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-soft)' }}>
-              {previewPositions.map((pos, idx) => {
-                if (!pos.san) return null;
-                const active = idx === previewLine.currentIndex;
-                return (
-                  <span
-                    key={idx}
-                    onClick={() => setPreviewLine({ ...previewLine, currentIndex: idx })}
-                    style={{
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontWeight: active ? 700 : 400,
-                      background: active ? 'var(--accent)' : 'transparent',
-                      color: active ? '#fff' : 'var(--text-soft)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {pos.san}
-                  </span>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4 }}>
-              <button
-                onClick={() => setPreviewLine({ ...previewLine, currentIndex: 0 })}
-                disabled={previewLine.currentIndex === 0}
-                style={{ ...btn, width: '40px', padding: '6px 0' }}
-              >
-                Ref
-              </button>
-              <button
-                onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewLine.currentIndex - 1 })}
-                disabled={previewLine.currentIndex === 0}
-                style={{ ...btn, width: '40px', padding: '6px 0' }}
-              >
-                ◀
-              </button>
-              <button
-                onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewLine.currentIndex + 1 })}
-                disabled={previewLine.currentIndex === previewPositions.length - 1}
-                style={{ ...btn, width: '40px', padding: '6px 0' }}
-              >
-                ▶
-              </button>
-              <button
-                onClick={() => setPreviewLine({ ...previewLine, currentIndex: previewPositions.length - 1 })}
-                disabled={previewLine.currentIndex === previewPositions.length - 1}
-                style={{ ...btn, width: '40px', padding: '6px 0' }}
-              >
-                End
-              </button>
-
-              <button
-                onClick={saveVariation}
-                data-gif-exclude="true"
-                style={{
-                  ...primaryBtn,
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  marginLeft: 'auto',
-                  padding: '6px 12px',
-                }}
-              >
-                Save Variation
-              </button>
-              <button
-                onClick={exportPreviewGif}
-                disabled={gifJob.running}
-                data-gif-exclude="true"
-                style={{ ...btn, padding: '6px 12px' }}
-              >
-                {gifJob.running ? `GIF ${gifJob.done}/${gifJob.total}` : 'Export GIF'}
-              </button>
-              <button
-                onClick={() => setPreviewLine(null)}
-                data-gif-exclude="true"
-                style={{ ...btn, padding: '6px 12px' }}
-              >
-                Exit (Esc)
-              </button>
-            </div>
-          </div>
+          <VariationPreviewPanel
+            previewLine={previewLine}
+            previewPositions={previewPositions}
+            gifJob={gifJob}
+            onStep={(currentIndex) => setPreviewLine({ ...previewLine, currentIndex })}
+            onSave={saveVariation}
+            onExportGif={exportPreviewGif}
+            onExit={() => setPreviewLine(null)}
+          />
         )}
 
         </div>
@@ -1074,22 +978,4 @@ const card: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 12,
   boxShadow: 'var(--panel-shadow)',
-};
-const btn: CSSProperties = {
-  fontSize: 13,
-  padding: '6px 10px',
-  borderRadius: 8,
-  border: '1px solid var(--border)',
-  background: 'var(--card)',
-  color: 'var(--text)',
-  cursor: 'pointer',
-};
-const primaryBtn: CSSProperties = {
-  fontSize: 13,
-  padding: '6px 12px',
-  borderRadius: 8,
-  border: '1px solid var(--accent)',
-  background: 'var(--accent-light)',
-  color: '#fff',
-  cursor: 'pointer',
 };
