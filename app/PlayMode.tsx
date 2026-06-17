@@ -41,6 +41,7 @@ import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
+import { PlayMoveHistory } from './PlayMoveHistory';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
@@ -1249,22 +1250,7 @@ export function PlayMode({
           )}
         </div>
 
-        <div style={{ ...card, padding: 12 }}>
-          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Moves</strong>
-          {rows.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 8 }}>No moves yet — White to start.</p>
-          ) : (
-            <ol style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
-              {rows.map((r) => (
-                <li key={r.n} style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
-                  <span style={{ color: 'var(--muted)', width: 24, textAlign: 'right' }}>{r.n}.</span>
-                  <span style={{ width: 64 }}>{r.white}</span>
-                  <span style={{ width: 64, color: 'var(--text)' }}>{r.black ?? ''}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
+        <PlayMoveHistory rows={rows} />
 
         {debug && (
           <div

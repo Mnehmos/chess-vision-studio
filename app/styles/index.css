@@ -177,6 +177,53 @@ select {
   color: var(--accent-light);
 }
 
+.play-panel {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--panel-shadow);
+}
+
+.play-panel__title {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.play-move-history__empty {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.play-move-history__list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.play-move-history__row {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.play-move-history__number {
+  width: 24px;
+  text-align: right;
+  color: var(--muted);
+}
+
+.play-move-history__move {
+  width: 64px;
+}
+
+.play-move-history__move--black {
+  color: var(--text);
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
