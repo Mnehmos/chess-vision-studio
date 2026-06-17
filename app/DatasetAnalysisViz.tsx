@@ -1,30 +1,16 @@
-// Dataset-wide analysis view — renders a pre-computed DatasetAnalysis. The star is
-// the time-of-day breakdown (do you play better in the morning or at night?); below
-// it: analysis coverage, overall accuracy by side, class distribution, and the
-// biggest teaching moments across every game. No computation here — display only.
-import type { DatasetAnalysis, TimeBucket, SideStats, DatasetWorstMove } from '../engine/dataset-analytics';
+// Dataset-wide analysis view - renders a pre-computed DatasetAnalysis. The star is
+// the time-of-day breakdown; below it: analysis coverage, accuracy by side,
+// class distribution, and the biggest teaching moments across every game.
+import type {
+  DatasetAnalysis,
+  DatasetWorstMove,
+  SideStats,
+  TimeBucket,
+} from '../engine/dataset-analytics';
 
-// Classification colors + canonical order (shared visual grammar with the review panel).
-const CLASS_COLOR: Record<string, string> = {
-  best: 'var(--good)',
-  excellent: '#3fbf5f',
-  good: 'var(--accent-light)',
-  inaccuracy: '#e8923b',
-  mistake: '#e2603b',
-  blunder: '#e23b3b',
-};
 const CLASS_ORDER = ['best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'] as const;
 
-// Team colors mirror the board: White = blue, Black = red.
-const TEAM = { w: 'var(--accent)', b: '#d43b3b' } as const;
-
-const card: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 10,
-  padding: 16,
-  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-  background: 'var(--card)',
-};
+type MeterTone = 'accent' | 'good' | 'ok' | 'warn' | 'mistake' | 'bad' | 'muted';
 
 const num = (n: number) => n.toLocaleString();
 const pctOf = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
@@ -37,89 +23,79 @@ export function DatasetAnalysisViz({
   onOpenGame: (gameIndex: number) => void;
 }): JSX.Element {
   const { hero, coverage, overall, worst, timeOfDay } = analysis;
-  // The 1-move trap: a single analyzed ply produced "White 100% / Black 0%".
-  // Accuracy sections need a real sample before they mean anything.
   const hasAnalysis = coverage.pliesAnalyzed >= 50;
   const coveragePct = coverage.pliesTotal ? (coverage.pliesAnalyzed / coverage.pliesTotal) * 100 : 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 1) Coverage — what fraction of the data these charts are built from. */}
-      <div style={card}>
+    <div className="dataset-analysis">
+      <section className="dataset-analysis__card">
         <Coverage coverage={coverage} hasAnalysis={hasAnalysis} />
         {coveragePct < 100 && (
-          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--warn)' }}>
-            ⚠ Everything below reflects only the {coveragePct < 1 ? '<1' : Math.round(coveragePct)}% analyzed so far —
-            run <strong>Analyze all games</strong> above for the full picture.
+          <div className="dataset-analysis__warning">
+            Everything below reflects only the {coveragePct < 1 ? '<1' : Math.round(coveragePct)}%
+            analyzed so far - run <strong>Analyze all games</strong> above for the full picture.
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 2) Time of day — the headline. Works from results even without analysis. */}
-      <div style={card}>
+      <section className="dataset-analysis__card">
         <TimeOfDay buckets={timeOfDay} hero={hero} />
-      </div>
+      </section>
 
-      {/* 3) Overall accuracy by side. */}
-      <div style={card}>
-        <h3 style={{ margin: '0 0 8px' }}>Overall accuracy by side</h3>
+      <section className="dataset-analysis__card">
+        <h3 className="dataset-analysis__section-title">Overall accuracy by side</h3>
         {hasAnalysis ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SideRow title="White" color={TEAM.w} s={overall.white} />
-            <SideRow title="Black" color={TEAM.b} s={overall.black} />
+          <div className="dataset-analysis__side-list">
+            <SideRow title="White" side="w" s={overall.white} />
+            <SideRow title="Black" side="b" s={overall.black} />
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-            Not enough analyzed moves yet for a reliable accuracy split — run “Analyze all games”.
+          <div className="dataset-analysis__muted">
+            Not enough analyzed moves yet for a reliable accuracy split - run "Analyze all games".
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 4) Biggest teaching moments — jump straight into the game. */}
-      <div style={card}>
+      <section className="dataset-analysis__card">
         <TeachingMoments worst={worst} hasAnalysis={hasAnalysis} onOpenGame={onOpenGame} />
-      </div>
+      </section>
     </div>
   );
 }
 
-// ── 1) coverage ──────────────────────────────────────────────────────────────
 function Coverage({ coverage, hasAnalysis }: { coverage: DatasetAnalysis['coverage']; hasAnalysis: boolean }) {
   const { gamesTotal, gamesAnalyzed, gamesFull, pliesTotal, pliesAnalyzed } = coverage;
   const pct = pctOf(pliesAnalyzed, pliesTotal);
   return (
     <div>
-      <h3 style={{ margin: '0 0 6px' }}>Coverage</h3>
-      <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 8 }}>
-        Analyzed {num(pliesAnalyzed)} / {num(pliesTotal)} moves · {num(gamesFull)} / {num(gamesTotal)} games fully
-        reviewed
+      <h3 className="dataset-analysis__section-title dataset-analysis__section-title--tight">
+        Coverage
+      </h3>
+      <div className="dataset-analysis__subcopy">
+        Analyzed {num(pliesAnalyzed)} / {num(pliesTotal)} moves - {num(gamesFull)} /{' '}
+        {num(gamesTotal)} games fully reviewed
         {gamesAnalyzed > gamesFull && (
-          <span style={{ color: 'var(--muted)' }}> · {num(gamesAnalyzed)} touched</span>
+          <span className="dataset-analysis__muted"> - {num(gamesAnalyzed)} touched</span>
         )}
       </div>
-      <div style={{ height: 6, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)' }} />
-      </div>
+      <Meter pct={pct} tone="accent" size="thin" />
       {!hasAnalysis && (
-        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--muted)' }}>
-          Run “Analyze all games” to populate these charts. Your time-of-day results below still work without it.
+        <div className="dataset-analysis__muted dataset-analysis__note">
+          Run "Analyze all games" to populate these charts. Your time-of-day results below still
+          work without it.
         </div>
       )}
     </div>
   );
 }
 
-// ── 2) time of day (the star) ────────────────────────────────────────────────
-// Fixed display order, morning-first, so the daily arc reads naturally.
 const TOD_ORDER = ['morning', 'afternoon', 'evening', 'night'] as const;
 
 function TimeOfDay({ buckets, hero }: { buckets: TimeBucket[]; hero: string | null }) {
-  // Reorder to the natural daily arc, keeping any unexpected keys at the end.
   const ordered = [...buckets].sort((a, b) => orderIndex(a.key) - orderIndex(b.key));
   const played = ordered.filter((b) => b.games > 0);
   const anyAccuracy = played.some((b) => b.analyzedPlies > 0 && b.accuracy !== null);
 
-  // Best bucket = highest score% among buckets actually played.
   let bestKey: string | null = null;
   let bestPct = -1;
   for (const b of played) {
@@ -132,23 +108,27 @@ function TimeOfDay({ buckets, hero }: { buckets: TimeBucket[]; hero: string | nu
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 2px' }}>When you play your best</h3>
-      <div style={{ fontSize: 13, color: 'var(--text-soft)', marginBottom: 10 }}>
-        {best
-          ? <>
-              {hero ? `${hero}, you` : 'You'} score highest in the{' '}
-              <strong style={{ color: 'var(--text)' }}>{best.label.toLowerCase()}</strong>
-              {best.scorePct !== null && <> — {best.scorePct.toFixed(0)}% there. </>}
-              {anyAccuracy && best.accuracy !== null
-                ? ` Your accuracy follows along too.`
-                : ' Analyze some games to see accuracy by time.'}
-            </>
-          : 'No games found with a known time of day yet.'}
+      <h3 className="dataset-analysis__section-title dataset-analysis__section-title--compact">
+        When you play your best
+      </h3>
+      <div className="dataset-analysis__subcopy dataset-analysis__subcopy--spaced">
+        {best ? (
+          <>
+            {hero ? `${hero}, you` : 'You'} score highest in the{' '}
+            <strong className="dataset-analysis__strong">{best.label.toLowerCase()}</strong>
+            {best.scorePct !== null && <> - {best.scorePct.toFixed(0)}% there. </>}
+            {anyAccuracy && best.accuracy !== null
+              ? ' Your accuracy follows along too.'
+              : ' Analyze some games to see accuracy by time.'}
+          </>
+        ) : (
+          'No games found with a known time of day yet.'
+        )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="dataset-analysis__time-list">
         {played.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>No timestamped games to chart.</div>
+          <div className="dataset-analysis__muted">No timestamped games to chart.</div>
         ) : (
           played.map((b) => (
             <TimeRow key={b.key} b={b} isBest={b.key === bestKey} showAccuracy={anyAccuracy} />
@@ -163,43 +143,30 @@ function TimeRow({ b, isBest, showAccuracy }: { b: TimeBucket; isBest: boolean; 
   const scorePct = b.scorePct ?? 0;
   const acc = b.analyzedPlies > 0 ? b.accuracy : null;
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '110px 64px 1fr',
-        gap: 10,
-        alignItems: 'center',
-        padding: '4px 6px',
-        borderRadius: 6,
-        background: isBest ? 'rgba(184,115,51,0.14)' : 'transparent',
-      }}
-    >
-      {/* Label + games */}
+    <div className={`dataset-analysis__time-row${isBest ? ' is-best' : ''}`}>
       <div>
-        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
-          {isBest ? '★ ' : ''}
+        <div className="dataset-analysis__time-label">
+          {isBest ? '* ' : ''}
           {b.label}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+        <div className="dataset-analysis__time-games">
           {num(b.games)} game{b.games === 1 ? '' : 's'}
         </div>
       </div>
 
-      {/* Score% number */}
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 16, fontWeight: isBest ? 700 : 600, color: scoreColor(b.scorePct) }}>
-          {b.scorePct === null ? '—' : `${b.scorePct.toFixed(0)}%`}
+      <div className="dataset-analysis__score-block">
+        <div className={`dataset-analysis__score-value dataset-analysis__score-value--${scoreTone(b.scorePct)}`}>
+          {b.scorePct === null ? '-' : `${b.scorePct.toFixed(0)}%`}
         </div>
-        <div style={{ fontSize: 10, color: 'var(--muted)' }}>score</div>
+        <div className="dataset-analysis__score-label">score</div>
       </div>
 
-      {/* Bars: score (filled) and, when analyzed, accuracy underneath. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Meter pct={scorePct} color={scoreColor(b.scorePct)} bg="var(--track)" />
+      <div className="dataset-analysis__meter-stack">
+        <Meter pct={scorePct} tone={scoreTone(b.scorePct)} />
         {showAccuracy && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Meter pct={acc ?? 0} color={accColor(acc ?? 0)} bg="var(--track)" height={5} />
-            <span style={{ fontSize: 10, color: 'var(--muted)', minWidth: 70, textAlign: 'right' }}>
+          <div className="dataset-analysis__accuracy-row">
+            <Meter pct={acc ?? 0} tone={accTone(acc ?? 0)} size="small" />
+            <span className="dataset-analysis__accuracy-label">
               {acc === null ? 'no analysis' : `${acc.toFixed(0)}% accurate`}
             </span>
           </div>
@@ -214,33 +181,38 @@ function orderIndex(key: string): number {
   return i === -1 ? TOD_ORDER.length : i;
 }
 
-// ── 3) accuracy by side ──────────────────────────────────────────────────────
-function SideRow({ title, color, s }: { title: string; color: string; s: SideStats }) {
+function SideRow({ title, side, s }: { title: string; side: 'w' | 'b'; s: SideStats }) {
   const total = s.moves || 1;
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, color }}>{title}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: accColor(s.accuracy) }}>
+    <div className="dataset-analysis__side-row">
+      <div className="dataset-analysis__side-header">
+        <span className={`dataset-analysis__side-title dataset-analysis__side-title--${side}`}>
+          {title}
+        </span>
+        <span className={`dataset-analysis__accuracy dataset-analysis__accuracy--${accTone(s.accuracy)}`}>
           {s.accuracy.toFixed(0)}% accuracy
         </span>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-          {num(s.moves)} moves · avg loss {s.avgCpLoss.toFixed(2)}
+        <span className="dataset-analysis__muted">
+          {num(s.moves)} moves - avg loss {s.avgCpLoss.toFixed(2)}
         </span>
       </div>
-      {/* Stacked classification distribution. */}
-      <div style={{ display: 'flex', height: 14, borderRadius: 3, overflow: 'hidden', background: 'var(--track)' }}>
+      <div className="dataset-analysis__class-stack">
         {CLASS_ORDER.map((c) => {
           const v = s.byClass[c] ?? 0;
           const w = pctOf(v, total);
           return w > 0 ? (
-            <div key={c} title={`${v} ${c}`} style={{ width: `${w}%`, background: CLASS_COLOR[c] }} />
+            <div
+              key={c}
+              className={`dataset-analysis__class-segment dataset-analysis__class--${c}`}
+              title={`${v} ${c}`}
+              style={{ width: `${w}%` }}
+            />
           ) : null;
         })}
       </div>
-      <div style={{ marginTop: 4, fontSize: 11, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <div className="dataset-analysis__class-legend">
         {CLASS_ORDER.filter((c) => (s.byClass[c] ?? 0) > 0).map((c) => (
-          <span key={c} style={{ color: CLASS_COLOR[c] }}>
+          <span key={c} className={`dataset-analysis__class-label dataset-analysis__class-text--${c}`}>
             {num(s.byClass[c] ?? 0)} {c}
           </span>
         ))}
@@ -249,7 +221,6 @@ function SideRow({ title, color, s }: { title: string; color: string; s: SideSta
   );
 }
 
-// ── 4) teaching moments ──────────────────────────────────────────────────────
 function TeachingMoments({
   worst,
   hasAnalysis,
@@ -262,39 +233,28 @@ function TeachingMoments({
   const rows = worst.slice(0, 10);
   return (
     <div>
-      <h3 style={{ margin: '0 0 8px' }}>Biggest teaching moments</h3>
+      <h3 className="dataset-analysis__section-title">Biggest teaching moments</h3>
       {rows.length === 0 ? (
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+        <div className="dataset-analysis__muted">
           {hasAnalysis
-            ? 'No costly moves found — clean play across the set.'
+            ? 'No costly moves found - clean play across the set.'
             : 'Analyze your games to surface the moments worth revisiting.'}
         </div>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul className="dataset-analysis__moments">
           {rows.map((m, i) => (
             <li
               key={`${m.gameIndex}-${m.ply}-${i}`}
+              className={`dataset-analysis__moment dataset-analysis__moment--${m.color}`}
               onClick={() => onOpenGame(m.gameIndex)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 64px 96px 56px',
-                gap: 10,
-                alignItems: 'center',
-                cursor: 'pointer',
-                padding: '5px 6px',
-                borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                borderLeft: `3px solid ${TEAM[m.color]}`,
-                paddingLeft: 8,
-                fontSize: 13,
-              }}
-              title={`${m.gameLabel} — open game`}
+              title={`${m.gameLabel} - open game`}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-soft)' }}>
-                {m.gameLabel}
+              <span className="dataset-analysis__moment-game">{m.gameLabel}</span>
+              <span className="dataset-analysis__moment-move">{m.move}</span>
+              <span className={`dataset-analysis__class-text--${m.classification}`}>
+                {m.classification}
               </span>
-              <span style={{ fontWeight: 600, color: 'var(--text-soft)' }}>{m.move}</span>
-              <span style={{ color: CLASS_COLOR[m.classification] ?? 'var(--text-soft)' }}>{m.classification}</span>
-              <span style={{ textAlign: 'right', color: 'var(--muted)' }}>−{m.cpLoss.toFixed(1)}</span>
+              <span className="dataset-analysis__moment-loss">-{m.cpLoss.toFixed(1)}</span>
             </li>
           ))}
         </ul>
@@ -303,28 +263,26 @@ function TeachingMoments({
   );
 }
 
-// ── primitives ───────────────────────────────────────────────────────────────
-function Meter({ pct, color, bg, height = 8 }: { pct: number; color: string; bg: string; height?: number }) {
+function Meter({ pct, tone, size = 'normal' }: { pct: number; tone: MeterTone; size?: 'normal' | 'small' | 'thin' }) {
   const w = Math.max(0, Math.min(100, pct));
   return (
-    <div style={{ flex: 1, height, background: bg, borderRadius: height / 2, overflow: 'hidden' }}>
-      <div style={{ width: `${w}%`, height: '100%', background: color }} />
+    <div className={`dataset-meter dataset-meter--${size}`}>
+      <div className={`dataset-meter__fill dataset-meter__fill--${tone}`} style={{ width: `${w}%` }} />
     </div>
   );
 }
 
-// A win-rate-ish score: green at 60%+, encouraging amber in the middle.
-function scoreColor(pct: number | null): string {
-  if (pct === null) return 'var(--muted)';
-  if (pct >= 60) return 'var(--good)';
-  if (pct >= 50) return '#3fbf5f';
-  if (pct >= 40) return '#e8923b';
-  return '#e2603b';
+function scoreTone(pct: number | null): MeterTone {
+  if (pct === null) return 'muted';
+  if (pct >= 60) return 'good';
+  if (pct >= 50) return 'ok';
+  if (pct >= 40) return 'warn';
+  return 'mistake';
 }
 
-function accColor(acc: number): string {
-  if (acc >= 85) return 'var(--good)';
-  if (acc >= 70) return 'var(--accent-light)';
-  if (acc >= 55) return '#e8923b';
-  return '#e23b3b';
+function accTone(acc: number): MeterTone {
+  if (acc >= 85) return 'good';
+  if (acc >= 70) return 'ok';
+  if (acc >= 55) return 'warn';
+  return 'bad';
 }
