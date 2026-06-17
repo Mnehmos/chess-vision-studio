@@ -42,6 +42,7 @@ import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
+import { PlayTurnPlate } from './PlayTurnPlate';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import {
   legalDotsFor,
@@ -936,7 +937,7 @@ export function PlayMode({
           </button>
         </div>
 
-        <TurnPlate color={topSide} active={!status.over && turn === topSide} />
+        <PlayTurnPlate color={topSide} active={!status.over && turn === topSide} />
 
         <div style={{ position: 'relative', width: '100%' }}>
           <Board2D
@@ -990,7 +991,7 @@ export function PlayMode({
           )}
         </div>
 
-        <TurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />
+        <PlayTurnPlate color={bottomSide} active={!status.over && turn === bottomSide} />
 
         <div
           style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', margin: '8px 2px 0', fontSize: 12, color: 'var(--text-soft)' }}
@@ -1303,38 +1304,6 @@ export function PlayMode({
         </div>
       </div>
       </div>
-    </div>
-  );
-}
-
-function TurnPlate({ color, active }: { color: 'w' | 'b'; active: boolean }) {
-  return (
-    <div
-      data-testid={`turn-${color}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '4px 9px',
-        margin: '6px 0',
-        width: 'max-content',
-        borderRadius: 8,
-        border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
-        background: active ? 'rgba(184,115,51,0.18)' : 'var(--card2)',
-      }}
-    >
-      <span
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: '50%',
-          background: color === 'w' ? '#fff' : '#111',
-          border: '1px solid var(--border)',
-          display: 'inline-block',
-        }}
-      />
-      <strong style={{ fontSize: 13, color: 'var(--text)' }}>{color === 'w' ? 'White' : 'Black'}</strong>
-      {active && <span style={{ fontSize: 11, color: 'var(--accent-light)', fontWeight: 600 }}>● to move</span>}
     </div>
   );
 }

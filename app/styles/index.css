@@ -133,6 +133,50 @@ select {
   min-height: 0;
 }
 
+.play-turn-plate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  margin: 6px 0;
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card2);
+}
+
+.play-turn-plate.is-active {
+  border-color: var(--accent);
+  background: rgba(184, 115, 51, 0.18);
+}
+
+.play-turn-plate__disc {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.play-turn-plate__disc--white {
+  background: #fff;
+}
+
+.play-turn-plate__disc--black {
+  background: #111;
+}
+
+.play-turn-plate__label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.play-turn-plate__active {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-light);
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {
@@ -182,4 +226,3 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
-
