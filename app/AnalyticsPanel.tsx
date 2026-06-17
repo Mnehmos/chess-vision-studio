@@ -836,21 +836,10 @@ function MistakeColumn({
   );
 }
 
-function SideLabel({ color, text, mt }: { color: string; text: string; mt?: number }) {
+function SideLabel({ side, text, spaced }: { side: Side; text: string; spaced?: boolean }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 12,
-        fontWeight: 700,
-        color,
-        marginTop: mt ?? 0,
-        marginBottom: 4,
-      }}
-    >
-      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+    <div className={`analytics-side-label analytics-side-label--${side}${spaced ? ' is-spaced' : ''}`}>
+      <span className="analytics-side-label__dot" />
       {text}
     </div>
   );
@@ -859,10 +848,10 @@ function SideLabel({ color, text, mt }: { color: string; text: string; mt?: numb
 function PatternsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 7px' }}>Patterns</h4>
-      <SideLabel color={TEAM.w} text="White" />
+      <h4 className="analytics-data-title">Patterns</h4>
+      <SideLabel side="w" text="White" />
       <PatternList profile={w} />
-      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <SideLabel side="b" text="Black" spaced />
       <PatternList profile={b} />
     </div>
   );
@@ -870,15 +859,15 @@ function PatternsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
 
 function PatternList({ profile }: { profile: PatternProfile }) {
   if (!profile.topPatterns.length)
-    return <div style={{ color: 'var(--muted)', fontSize: 12 }}>None detected</div>;
+    return <div className="analytics-data-empty">None detected</div>;
   return (
-    <div style={{ display: 'grid', gap: 5 }}>
+    <div className="analytics-pattern-list">
       {profile.topPatterns.map((pattern) => (
-        <div key={pattern.type} style={{ fontSize: 12 }}>
+        <div key={pattern.type} className="analytics-pattern-list__item">
           <strong>
             {pattern.count}x {pattern.title}
           </strong>
-          <div style={{ color: 'var(--muted)', marginTop: 1 }}>{pattern.detail}</div>
+          <div className="analytics-pattern-list__detail">{pattern.detail}</div>
         </div>
       ))}
     </div>
@@ -888,10 +877,10 @@ function PatternList({ profile }: { profile: PatternProfile }) {
 function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 7px' }}>Motifs created / suffered</h4>
-      <SideLabel color={TEAM.w} text="White" />
+      <h4 className="analytics-data-title">Motifs created / suffered</h4>
+      <SideLabel side="w" text="White" />
       <MotifBars patterns={w} />
-      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <SideLabel side="b" text="Black" spaced />
       <MotifBars patterns={b} />
     </div>
   );
@@ -899,35 +888,17 @@ function MotifsSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
 
 function MotifBars({ patterns }: { patterns: PatternProfile }) {
   const rows = motifRows(patterns).slice(0, 6);
-  if (!rows.length) return <div style={{ color: 'var(--muted)', fontSize: 12 }}>None detected</div>;
+  if (!rows.length) return <div className="analytics-data-empty">None detected</div>;
   return (
-    <div style={{ display: 'grid', gap: 5, fontSize: 12 }}>
+    <div className="analytics-motif-bars">
       {rows.map((row) => (
-        <div
-          key={row.name}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '86px 1fr 28px',
-            gap: 6,
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {row.name}
-          </span>
-          <div
-            style={{
-              display: 'flex',
-              height: 8,
-              background: 'var(--track)',
-              borderRadius: 3,
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ width: `${row.createdPct}%`, background: '#3fbf5f' }} />
-            <div style={{ width: `${row.sufferedPct}%`, background: '#e2603b' }} />
+        <div key={row.name} className="analytics-motif-bars__row">
+          <span className="analytics-motif-bars__name">{row.name}</span>
+          <div className="analytics-motif-bars__track">
+            <div className="analytics-motif-bars__created" style={{ width: `${row.createdPct}%` }} />
+            <div className="analytics-motif-bars__suffered" style={{ width: `${row.sufferedPct}%` }} />
           </div>
-          <span style={{ textAlign: 'right', color: 'var(--muted)' }}>{row.total}</span>
+          <span className="analytics-motif-bars__total">{row.total}</span>
         </div>
       ))}
     </div>
@@ -937,10 +908,10 @@ function MotifBars({ patterns }: { patterns: PatternProfile }) {
 function PhaseSplit({ w, b }: { w: PatternProfile; b: PatternProfile }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 7px' }}>Phase loss (average pawns)</h4>
-      <SideLabel color={TEAM.w} text="White" />
+      <h4 className="analytics-data-title">Phase loss (average pawns)</h4>
+      <SideLabel side="w" text="White" />
       <PhaseBars patterns={w} />
-      <SideLabel color={TEAM.b} text="Black" mt={10} />
+      <SideLabel side="b" text="Black" spaced />
       <PhaseBars patterns={b} />
     </div>
   );
@@ -953,32 +924,17 @@ function PhaseBars({ patterns }: { patterns: PatternProfile }) {
         const row = patterns.phase[phase];
         const width = Math.min(100, row.avgCpLoss * 35);
         return (
-          <div
-            key={phase}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '82px 1fr 38px',
-              gap: 6,
-              alignItems: 'center',
-              fontSize: 12,
-              marginBottom: 5,
-            }}
-          >
+          <div key={phase} className="analytics-phase-bars__row">
             <span>{phase}</span>
-            <div
-              style={{ height: 8, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}
-            >
+            <div className="analytics-phase-bars__track">
               <div
+                className={`analytics-phase-bars__fill${row.avgCpLoss >= 1 ? ' is-bad' : ''}`}
                 style={{
                   width: `${width}%`,
-                  height: '100%',
-                  background: row.avgCpLoss >= 1 ? '#e2603b' : 'var(--accent-light)',
                 }}
               />
             </div>
-            <span style={{ color: 'var(--muted)', textAlign: 'right' }}>
-              {row.avgCpLoss.toFixed(1)}
-            </span>
+            <span className="analytics-phase-bars__value">{row.avgCpLoss.toFixed(1)}</span>
           </div>
         );
       })}
@@ -997,38 +953,19 @@ function Timeline({
 }) {
   return (
     <div>
-      <h4 style={{ margin: '0 0 4px' }}>Game timeline</h4>
+      <h4 className="analytics-timeline__title">Game timeline</h4>
       {matesFound > 0 && (
-        <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 6 }}>
-          Forced mates in play: {matesFound}
-        </div>
+        <div className="analytics-timeline__note">Forced mates in play: {matesFound}</div>
       )}
       {!events.length ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Nothing notable yet.</div>
+        <div className="analytics-data-empty analytics-data-empty--large">Nothing notable yet.</div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))',
-            gap: 5,
-          }}
-        >
+        <div className="analytics-timeline__grid">
           {events.map((event) => (
             <button
               key={event.ply}
               onClick={() => onJump(event.ply)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '70px 1fr',
-                gap: 8,
-                textAlign: 'left',
-                padding: '7px 9px',
-                border: '1px solid var(--border)',
-                borderLeft: `3px solid ${TEAM[event.color]}`,
-                background: 'var(--card)',
-                color: 'var(--text)',
-                fontSize: 12,
-              }}
+              className={`analytics-timeline__event analytics-timeline__event--${event.color}`}
             >
               <strong>{event.move}</strong>
               <span style={{ color: event.tone }}>{event.text}</span>

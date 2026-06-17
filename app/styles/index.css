@@ -1268,6 +1268,157 @@ select {
   gap: 7px;
 }
 
+.analytics-data-title {
+  margin: 0 0 7px;
+}
+
+.analytics-data-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-data-empty--large {
+  font-size: 13px;
+}
+
+.analytics-side-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-side-label.is-spaced {
+  margin-top: 10px;
+}
+
+.analytics-side-label--b {
+  color: #d43b3b;
+}
+
+.analytics-side-label__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.analytics-pattern-list {
+  display: grid;
+  gap: 5px;
+}
+
+.analytics-pattern-list__item {
+  font-size: 12px;
+}
+
+.analytics-pattern-list__detail {
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.analytics-motif-bars {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.analytics-motif-bars__row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 86px minmax(0, 1fr) 28px;
+  gap: 6px;
+}
+
+.analytics-motif-bars__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-motif-bars__track {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.analytics-motif-bars__created {
+  background: #3fbf5f;
+}
+
+.analytics-motif-bars__suffered {
+  background: #e2603b;
+}
+
+.analytics-motif-bars__total,
+.analytics-phase-bars__value {
+  color: var(--muted);
+  text-align: right;
+}
+
+.analytics-phase-bars__row {
+  display: grid;
+  align-items: center;
+  grid-template-columns: 82px minmax(0, 1fr) 38px;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.analytics-phase-bars__track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--track);
+}
+
+.analytics-phase-bars__fill {
+  height: 100%;
+  background: var(--accent-light);
+}
+
+.analytics-phase-bars__fill.is-bad {
+  background: #e2603b;
+}
+
+.analytics-timeline__title {
+  margin: 0 0 4px;
+}
+
+.analytics-timeline__note {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-timeline__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 5px;
+}
+
+.analytics-timeline__event {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+}
+
+.analytics-timeline__event--b {
+  border-left-color: #d43b3b;
+}
+
 @media (max-width: 980px) {
   .cvs-review-summary,
   .cvs-review-moment {
