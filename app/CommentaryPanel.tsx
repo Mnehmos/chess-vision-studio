@@ -1,7 +1,7 @@
-// Coach commentary (LLM) — the clamped narrator (Invariant 8). The button batches
+// Coach commentary (LLM) - the clamped narrator (Invariant 8). The button batches
 // GPT over every analyzed ply and caches it; per-ply "Explain this move" narrates the
 // current move on demand. The key is read from VITE_OPENAI_API_KEY or pasted here
-// (stored in localStorage) — never committed.
+// (stored in localStorage) - never committed.
 import { useState } from 'react';
 
 export interface CommentaryJob {
@@ -46,88 +46,87 @@ export function CommentaryPanel({
   totalAnalyzed: number;
 }) {
   const [keyDraft, setKeyDraft] = useState('');
+  const progressPct = job.total ? (job.done / job.total) * 100 : 0;
+
   return (
-    <div style={{ marginTop: 16, border: '1px solid var(--border)', background: 'var(--card)', borderRadius: 10, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <h4 style={{ margin: 0 }}>Coach commentary</h4>
-        <span style={{ fontSize: 11, color: 'var(--muted)' }}>{model}</span>
+    <div className="commentary-panel">
+      <div className="commentary-panel__header">
+        <h4 className="commentary-panel__title">Coach commentary</h4>
+        <span className="commentary-panel__model">{model}</span>
       </div>
 
       {!hasKey ? (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>
+        <div className="commentary-panel__setup">
+          <div className="commentary-panel__help">
             Set <code>OPENAI_API_KEY</code> in <code>.env</code> (stays server-side, never sent
             to the browser), then restart the dev server. Or paste a key below for this browser.
           </div>
-          <div style={{ fontSize: 11, color: 'var(--warn)', background: 'rgba(232,146,59,0.12)', border: '1px solid rgba(232,146,59,0.4)', borderRadius: 4, padding: '4px 6px', marginBottom: 6 }}>
+          <div className="commentary-panel__warning">
             Already set <code>OPENAI_API_KEY</code> in <code>.env</code> but see this? The dev
-            server reads <code>.env</code> only at startup — <strong>restart it</strong> and reload.
+            server reads <code>.env</code> only at startup {'\u2014'} <strong>restart it</strong>{' '}
+            and reload.
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="commentary-panel__key-row">
             <input
+              className="commentary-panel__key-input"
               type="password"
               value={keyDraft}
-              onChange={(e) => setKeyDraft(e.target.value)}
-              placeholder="sk-…"
-              style={{ flex: 1, fontSize: 12, padding: '4px 6px' }}
+              onChange={(event) => setKeyDraft(event.target.value)}
+              placeholder="sk-..."
             />
-            <button onClick={() => keyDraft.trim() && onSaveKey(keyDraft.trim())} style={btn}>
+            <button
+              className="commentary-panel__button"
+              onClick={() => keyDraft.trim() && onSaveKey(keyDraft.trim())}
+            >
               Save
             </button>
           </div>
         </div>
       ) : (
         <>
-          {/* Handshake: prove the key + model are live before batching. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12 }}>
+          <div className="commentary-panel__handshake">
             <HandshakeBadge handshake={handshake} />
-            <span style={{ color: 'var(--muted)' }}>
+            <span className="commentary-panel__source">
               key from {keySource === 'env' ? '.env (server-side)' : 'this browser'}
             </span>
             <button
+              className="commentary-panel__button commentary-panel__button--test"
               onClick={onHandshake}
               disabled={handshake.state === 'testing'}
-              style={{ ...btn, marginLeft: 'auto', padding: '2px 8px', fontSize: 12 }}
             >
-              {handshake.state === 'testing' ? 'Testing…' : 'Test connection'}
+              {handshake.state === 'testing' ? `Testing${'\u2026'}` : 'Test connection'}
             </button>
           </div>
           {handshake.state === 'error' && (
-            <div style={{ color: 'var(--bad)', fontSize: 11, marginTop: 4, wordBreak: 'break-word' }}>
-              {handshake.detail}
-            </div>
+            <div className="commentary-panel__handshake-error">{handshake.detail}</div>
           )}
-          {/* The headline action the user asked for. */}
+
           <button
+            className="commentary-panel__button commentary-panel__button--primary"
             onClick={onGenerateAll}
             disabled={job.running || totalAnalyzed === 0}
-            style={{ ...btn, width: '100%', marginTop: 8, padding: '8px 10px', fontWeight: 600 }}
           >
             {job.running
-              ? `Generating… ${job.done}/${job.total}`
+              ? `Generating${'\u2026'} ${job.done}/${job.total}`
               : `Generate commentary for all ${totalAnalyzed} moves`}
           </button>
           {job.running && (
-            <div style={{ height: 4, background: 'var(--track)', borderRadius: 2, marginTop: 6, overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${job.total ? (job.done / job.total) * 100 : 0}%`,
-                  background: 'var(--accent)',
-                  transition: 'width 0.2s',
-                }}
-              />
+            <div className="commentary-panel__progress">
+              <div className="commentary-panel__progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
           )}
-          {job.error && <div style={{ color: 'var(--bad)', fontSize: 12, marginTop: 6 }}>{job.error}</div>}
+          {job.error && <div className="commentary-panel__job-error">{job.error}</div>}
 
-          {/* Per-ply, on demand. */}
-          <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          <div className="commentary-panel__current">
             {currentText ? (
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{currentText}</p>
+              <p className="commentary-panel__text">{currentText}</p>
             ) : (
-              <button onClick={onExplainCurrent} disabled={!canExplain || explaining} style={btn}>
-                {explaining ? 'Thinking…' : 'Explain this move'}
+              <button
+                className="commentary-panel__button"
+                onClick={onExplainCurrent}
+                disabled={!canExplain || explaining}
+              >
+                {explaining ? `Thinking${'\u2026'}` : 'Explain this move'}
               </button>
             )}
           </div>
@@ -140,24 +139,15 @@ export function CommentaryPanel({
 function HandshakeBadge({ handshake }: { handshake: Handshake }) {
   const map = {
     idle: { dot: 'var(--border)', text: 'not tested' },
-    testing: { dot: '#e8923b', text: 'testing…' },
+    testing: { dot: '#e8923b', text: `testing${'\u2026'}` },
     ok: { dot: '#3fbf5f', text: 'connected' },
     error: { dot: '#e23b3b', text: 'failed' },
   } as const;
-  const s = map[handshake.state];
+  const state = map[handshake.state];
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
-      <span style={{ width: 9, height: 9, borderRadius: '50%', background: s.dot, display: 'inline-block' }} />
-      {s.text}
+    <span className="commentary-panel__badge">
+      <span className="commentary-panel__badge-dot" style={{ background: state.dot }} />
+      {state.text}
     </span>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--card)',
-  borderRadius: 6,
-  padding: '4px 10px',
-  fontSize: 13,
-  cursor: 'pointer',
-};
