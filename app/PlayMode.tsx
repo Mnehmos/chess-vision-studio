@@ -39,10 +39,9 @@ import { useArrowAnalysis, type AlternativeLine, type AlternativeLineMove } from
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
-import { buildBoardExport, downloadJson } from './exportState';
+import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
-import type { PlyRecord } from '../engine/position';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import {
   legalDotsFor,
@@ -53,13 +52,14 @@ import {
   validateExposedTactics,
   type VerboseMove,
 } from './play-mode-helpers';
+import { buildPlayModeExportPayload, type PlayOpponent } from './play-mode-export';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 // Engine-opponent search depth (Stockfish; CVS uses its configured depth) and a
 // short "thinking" beat so a human can read their own move's teaching before reply.
 const OPPONENT_DEPTH = 12;
 const OPPONENT_THINK_MS = 500;
-type Opponent = 'none' | 'cvs' | 'stockfish';
+type Opponent = PlayOpponent;
 
 type HistEntry = { san: string; fen: string; from: Square; to: Square; uci: string };
 const PROMO_PIECES = ['q', 'r', 'n', 'b'] as const;
@@ -129,54 +129,22 @@ export function PlayMode({
 
   // Export game + teaching corpus
   const exportGameData = () => {
-    const plies: PlyRecord[] = history.map((h, i) => {
-      const prevEntry = i === 0 ? undefined : history[i - 1];
-      const fenBefore = prevEntry ? prevEntry.fen : START_FEN;
-      return {
-        ply: i + 1,
-        moveNumber: Math.floor(i / 2) + 1,
-        color: i % 2 === 0 ? 'w' as const : 'b' as const,
-        san: h.san,
-        from: h.from,
-        to: h.to,
-        fenBefore,
-        fenAfter: h.fen,
-      };
-    });
-
-    const commentary = new Map<number, string>();
-    coachLog.forEach((turn) => {
-      if (turn.summary) commentary.set(turn.ply, turn.summary);
-    });
-
-    const baseExport = buildBoardExport({
-      game: {
-        headers: {
-          Event: 'CVS Play Mode Game',
-          Date: new Date().toISOString().split('T')[0],
-          White: playerSide === 'w' ? 'You' : opponent === 'none' ? 'Player 1' : opponent,
-          Black: playerSide === 'b' ? 'You' : opponent === 'none' ? 'Player 2' : opponent,
-        },
-      } as any,
-      plies,
-      view: history.length,
-      fen,
-      modeId: mode,
-      selected: selected || undefined,
-      ledMap: { mode: 'off' as any, squares: {} },
-      arrows: [],
-      analyses: analysesRef.current,
-      commentary,
-      annotations: { showThreats, showAllThreats, cascade, followMove },
-      exportedAt: new Date().toISOString(),
-    });
-
     downloadJson(
       `cvs-play-game-${Date.now()}.json`,
-      {
-        ...baseExport,
+      buildPlayModeExportPayload({
+        history,
+        startFen: START_FEN,
+        fen,
+        modeId: mode,
+        selected,
+        analyses: analysesRef.current,
+        coachLog,
+        annotations: { showThreats, showAllThreats, cascade, followMove },
+        playerSide,
+        opponent,
         reviewMoments,
-      }
+        exportedAt: new Date().toISOString(),
+      }),
     );
   };
 
@@ -240,54 +208,22 @@ export function PlayMode({
         );
 
         setTimeout(() => {
-          const plies: PlyRecord[] = history.map((h, i) => {
-            const prevEntry = i === 0 ? undefined : history[i - 1];
-            const fenBefore = prevEntry ? prevEntry.fen : START_FEN;
-            return {
-              ply: i + 1,
-              moveNumber: Math.floor(i / 2) + 1,
-              color: i % 2 === 0 ? 'w' as const : 'b' as const,
-              san: h.san,
-              from: h.from,
-              to: h.to,
-              fenBefore,
-              fenAfter: h.fen,
-            };
-          });
-
-          const commentary = new Map<number, string>();
-          coachLog.forEach((turn) => {
-            if (turn.summary) commentary.set(turn.ply, turn.summary);
-          });
-
-          const baseExport = buildBoardExport({
-            game: {
-              headers: {
-                Event: 'CVS Play Mode Game',
-                Date: new Date().toISOString().split('T')[0],
-                White: playerSide === 'w' ? 'You' : opponent === 'none' ? 'Player 1' : opponent,
-                Black: playerSide === 'b' ? 'You' : opponent === 'none' ? 'Player 2' : opponent,
-              },
-            } as any,
-            plies,
-            view: history.length,
-            fen,
-            modeId: mode,
-            selected: selected || undefined,
-            ledMap: { mode: 'off' as any, squares: {} },
-            arrows: [],
-            analyses: analysesRef.current,
-            commentary,
-            annotations: { showThreats, showAllThreats, cascade, followMove },
-            exportedAt: new Date().toISOString(),
-          });
-
           downloadJson(
             `cvs-play-game-${Date.now()}.json`,
-            {
-              ...baseExport,
+            buildPlayModeExportPayload({
+              history,
+              startFen: START_FEN,
+              fen,
+              modeId: mode,
+              selected,
+              analyses: analysesRef.current,
+              coachLog,
+              annotations: { showThreats, showAllThreats, cascade, followMove },
+              playerSide,
+              opponent,
               reviewMoments: updated,
-            }
+              exportedAt: new Date().toISOString(),
+            }),
           );
         }, 100);
 
