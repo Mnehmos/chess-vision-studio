@@ -424,6 +424,133 @@ select {
   font-size: 11px;
 }
 
+.teaching-log {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.teaching-log__kicker {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.teaching-log__opening {
+  margin-bottom: 8px;
+}
+
+.teaching-log__empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.teaching-log__list {
+  display: flex;
+  max-height: 360px;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.teaching-log__earlier {
+  padding-bottom: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.teaching-log__thinking {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.teaching-log-row {
+  padding: 6px 9px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--card2);
+}
+
+.teaching-log-row__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.teaching-log-row__label {
+  color: var(--text);
+}
+
+.teaching-log-row__move {
+  color: var(--text-soft);
+  font-family: var(--mono);
+}
+
+.teaching-log-row__eval {
+  margin-left: auto;
+}
+
+.teaching-log-row__analyzing {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.teaching-log-row__hazard {
+  margin-top: 6px;
+  color: #d43b3b;
+  font-size: 12px;
+}
+
+.teaching-quality-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.teaching-eval-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.teaching-eval-bar__track {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: #1a1a1a;
+}
+
+.teaching-eval-bar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: #e8e8e8;
+}
+
+.teaching-eval-bar__text {
+  min-width: 26px;
+  color: var(--text-soft);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-align: right;
+}
+
 .cvs-workspace {
   display: grid;
   grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);

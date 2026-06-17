@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef } from 'react';
 import type { TeachingFactBundleV1, TeachingAnalysis } from '../engine/teaching/types';
 import type { MoveIdea } from '../engine/teaching/moveIdea';
 import type { DetectedOpening } from '../engine/teaching/openings';
@@ -12,13 +12,6 @@ import { TeachingMoveBody, OpeningCard } from './TeachingPanel';
 // as a header card; newest move at the bottom, bounded to a sliding window.
 
 const COACH_WINDOW = 8; // keep only the last N plies of the log in view
-
-const card: CSSProperties = {
-  background: 'var(--card)',
-  border: '1px solid var(--border)',
-  borderRadius: 12,
-  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-};
 
 // One move in the running log — yours and the coach's, each keeping its own teaching.
 export interface CoachTurn {
@@ -138,35 +131,21 @@ export function TeachingLog({
   const accentFor = (turn: CoachTurn) =>
     (bothSides ? turn.side === 'w' : turn.who === 'you') ? 'var(--accent)' : '#3182ce';
   return (
-    <section data-testid="teaching-log" style={{ ...card, padding: 12 }}>
-      <div
-        style={{
-          fontFamily: 'var(--mono)',
-          fontSize: 10,
-          letterSpacing: '.14em',
-          textTransform: 'uppercase',
-          color: 'var(--muted)',
-          marginBottom: 8,
-        }}
-      >
-        {title}
-      </div>
+    <section data-testid="teaching-log" className="teaching-log">
+      <div className="teaching-log__kicker">{title}</div>
       {opening?.inBook && (
-        <div style={{ marginBottom: 8 }}>
+        <div className="teaching-log__opening">
           <OpeningCard opening={opening} />
         </div>
       )}
       {log.length === 0 ? (
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+        <div className="teaching-log__empty">
           {emptyHint ?? 'Make a move — every move is taught here, newest at the bottom.'}
         </div>
       ) : (
-        <div
-          ref={setScrollElement}
-          style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}
-        >
+        <div ref={setScrollElement} className="teaching-log__list">
           {log.length > COACH_WINDOW && (
-            <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', paddingBottom: 2 }}>
+            <div className="teaching-log__earlier">
               …{log.length - COACH_WINDOW} earlier {log.length - COACH_WINDOW === 1 ? 'move' : 'moves'} (full game in Moves)
             </div>
           )}
@@ -183,7 +162,7 @@ export function TeachingLog({
             />
           ))}
           {thinking && coachName && (
-            <div data-testid="coach-thinking" style={{ color: 'var(--accent)', fontSize: 12 }}>
+            <div data-testid="coach-thinking" className="teaching-log__thinking">
               {coachName} is thinking…
             </div>
           )}
@@ -211,27 +190,24 @@ function TeachingLogRow({
   onPractice?: (node: TeachingNode) => void;
 }) {
   const moveNo = Math.floor(turn.ply / 2) + 1;
-  const marker = turn.ply % 2 === 0 ? `${moveNo}.` : `${moveNo}…`;
+  const marker = turn.ply % 2 === 0 ? `${moveNo}.` : `${moveNo}\u2026`;
   const nodes = turn.nodes || [];
   return (
-    <div
-      data-testid="coach-turn"
-      style={{ borderLeft: `3px solid ${accent}`, background: 'var(--card2)', borderRadius: 6, padding: '6px 9px' }}
-    >
-      <div style={{ fontSize: 12, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <strong style={{ color: 'var(--text)' }}>{label}</strong>
-        <span style={{ fontFamily: 'var(--mono)', color: 'var(--text-soft)' }}>
+    <div data-testid="coach-turn" className="teaching-log-row" style={{ borderLeftColor: accent }}>
+      <div className="teaching-log-row__header">
+        <strong className="teaching-log-row__label">{label}</strong>
+        <span className="teaching-log-row__move">
           {marker} {turn.san}
         </span>
         {turn.classification && <QualityBadge classification={turn.classification} cpLoss={turn.cpLoss ?? 0} />}
         {turn.evalCp !== null && (
-          <span style={{ marginLeft: 'auto' }}>
+          <span className="teaching-log-row__eval">
             <EvalBar cp={turn.evalCp} text={turn.evalText} />
           </span>
         )}
       </div>
       {turn.status === 'analyzing' ? (
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>analyzing…</div>
+        <div className="teaching-log-row__analyzing">analyzing{'\u2026'}</div>
       ) : (
         <TeachingMoveBody
           nodes={nodes}
@@ -247,14 +223,13 @@ function TeachingLogRow({
         />
       )}
       {turn.status !== 'analyzing' && turn.hazardNote && (
-        <div data-testid="hazard-note" style={{ marginTop: 6, fontSize: 12, color: '#d43b3b' }}>
-          ⚠ {turn.hazardNote}
+        <div data-testid="hazard-note" className="teaching-log-row__hazard">
+          {'\u26a0'} {turn.hazardNote}
         </div>
       )}
     </div>
   );
 }
-
 // The MOVE's own grade (distinct from the position eval) — Stockfish's classification
 // plus the centipawn loss, e.g. "best · 0.00", "mistake · −2.10".
 const QUALITY: Record<string, string> = {
@@ -268,13 +243,14 @@ const QUALITY: Record<string, string> = {
 
 function QualityBadge({ classification, cpLoss }: { classification: string; cpLoss: number }) {
   const color = QUALITY[classification] ?? 'var(--muted)';
-  const loss = cpLoss > 0 ? `−${cpLoss.toFixed(2)}` : '0.00';
+  const loss = cpLoss > 0 ? `\u2212${cpLoss.toFixed(2)}` : '0.00';
   return (
     <span
+      className="teaching-quality-badge"
       title={`Move quality: ${classification} (lost ${cpLoss.toFixed(2)})`}
-      style={{ fontSize: 10, color: '#fff', background: color, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}
+      style={{ background: color }}
     >
-      {classification} · {loss}
+      {classification} {'\u00b7'} {loss}
     </span>
   );
 }
@@ -284,24 +260,11 @@ function QualityBadge({ classification, cpLoss }: { classification: string; cpLo
 function EvalBar({ cp, text }: { cp: number; text: string }) {
   const whiteFrac = Math.max(0.04, Math.min(0.96, 1 / (1 + Math.exp(-cp / 400))));
   return (
-    <span title="Engine eval — position odds (White’s perspective)" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-      <span
-        style={{
-          position: 'relative',
-          width: 34,
-          height: 9,
-          borderRadius: 2,
-          overflow: 'hidden',
-          background: '#1a1a1a',
-          border: '1px solid var(--border)',
-          display: 'inline-block',
-        }}
-      >
-        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${whiteFrac * 100}%`, background: '#e8e8e8' }} />
+    <span title="Engine eval - position odds (White perspective)" className="teaching-eval-bar">
+      <span className="teaching-eval-bar__track">
+        <span className="teaching-eval-bar__fill" style={{ width: `${whiteFrac * 100}%` }} />
       </span>
-      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--text-soft)', minWidth: 26, textAlign: 'right' }}>
-        {text}
-      </span>
+      <span className="teaching-eval-bar__text">{text}</span>
     </span>
   );
 }
