@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import type {
   TeachingFactBundleV1,
+  TeachingFactsRequestV1,
   PieceRef,
   FactCollection,
 } from './types';
@@ -107,6 +108,7 @@ export interface TeachingRequest {
 
   verificationPolicy: VerificationPolicy;
   facts?: TeachingFactBundleV1;
+  factsLoader?: (request: TeachingFactsRequestV1) => Promise<TeachingFactBundleV1>;
   engine?: {
     evaluate: (params: { fen: string; depth: number }) => Promise<{ cp?: number; mate?: number; status?: string }>;
   };
@@ -207,24 +209,18 @@ export async function extractTeachingFacts(
 
   const uci = request.subjectMove;
   const bestLine = request.principalVariation || [];
-  const response = await fetch('/api/cvs-engine/facts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      schemaVersion: 1,
-      fenBefore: request.rootFen,
-      playedMoveUci: uci,
-      bestMoveUci: bestLine[0],
-      refutationUci: request.principalVariation?.[0],
-      principalVariationUci: bestLine.length ? bestLine : undefined,
-      options: { includeMotifOpportunities: true, includeCounterfactual: true },
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`CVS Engine facts failed (${response.status})`);
+  if (!request.factsLoader) {
+    throw new Error('Teaching facts unavailable: provide request.facts or request.factsLoader');
   }
-  const body = await response.json();
-  return body as TeachingFactBundleV1;
+  return request.factsLoader({
+    schemaVersion: 1,
+    fenBefore: request.rootFen,
+    playedMoveUci: uci,
+    bestMoveUci: bestLine[0],
+    refutationUci: bestLine[1],
+    principalVariationUci: bestLine.length ? bestLine : undefined,
+    options: { includeMotifOpportunities: true, includeCounterfactual: true },
+  });
 }
 
 export function proposeTeachingHypotheses(

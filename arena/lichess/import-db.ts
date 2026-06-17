@@ -10,6 +10,7 @@ import { UciEngine } from '../../engine/evaluation';
 import { createNodeStockfishTransport } from '../../engine/stockfish-node';
 import { reviewGame } from '../review';
 import { reviewedToTraining } from '../dataset';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../review-config';
 import type { PlayedPly } from '../match';
 
 export interface ImportConfig {
@@ -37,7 +38,7 @@ interface Counters {
 const DEFAULT_CONFIG: ImportConfig = {
   input: '-',
   out: 'arena/out/lichess-master-dataset.jsonl',
-  depth: 10,
+  depth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   limit: 50,
   maxPlies: 80,
   minElo: 2200,
@@ -160,7 +161,7 @@ function parseArgs(argv: string[]): ImportConfig {
 function usage(): void {
   console.log(`Usage:
   npm run lichess:import -- <games.pgn|-> [--out arena/out/lichess-master-dataset.jsonl]
-    [--depth 10] [--limit 50] [--max-plies 80] [--min-elo 2200] [--sample-every 1]
+    [--depth 24] [--limit 50] [--max-plies 80] [--min-elo 2200] [--sample-every 1]
 
 Examples:
   zstd -dc lichess_db_standard_rated_2026-05.pgn.zst | npm run lichess:import -- -

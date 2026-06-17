@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WORKER = os.path.join(HERE, 'sf-relabel-worker.py')
 TOOLS = 'F:\\tools'
 LOGS = os.path.join(TOOLS, 'relabel-logs')
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 
 
 def get_file_line_count(path):
@@ -68,7 +69,7 @@ def format_time(seconds):
 def main():
     parser = argparse.ArgumentParser(description="Robust Stockfish Relabeling Orchestrator")
     parser.add_argument("-w", "--workers", type=int, default=8, help="Max concurrent workers (default: 8)")
-    parser.add_argument("-d", "--depth", type=int, default=20, help="Stockfish search depth (default: 20)")
+    parser.add_argument("-d", "--depth", type=int, default=DEFAULT_STOCKFISH_REVIEW_DEPTH, help=f"Stockfish search depth (default: {DEFAULT_STOCKFISH_REVIEW_DEPTH})")
     parser.add_argument("-m", "--hash", type=int, default=256, help="Stockfish Hash size in MB (default: 256)")
     parser.add_argument("-t", "--timeout", type=int, default=600, help="Stuck timeout in seconds (default: 600)")
     parser.add_argument("-s", "--shards", type=int, default=12, help="Total number of shards (default: 12)")
@@ -94,7 +95,7 @@ def main():
     for i in range(args.shards):
         shard_str = f"{i:02d}"
         in_path = os.path.join(TOOLS, f"ourq-{shard_str}.jsonl")
-        out_path = os.path.join(TOOLS, f"ourq-d20-{shard_str}.jsonl")
+        out_path = os.path.join(TOOLS, f"ourq-d24-{shard_str}.jsonl")
         
         if not os.path.exists(in_path):
             print(f"  Warning: Shard {shard_str} input file does not exist at {in_path}. Skipping.")

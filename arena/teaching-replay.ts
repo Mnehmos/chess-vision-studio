@@ -7,6 +7,7 @@ import { gamesFromPgn, type ParsedGame } from '../engine/position';
 import { buildTeachingRecord, type TeachingRecordV1 } from '../engine/teaching/record';
 import type { TeachingFactBundleV1, TeachingFactsRequestV1 } from '../engine/teaching/types';
 import type { Eval, MoveAnalysis } from '../engine/types';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface Options {
   inputs: string[];
@@ -26,7 +27,7 @@ function parseArgs(argv: string[]): Options {
   let hero = 'Mnehmos';
   let targetMistakes = 100;
   let targetGames = 100;
-  let depth = 10;
+  let depth = DEFAULT_STOCKFISH_REVIEW_DEPTH;
   let baseUrl = 'http://localhost:5173';
   let out = 'arena/out/teaching-real-game-records.json';
   let cache = existsSync(resolve('arena/out/sf-eval-cache.jsonl'))

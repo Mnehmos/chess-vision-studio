@@ -1,0 +1,185 @@
+:root {
+  color-scheme: dark;
+  --bg: #020617;
+  --page-bg:
+    radial-gradient(circle at 22% 0%, rgba(37, 99, 235, 0.18), transparent 34rem),
+    radial-gradient(circle at 88% 12%, rgba(139, 92, 246, 0.14), transparent 28rem),
+    linear-gradient(145deg, #0f172a 0%, #07111f 46%, #020617 100%);
+  --card: rgba(15, 23, 42, 0.78);
+  --card2: rgba(30, 41, 59, 0.72);
+  --track: rgba(51, 65, 85, 0.76);
+  --border: rgba(148, 163, 184, 0.2);
+  --glass-bg: rgba(255, 255, 255, 0.035);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --text: #f5f2ea;
+  --text-soft: #d7d0c3;
+  --muted: #9aa7b7;
+  --accent: #d08b45;
+  --accent-light: #f0b86d;
+  --stockfish: #38bdf8;
+  --cvs: #a78bfa;
+  --good: #4ade80;
+  --bad: #fb7185;
+  --warn: #fbbf24;
+  --accent-glow: 0 0 18px rgba(56, 189, 248, 0.24);
+  --panel-shadow: 0 18px 55px rgba(2, 6, 23, 0.38);
+  --transition-smooth: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  --mono: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--page-bg);
+}
+
+body {
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+section {
+  isolation: isolate;
+}
+
+section h2 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Space Grotesk", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+button {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background var(--transition-smooth),
+    border-color var(--transition-smooth),
+    box-shadow var(--transition-smooth),
+    transform var(--transition-smooth);
+}
+
+button:hover:not(:disabled) {
+  border-color: rgba(240, 184, 109, 0.55);
+  box-shadow: var(--accent-glow);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+input,
+textarea,
+select {
+  background: var(--card2);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+@keyframes csvBlink {
+  50% {
+    opacity: 0.1;
+  }
+}
+
+.cvs-workspace {
+  display: grid;
+  grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.cvs-workspace > * {
+  min-width: 0;
+}
+
+.cvs-gif-capture {
+  grid-column: 2 / span 2;
+  display: grid;
+  grid-template-columns: minmax(0, 480px) minmax(300px, 340px);
+  gap: 20px;
+  align-items: start;
+  justify-self: start;
+  width: min-content;
+  max-width: 100%;
+}
+
+.cvs-side-column {
+  min-width: 0;
+  min-height: 0;
+}
+
+@supports (backdrop-filter: blur(12px)) {
+  .cvs-workspace section,
+  .cvs-workspace [data-testid="teaching-log"] {
+    backdrop-filter: blur(12px);
+  }
+}
+
+@media (max-width: 1380px) {
+  .cvs-workspace {
+    grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 1fr);
+  }
+
+  .cvs-gif-capture {
+    grid-column: 2 / span 2;
+    grid-template-columns: minmax(0, 480px) minmax(300px, 1fr);
+  }
+
+  .cvs-side-column {
+    grid-column: 2 / span 2;
+  }
+}
+
+@media (max-width: 980px) {
+  .cvs-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cvs-gif-capture,
+  .cvs-side-column {
+    grid-column: auto;
+  }
+
+  .cvs-gif-capture {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+

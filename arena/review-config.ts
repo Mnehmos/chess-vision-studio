@@ -1,0 +1,2 @@
+export const DEFAULT_STOCKFISH_REVIEW_DEPTH = 24;
+

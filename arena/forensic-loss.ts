@@ -1,11 +1,11 @@
 // RSI loss forensic — pull one game apart, move by move, against the tiered
 // Stockfish oracle. For each CVS move: bulk-depth cpLoss + SF best; then the
-// worst N moves get the deep oracle (d20) AND a deeper Rust re-search, so the
+// worst N moves get the deep oracle (d24) AND a deeper Rust re-search, so the
 // failure class (value_miseval vs search_horizon vs king-safety etc.) is
 // evidence-based, not vibes.
 //
 //   npm run forensic:loss -- --run arena/gauntlet/runs/<id> --game sf2200-g14
-//     [--bulk-depth 12] [--deep-depth 20] [--worst 4] [--rust-depth 7]
+//     [--bulk-depth 24] [--deep-depth 24] [--worst 4] [--rust-depth 7]
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { Chess } from 'chess.js';
@@ -13,6 +13,7 @@ import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { SfCachePool } from './sf-cache';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface MoveRow {
   gameId: string;
@@ -26,14 +27,21 @@ interface MoveRow {
 }
 
 function parseArgs(argv: string[]) {
-  const cfg = { run: '', game: '', bulkDepth: 12, deepDepth: 20, worst: 4, rustDepth: 7 };
+  const cfg = {
+    run: '',
+    game: '',
+    bulkDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
+    deepDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
+    worst: 4,
+    rustDepth: 7,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i] ?? '';
     if (a === '--run') cfg.run = next();
     else if (a === '--game') cfg.game = next();
-    else if (a === '--bulk-depth') cfg.bulkDepth = Number(next()) || 12;
-    else if (a === '--deep-depth') cfg.deepDepth = Number(next()) || 20;
+    else if (a === '--bulk-depth') cfg.bulkDepth = Number(next()) || DEFAULT_STOCKFISH_REVIEW_DEPTH;
+    else if (a === '--deep-depth') cfg.deepDepth = Number(next()) || DEFAULT_STOCKFISH_REVIEW_DEPTH;
     else if (a === '--worst') cfg.worst = Number(next()) || 4;
     else if (a === '--rust-depth') cfg.rustDepth = Number(next()) || 7;
   }

@@ -1621,7 +1621,7 @@ const card: CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
   borderRadius: 12,
-  boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+  boxShadow: 'var(--panel-shadow)',
 };
 const btn: CSSProperties = {
   fontSize: 13,

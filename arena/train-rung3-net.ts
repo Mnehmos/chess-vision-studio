@@ -4,7 +4,7 @@
 //   23 Rung-2 features, including kingDanger, plus boardControl, loosePieces,
 //   bestSeeCapture, safeChecks, pawnIslands.
 //
-// Objective: mixed parent residual regression + sibling ranking over SF d12
+// Objective: mixed parent residual regression + sibling ranking over SF d24
 // multipv labels. Output is a Rust `ValueNet` JSON and is UNPROMOTED until it
 // passes node-speed, heldout quality, self-play, and native SF-2400 gates.
 //

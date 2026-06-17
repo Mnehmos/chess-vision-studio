@@ -12,9 +12,10 @@ import sys
 import time
 
 SF = 'f:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe'
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 shard, out_path = sys.argv[1], sys.argv[2]
-depth = int(sys.argv[3]) if len(sys.argv) > 3 else 12
-hash_mb = int(sys.argv[4]) if len(sys.argv) > 4 else 256  # was hardcoded 64; 256 cuts TT overwrites at d20 (95GB free, trivial even x16 workers)
+depth = int(sys.argv[3]) if len(sys.argv) > 3 else DEFAULT_STOCKFISH_REVIEW_DEPTH
+hash_mb = int(sys.argv[4]) if len(sys.argv) > 4 else 256  # was hardcoded 64; 256 cuts TT overwrites at d24 (95GB free, trivial even x16 workers)
 
 done = 0
 try:

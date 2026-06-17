@@ -17,7 +17,7 @@
 # Configs compared on identical transitions / own-clock budget (d5 on miss):
 #   gen7-alone | gen7+plain ponder (gen7 d7 on predicted children, no lanes)
 #   | gen7+arbiter cache
-# Scored by SF-d12 child cp-loss vs SF-d14 oracle on the ACTUAL reply position.
+# Scored by SF-d24 child cp-loss on the ACTUAL reply position.
 # Gate: arbiter cache beats gen7-alone overall without increasing bl>=200.
 #
 #   python arena/bench-ponder-cache.py [n_transitions]
@@ -40,6 +40,7 @@ SEED = 20260611
 TOPK = 5
 M_SUP, M_UNSUP = 5, 15
 VERIFY_REJECT_CP = 25
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 
 LANE_SETS = {1: ['fast', 'cvs-v3', 'net', 'king', 'see', 'tactics', 'defender', 'quietdef', 'pawn'],
              2: ['fast', 'king', 'tactics'], 3: ['fast', 'king', 'tactics']}
@@ -184,7 +185,7 @@ def sf_child_eval(fen, uci):
     elif b.is_stalemate() or b.is_insufficient_material():
         r = 0
     else:
-        sc, _ = sf_go(b.fen(), 12)
+        sc, _ = sf_go(b.fen(), DEFAULT_STOCKFISH_REVIEW_DEPTH)
         r = -sc
     cache_sf[key] = r
     return r
@@ -232,7 +233,7 @@ for t, (fen, actual) in enumerate(transitions):
     afen = ab.fen()
     if ab.is_game_over():
         continue
-    oracle_sc, oracle_mv = sf_go(afen, 14)
+    oracle_sc, oracle_mv = sf_go(afen, DEFAULT_STOCKFISH_REVIEW_DEPTH)
     hit = afen in arb_cache
 
     g7_move = best_move('g7d5', GEN7, 5, afen)

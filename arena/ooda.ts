@@ -26,6 +26,7 @@ import { playGame } from './match';
 import { reviewGame } from './review';
 import { findDisagreements, playOutBest } from './disagree';
 import { reviewedToTraining, playoutToTraining } from './dataset';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 export interface OodaConfig {
   rounds: number;
@@ -47,7 +48,7 @@ export const DEFAULT_CONFIG: OodaConfig = {
   maxPlies: 30,
   playDepthSF: 6,
   playDepthCVS: 3,
-  reviewDepth: 10,
+  reviewDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   branchPlies: 2,
   minCpLoss: 0.5,
   epochs: 60,

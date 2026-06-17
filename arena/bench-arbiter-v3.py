@@ -7,7 +7,7 @@
 # support-scaled margin (proposed by >=2 lanes = supported). Verified scores
 # are computed once; margin pairs are swept post-hoc.
 #
-# Scored by SF-d12 child cp-loss (same protocol as bench-oracle-cploss.py).
+# Scored by SF-d24 child cp-loss (same protocol as bench-oracle-cploss.py).
 # Targets (user spec): avgCP <23.2, p90 <87, bl>=200 <=1%, danger <23.9,
 # match% >=51 not at cp-loss cost. Guardrail: never trade the 1% blunder
 # collapse away.
@@ -82,7 +82,7 @@ for i, fen in enumerate(fens):
 for s in servers.values():
     s.kill()
 
-# --- SF d12 child evals for cp-loss scoring ---
+# --- SF d24 child evals for cp-loss scoring ---
 sf = subprocess.Popen([SF], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
 sf.stdin.write('uci\nisready\n')
 sf.stdin.flush()
@@ -107,7 +107,7 @@ def child_eval(fen, uci):
     if b.is_stalemate() or b.is_insufficient_material():
         cache[key] = 0
         return 0
-    sf.stdin.write(f'position fen {b.fen()}\ngo depth 12\n')
+    sf.stdin.write(f'position fen {b.fen()}\ngo depth 24\n')
     sf.stdin.flush()
     sc = 0
     while True:

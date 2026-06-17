@@ -1,7 +1,7 @@
 # Standing benchmark: oracle CP-LOSS (not just exact-match).
 #
 # For each suite position: each engine picks a move (fixed depth, d5);
-# Stockfish (d12) evaluates the child of that move and the child of the
+# Stockfish (d24) evaluates the child of that move and the child of the
 # oracle's best move; cp_loss = max(0, best_child - chosen_child), mover POV.
 #
 # Metrics per engine: exact_match, avg/median/p90 cp_loss, blunder rates
@@ -24,7 +24,8 @@ SAVED = 'f:/tmp/diversity-results.json'
 DANGER = 'f:/tmp/diversity-danger.json'
 BASELINE = 'gen7'
 DEPTH = 5
-SF_DEPTH = 12
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
+SF_DEPTH = DEFAULT_STOCKFISH_REVIEW_DEPTH
 
 ENGINES = {
     'gen7': ['--nnue', 'f:/tools/cvs-baselines/raw-nnue-h256-sf-d12-v3.json'],

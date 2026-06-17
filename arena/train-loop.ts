@@ -28,6 +28,7 @@ import {
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { evaluateQuality, type QualityReport } from './quality';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 type Bench = ReturnType<typeof benchmark>;
 
@@ -65,7 +66,7 @@ const DEFAULT_CONFIG: TrainConfig = {
   modelDir: 'arena/models/cvs-policy',
   holdoutPct: 0.15,
   qualityPositions: 60,
-  qualityDepth: 10,
+  qualityDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   searchDepth: 2,
   valueSearchDepth: 3,
   valueOut: 'arena/out/value-weights.json',

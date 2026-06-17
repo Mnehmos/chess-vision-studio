@@ -25,6 +25,7 @@ import {
 } from '@cvs/engine';
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface Cfg {
   fen: string;
@@ -46,7 +47,7 @@ const DEFAULT_CONFIG: Cfg = {
   base: 'arena/out/value-weights-mixed.json',
   rung2: 'arena/out/rung2-weights-mixed.json',
   depth: 4,
-  qualityDepth: 10,
+  qualityDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
 };
 
 const j = (p: string, d: unknown) => (p === 'default' ? d : JSON.parse(readFileSync(p, 'utf8')));

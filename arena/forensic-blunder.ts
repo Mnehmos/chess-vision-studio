@@ -26,6 +26,7 @@ import {
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface Cfg {
   input: string;
@@ -47,7 +48,7 @@ const DEFAULT_CONFIG: Cfg = {
   offset: 543,
   positions: 95,
   depth: 4,
-  qualityDepth: 10,
+  qualityDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   blunderCp: 2, // pawns
   onlyIndex: -1,
 };

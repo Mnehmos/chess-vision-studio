@@ -18,6 +18,7 @@ import { buildTrainingPosition } from '@cvs/engine';
 import type { TrainingPosition } from '@cvs/engine';
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 const ROWS_API = 'https://datasets-server.huggingface.co/rows';
 
@@ -39,7 +40,7 @@ const DEFAULT_CONFIG: ChessbenchConfig = {
   out: 'arena/out/chessbench-dataset.jsonl',
   positions: 500,
   offset: 0,
-  depth: 10,
+  depth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   source: 'master_game',
 };
 
@@ -174,7 +175,7 @@ function parseArgs(argv: string[]): ChessbenchConfig {
     else if (a === '--depth') cfg.depth = Number(next()) || cfg.depth;
     else if (a === '--dataset') cfg.dataset = next();
     else if (a === '--help' || a === '-h') {
-      console.log('Usage: npm run chessbench:import -- [--positions 500] [--offset 0] [--depth 10] [--out arena/out/chessbench-dataset.jsonl]');
+      console.log('Usage: npm run chessbench:import -- [--positions 500] [--offset 0] [--depth 24] [--out arena/out/chessbench-dataset.jsonl]');
       process.exit(0);
     }
   }

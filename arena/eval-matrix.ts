@@ -3,13 +3,13 @@
 //   - caches every Stockfish eval by FEN@depth (in-memory + persisted jsonl), so a
 //     position's eval is paid ONCE across all depths/engines/re-runs,
 //   - sweeps engines × depths and emits a single comparison table,
-//   - keeps SF depth configurable (default 10 = promotion gate; 8 = fast smoke),
+//   - keeps SF depth configurable (default 24 = promotion gate; lower depths are fast smokes),
 //   - bounds Stockfish parallelism with --concurrency.
 // Same searched-move quality metrics as eval-value (cpLoss / blunder / mate / illegal),
 // just without the duplicated scoring.
 //
 //   npm run eval:matrix -- --positions 95 --offset 543 --depths 2,3,4 \
-//     --sf-depth 10 --engines default,mixed --concurrency 2 \
+//     --sf-depth 24 --engines default,mixed --concurrency 2 \
 //     --cache arena/out/sf-eval-cache.jsonl
 import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -29,6 +29,7 @@ import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { median, normalize } from './quality';
 import { SfCachePool } from './sf-cache';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface Cfg {
   input: string;
@@ -47,7 +48,7 @@ const DEFAULT_CONFIG: Cfg = {
   offset: 543,
   positions: 95,
   depths: [2, 3, 4],
-  sfDepth: 10,
+  sfDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   engines: ['default', 'mixed'],
   policy: 'arena/out/weights.json',
   cache: 'arena/out/sf-eval-cache.jsonl',

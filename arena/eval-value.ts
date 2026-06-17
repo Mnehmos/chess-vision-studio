@@ -26,6 +26,7 @@ import {
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { evaluateQuality, type QualityConfig, type QualityReport } from './quality';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface EvalConfig {
   input: string;
@@ -48,7 +49,7 @@ const DEFAULT_CONFIG: EvalConfig = {
   offset: 543,
   positions: 95,
   depth: 3,
-  qualityDepth: 10,
+  qualityDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
 };
 
 function loadPolicy(path: string): PolicyWeights {

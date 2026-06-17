@@ -2,7 +2,7 @@
 # `sf-relabel-worker.py` processes that survive this shell and resume on restart.
 #
 #   python arena/relabel-fleet.py --source "arena/out/2b-shards/shard*.jsonl" \
-#       --out-dir arena/out/nnue-d20 --workers 16 --depth 20 --hash 256
+#       --out-dir arena/out/nnue-d24 --workers 16 --depth 24 --hash 256
 #
 # Each worker labels one shard with local Stockfish (Threads=1, Hash from --hash)
 # and is independently resumable (skips rows its output already has). The parent
@@ -24,6 +24,7 @@ import time
 
 SF = 'f:/tools/stockfish/stockfish/stockfish-windows-x86-64-avx2.exe'
 WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sf-relabel-worker.py')
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 
 
 def read_fens(patterns):
@@ -64,9 +65,9 @@ def shard(fens, n, out_dir):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--source', nargs='+', default=['arena/out/2b-shards/shard*.jsonl'])
-    ap.add_argument('--out-dir', default='arena/out/nnue-d20')
+    ap.add_argument('--out-dir', default='arena/out/nnue-d24')
     ap.add_argument('--workers', type=int, default=16)
-    ap.add_argument('--depth', type=int, default=20)
+    ap.add_argument('--depth', type=int, default=DEFAULT_STOCKFISH_REVIEW_DEPTH)
     ap.add_argument('--hash', type=int, default=256)
     ap.add_argument('--no-reshard', action='store_true', help='reuse existing shardNN.jsonl in out-dir')
     args = ap.parse_args()

@@ -2,7 +2,7 @@
 //
 // Treats the Rust engine as an external move backend (its `analyze` CLI emits
 // JSONL picks per FEN) and scores BOTH engines' searched moves with the same
-// cached Stockfish depth-10 oracle the TS gates used. Two questions:
+// cached Stockfish depth-24 oracle. Two questions:
 //   1. Parity: Rust d2–d4 should match TS d2–d4 (R3 showed exact search parity).
 //   2. Superiority: Rust d5/d6 (depths TS can't afford) should improve cpLoss /
 //      blunder profile on the holdout AND the independent slice.
@@ -26,6 +26,7 @@ import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { median, normalize } from './quality';
 import { SfCachePool } from './sf-cache';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 const CFG = {
   input: 'arena/out/combined-multipv.jsonl',
@@ -35,7 +36,7 @@ const CFG = {
   unseenCount: 35,
   tsDepths: [2, 3, 4],
   rustDepths: [2, 3, 4, 5, 6],
-  sfDepth: 10,
+  sfDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   cache: 'arena/out/sf-eval-cache.jsonl',
   rustExe: '../chess-vision-studio-rust-engine/target/release/analyze.exe',
   baseWeights: 'arena/out/value-weights-mixed.json',

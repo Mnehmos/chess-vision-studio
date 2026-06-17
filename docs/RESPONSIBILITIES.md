@@ -14,6 +14,17 @@ The local workspace is a three-repo app constellation:
 | `../chess-vision-studio-engine` | TypeScript baseline engine package, exported as `@cvs/engine`; policy, value, search, benchmarks, and training-data helpers. |
 | `../chess-vision-studio-rust-engine` | Native engine and deterministic chess-facts layer; bitboards, movegen, SEE, search, UCI, `analyze --serve`, and `TeachingFactBundleV1`. |
 
+## Blue Phase Documentation
+
+The current refactor and audit set is split across:
+
+| Document | Responsibility |
+|---|---|
+| `docs/BLUE_PHASE_REFACTOR_PLAN.md` | Validated implementation order, boundaries, and test gates. |
+| `docs/MODERN_ENGINE_CHECKLIST.md` | Current Rust engine capability checklist and deferred modernization gates. |
+| `docs/RSI_OODA_PIPELINE.md` | OODA/self-improvement pipeline, relabeling, forensic loop, and registry contract. |
+| `docs/UI_AESTHETICS_AUDIT.md` | Styling architecture findings, current CSS baseline, and UI extraction direction. |
+
 ## Responsibility Contract
 
 The core product rule is separation of claims:
@@ -407,4 +418,3 @@ cargo fmt
 cargo test
 cargo test --release
 ```
-

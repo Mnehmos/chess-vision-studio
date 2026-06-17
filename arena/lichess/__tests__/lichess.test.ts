@@ -6,6 +6,7 @@ import { playSession, type MovePicker } from '../session';
 import { runBot } from '../run';
 import type { LichessConfig } from '../env';
 import type { ChallengeEvent } from '../client';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../../review-config';
 
 const enc = new TextEncoder();
 
@@ -30,7 +31,7 @@ const CFG: LichessConfig = {
   seedAiClockIncrementSec: 3,
   maxConcurrentGames: 1,
   review: false,
-  reviewDepth: 10,
+  reviewDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   weightsPath: 'arena/out/weights.json',
   outDir: 'arena/out',
 };

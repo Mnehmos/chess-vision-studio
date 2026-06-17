@@ -14,6 +14,7 @@ import { Chess } from 'chess.js';
 import type { TrainingPosition } from '@cvs/engine';
 import { UciEngine } from '../engine/evaluation';
 import { createNodeStockfishTransport } from '../engine/stockfish-node';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 export interface RelabelConfig {
   input: string;
@@ -25,7 +26,7 @@ export interface RelabelConfig {
 const DEFAULT_CONFIG: RelabelConfig = {
   input: 'arena/out/combined-dataset.jsonl',
   out: 'arena/out/combined-evals.jsonl',
-  depth: 10,
+  depth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
   multipv: 1,
 };
 

@@ -4,7 +4,7 @@
 # composition), sampled with a FIXED seed from f:/tmp/nnue-all.jsonl, excluding
 # every FEN in the original suite. Danger = any active CVS id in the
 # hanging-material or king-danger families (the same detector used for the
-# quiet training filter). Then: SF-d14 oracle + all 10 voices at d5, saved to
+# quiet training filter). Then: SF-d24 oracle + all 10 voices at d5, saved to
 # fresh-results.json / fresh-danger.json. NO tuning after results.
 #
 #   python arena/build-fresh-suite.py
@@ -19,6 +19,7 @@ OLD_SUITE = 'f:/tmp/diversity-100.txt'
 SRC = 'f:/tmp/nnue-all.jsonl'
 N_DANGER, N_QUIET = 82, 18
 SEED = 20260611
+DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 
 VOICES = {
     'gen7': ['--nnue', 'f:/tools/cvs-baselines/raw-nnue-h256-sf-d12-v3.json'],
@@ -77,7 +78,7 @@ print(f'suite: {sum(flags)} danger / {len(flags)-sum(flags)} quiet', flush=True)
 open('f:/tmp/fresh-100.txt', 'w').write('\n'.join(suite) + '\n')
 json.dump(flags, open('f:/tmp/fresh-danger.json', 'w'))
 
-# oracle: SF d14 bestmove
+# oracle: SF d24 bestmove
 sf = subprocess.Popen([SF], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
 sf.stdin.write('uci\nisready\n')
 sf.stdin.flush()
@@ -85,7 +86,7 @@ while 'readyok' not in sf.stdout.readline():
     pass
 oracle = []
 for k, fen in enumerate(suite):
-    sf.stdin.write(f'position fen {fen}\ngo depth 14\n')
+    sf.stdin.write(f'position fen {fen}\ngo depth {DEFAULT_STOCKFISH_REVIEW_DEPTH}\n')
     sf.stdin.flush()
     while True:
         ln = sf.stdout.readline()

@@ -2,7 +2,7 @@
 // Reads runs/<id>/moves.jsonl, adds the SF oracle columns + a classification,
 // writes runs/<id>/scored_moves.jsonl. Uses the shared persisted SF eval cache.
 //
-//   npm run gauntlet:score -- --run arena/gauntlet/runs/<id> [--sf-depth 10]
+//   npm run gauntlet:score -- --run arena/gauntlet/runs/<id> [--sf-depth 24]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { Chess } from 'chess.js';
 import { UciEngine } from '../engine/evaluation';
@@ -10,6 +10,7 @@ import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { normalize } from './quality';
 import { SfCachePool } from './sf-cache';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface MoveRow {
   gameId: string;
@@ -67,10 +68,10 @@ export function classify(
 
 function parseArgs(argv: string[]): { run: string; sfDepth: number } {
   let run = '';
-  let sfDepth = 10;
+  let sfDepth = DEFAULT_STOCKFISH_REVIEW_DEPTH;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--run') run = argv[++i] ?? '';
-    else if (argv[i] === '--sf-depth') sfDepth = Number(argv[++i]) || 10;
+    else if (argv[i] === '--sf-depth') sfDepth = Number(argv[++i]) || DEFAULT_STOCKFISH_REVIEW_DEPTH;
   }
   if (!run) throw new Error('--run <dir> required');
   return { run, sfDepth };

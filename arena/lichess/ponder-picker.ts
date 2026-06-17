@@ -11,7 +11,7 @@
 // to a normal full search of the remaining budget. "Cache suggests. Current
 // search verifies."
 //
-// Measured (80 real transitions, SF-d12 child cp-loss): ~89% hit rate,
+// Measured in the original 80-transition gate: ~89% hit rate,
 // avgCP 28.2 -> 24.9, >=200cp blunders 1.2% -> 0%. Disable: CVS_PONDER=0.
 import { Chess } from 'chess.js';
 import { RustBackend } from '../engine-backend/rust-backend';

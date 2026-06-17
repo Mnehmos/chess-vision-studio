@@ -1,7 +1,7 @@
 // 2B King-Exposure Head trainer (RSI loop 2B).
 //
 // Targets the forensic finding: CVS holds a positive/near-equal static eval in
-// initiative/king-attack midgames where SF d12/d20 already scores the position
+// initiative/king-attack midgames where SF d24 already scores the position
 // as lost (delusion gaps of 300–950cp). Fits ONLY the four new Rung-2 fields
 // (kingCentralExposure, enemyQueenNearKing, openCenterKingPenalty,
 // kingEscapeDeficit) against the residual sfEval − cvsStaticEval; the promoted
@@ -21,6 +21,7 @@ const RUNS_DIR = 'arena/gauntlet/runs';
 const EXE = process.env.CVS_RUST_EXE ?? '../chess-vision-studio-rust-engine/target/release/analyze.exe';
 const BASE_W = 'arena/out/value-weights-mixed.json';
 const RUNG2_W = 'arena/out/rung2-weights-mixed.json';
+const DEFAULT_STOCKFISH_REVIEW_DEPTH = 24;
 const NEW_KEYS = ['kingCentralExposure', 'enemyQueenNearKing', 'openCenterKingPenalty', 'kingEscapeDeficit'] as const;
 // serde field names in the Rust weight JSON
 const OUT_FIELD: Record<(typeof NEW_KEYS)[number], string> = {
@@ -71,7 +72,7 @@ function collectRows(): Row[] {
       if (typeof sfEval !== 'number' || !m.fenBefore) continue;
       if (Math.abs(sfEval) > CLAMP) continue; // mate-range/lost-position noise
       const prev = byFen.get(m.fenBefore);
-      const depth = m.oracleDepth ?? 12;
+      const depth = m.oracleDepth ?? DEFAULT_STOCKFISH_REVIEW_DEPTH;
       if (!prev || depth > prev.oracleDepth) {
         byFen.set(m.fenBefore, { fen: m.fenBefore, sfEval, oracleDepth: depth });
       }

@@ -27,6 +27,7 @@ import { createNodeStockfishTransport } from '../engine/stockfish-node';
 import { computeCpLoss } from '../engine/classify';
 import { median } from './quality';
 import { SfCachePool } from './sf-cache';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
 
 interface GameRow {
   gameId: string;
@@ -153,7 +154,7 @@ async function main(): Promise<void> {
   // Score the deeper-probe alternatives through the shared SF cache.
   const transport = await createNodeStockfishTransport();
   const sfEngine = new UciEngine(transport);
-  const pool = new SfCachePool([sfEngine], 10, 'arena/out/sf-eval-cache.jsonl');
+  const pool = new SfCachePool([sfEngine], DEFAULT_STOCKFISH_REVIEW_DEPTH, 'arena/out/sf-eval-cache.jsonl');
   const gameById = new Map(games.map((g) => [g.gameId, g]));
   const tagged: Record<string, unknown>[] = [];
   try {
@@ -266,9 +267,9 @@ async function main(): Promise<void> {
       );
     });
 
-    // Deep oracle (depth 20): every RSI candidate is rescored before it may be
+    // Deep oracle: every RSI candidate is rescored before it may be
     // used for training or patch decisions (mission policy). Cached forever.
-    const deepPool = new SfCachePool([sfEngine], 20, 'arena/out/sf-eval-cache.jsonl');
+    const deepPool = new SfCachePool([sfEngine], DEFAULT_STOCKFISH_REVIEW_DEPTH, 'arena/out/sf-eval-cache.jsonl');
     let deepDone = 0;
     for (const r of rsi) {
       const row = r as Record<string, unknown>;
@@ -277,7 +278,7 @@ async function main(): Promise<void> {
       try {
         const dBefore = await deepPool.evalFen(fenBefore);
         if (dBefore.status === 'unavailable' || !dBefore.pv?.[0]) continue;
-        row.deepOracleDepth = 20;
+        row.deepOracleDepth = DEFAULT_STOCKFISH_REVIEW_DEPTH;
         row.deepStockfishBest = dBefore.pv[0];
         row.deepEvalBefore = dBefore.mate !== undefined ? `M${dBefore.mate}` : dBefore.cp;
         const fenAfter = row.fenAfter as string | undefined;
@@ -286,12 +287,12 @@ async function main(): Promise<void> {
           const dAfter = cAfter.isGameOver() ? { cp: 0, depth: 0, pv: [] } : await deepPool.evalFen(fenAfter);
           row.deepCpLoss = Number(Math.max(0, computeCpLoss(dBefore, dAfter)).toFixed(3));
         }
-        if (++deepDone % 20 === 0) console.log(`  deep-oracle d20: ${deepDone}/${rsi.length}…`);
+        if (++deepDone % 20 === 0) console.log(`  deep-oracle d${DEFAULT_STOCKFISH_REVIEW_DEPTH}: ${deepDone}/${rsi.length}…`);
       } catch {
         /* best-effort */
       }
     }
-    console.log(`deep-oracle d20 rescored ${deepDone}/${rsi.length} RSI candidates`);
+    console.log(`deep-oracle d${DEFAULT_STOCKFISH_REVIEW_DEPTH} rescored ${deepDone}/${rsi.length} RSI candidates`);
     var rsiOut = rsi; // hoist for the output section below
   } finally {
     sfEngine.dispose();

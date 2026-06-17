@@ -4,6 +4,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../review-config';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ENV_PATHS = [join(HERE, '..', '..', '.env'), join(HERE, '..', '..', '.env.local')];
@@ -82,7 +83,7 @@ export function loadLichessConfig(): LichessConfig {
     seedAiClockIncrementSec: num('LICHESS_SEED_AI_INC_SEC', 3),
     maxConcurrentGames: num('LICHESS_MAX_GAMES', 1),
     review: bool('LICHESS_REVIEW', false),
-    reviewDepth: num('LICHESS_REVIEW_DEPTH', 10),
+    reviewDepth: num('LICHESS_REVIEW_DEPTH', DEFAULT_STOCKFISH_REVIEW_DEPTH),
     weightsPath: get('LICHESS_WEIGHTS', 'arena/out/weights.json'),
     outDir: get('LICHESS_OUT_DIR', 'arena/out'),
   };

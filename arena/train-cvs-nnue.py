@@ -30,7 +30,7 @@ def arg(flag, dflt):
 
 MAX_ROWS = arg('--rows', 100_000_000)
 EPOCHS = arg('--epochs', 30)
-OUT = arg('--out', 'arena/out/cvs-nnue-h256-sf-d12-v1.json')
+OUT = arg('--out', 'arena/out/cvs-nnue-h256-sf-d24-v1.json')
 HIDDEN = arg('--hidden', 256)
 K = 256.0
 LAMBDA = 0.6
@@ -177,7 +177,7 @@ def main():
         'inputCount': INPUTS, 'psInputs': PS_INPUTS, 'cvsDim': CVS_DIM,
         'hidden': HIDDEN, 'outputScaleCp': 400.0,
         'registryVersion': reg_ver, 'registryHash': reg_hash,
-        'teacher': 'stockfish_d12', 'rows': int(n), 'epochs': EPOCHS,
+        'teacher': 'stockfish_d24', 'rows': int(n), 'epochs': EPOCHS,
         'k': K, 'lambda': LAMBDA,
         'w1': [[round(float(v), 6) for v in row] for row in w1],
         'b1': [round(float(v), 6) for v in net.b1.detach().cpu().numpy()],

@@ -4,7 +4,7 @@ import type { Arrow } from './BoardArrows';
 import type { TeachingNode } from '../engine/teaching/node';
 import { buildTeachingNodes, getPositionAfterMove } from '../engine/teaching/node';
 import { analyzeWithStockfish } from './stockfish-client';
-import { analyzeWithCvsEngine } from './cvs-engine-client';
+import { analyzeWithCvsEngine, getTeachingFacts } from './cvs-engine-client';
 import { Chess } from 'chess.js';
 
 export interface AlternativeLineMove {
@@ -191,21 +191,15 @@ export function getMoveSan(fen: string, from: Square, to: Square, promotion?: st
 
 async function getFactsForAlternative(fen: string, moveUci: string, pv: string[]) {
   try {
-    const res = await fetch('/api/cvs-engine/facts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        schemaVersion: 1,
-        fenBefore: fen,
-        playedMoveUci: moveUci,
-        bestMoveUci: pv[0],
-        refutationUci: pv[1],
-        principalVariationUci: pv.length ? pv : undefined,
-        options: { includeMotifOpportunities: true, includeCounterfactual: true },
-      }),
+    return await getTeachingFacts({
+      schemaVersion: 1,
+      fenBefore: fen,
+      playedMoveUci: moveUci,
+      bestMoveUci: pv[0],
+      refutationUci: pv[1],
+      principalVariationUci: pv.length ? pv : undefined,
+      options: { includeMotifOpportunities: true, includeCounterfactual: true },
     });
-    if (!res.ok) return null;
-    return await res.json();
   } catch {
     return null;
   }

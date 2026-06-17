@@ -97,11 +97,12 @@ const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_op
 const OPENAI_MODEL = env.VITE_OPENAI_MODEL || 'gpt-5.5';
 
 // ── design tokens ─────────────────────────────────────────────────────────────
-const PAGE_BG = 'var(--bg)';
+const PAGE_BG = 'var(--page-bg)';
 const cardStyle: React.CSSProperties = {
   background: 'var(--card)',
   border: '1px solid var(--border)',
   borderRadius: 10,
+  boxShadow: 'var(--panel-shadow)',
 };
 const primaryBtn: React.CSSProperties = {
   border: 'none',
@@ -1663,28 +1664,6 @@ export function App() {
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
-      <style>{`
-        html,body{margin:0;background:#12100e}
-        :root{color-scheme:dark;
-          --bg:#12100e; --card:#1c1916; --card2:#211d19; --track:#2a2622;
-          --border:#322d28; --text:#ece7e1; --text-soft:#cfc8bf; --muted:#9b9389;
-          --accent:#b87333; --accent-light:#d4956a;
-          --good:#4cae6e; --bad:#e0635e; --warn:#e8923b;
-          --mono:ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;}
-        section h2{font-family:var(--mono);font-size:12px;font-weight:600;
-          letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-        button{background:var(--card2);border:1px solid var(--border);color:var(--text);
-          border-radius:6px;cursor:pointer}
-        button:disabled{opacity:.45;cursor:default}
-        section{isolation:isolate}
-        h1,h2,h3{font-family:'Space Grotesk','Inter',system-ui,sans-serif}
-        input,textarea,select{background:var(--card2);color:var(--text);border-color:var(--border)}
-        @keyframes csvBlink{50%{opacity:0.1}}
-        .cvs-workspace{display:grid;grid-template-columns:auto 480px minmax(300px,320px) 300px;gap:20px;align-items:start}
-        .cvs-gif-capture{grid-column:2 / span 2;display:grid;grid-template-columns:480px minmax(300px,320px);gap:20px;align-items:start;justify-self:start;width:max-content;max-width:none}
-        @media (max-width:1380px){.cvs-workspace{grid-template-columns:auto 480px minmax(300px,1fr)}.cvs-gif-capture{grid-column:2 / span 2;grid-template-columns:480px minmax(300px,1fr)}.cvs-side-column{grid-column:2 / span 2}}
-        @media (max-width:980px){.cvs-workspace{grid-template-columns:1fr}.cvs-gif-capture,.cvs-side-column{grid-column:auto}.cvs-gif-capture{grid-template-columns:1fr;width:100%;max-width:100%}}
-      `}</style>
       <div
         style={{
           maxWidth: 1500,
