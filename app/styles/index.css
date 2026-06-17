@@ -224,6 +224,28 @@ select {
   color: var(--text);
 }
 
+.play-commentary__button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.play-commentary__text {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--track);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.play-commentary__empty {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 @supports (backdrop-filter: blur(12px)) {
   .cvs-workspace section,
   .cvs-workspace [data-testid="teaching-log"] {

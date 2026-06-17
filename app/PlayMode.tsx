@@ -41,6 +41,7 @@ import { AnnotationCommandList } from './AnnotationCommandList';
 import { analyzeWithStockfish } from './stockfish-client';
 import { downloadJson } from './exportState';
 import { exportElementGif } from './gif-export';
+import { PlayCommentaryPanel } from './PlayCommentaryPanel';
 import { PlayMoveHistory } from './PlayMoveHistory';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { PlayTurnPlate } from './PlayTurnPlate';
@@ -1214,41 +1215,14 @@ export function PlayMode({
           />
         )}
 
-        <div style={{ ...card, padding: 12 }}>
-          <strong style={{ fontSize: 13, color: 'var(--text)' }}>Commentary</strong>
-          {narrateMove ? (
-            <>
-              <button
-                style={{ ...btn, marginTop: 10 }}
-                onClick={explain}
-                disabled={!liveAnalysis || explaining}
-              >
-                {explaining ? 'Explaining…' : 'Explain this move'}
-              </button>
-              {coachText && (
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text)',
-                    marginTop: 8,
-                    background: 'var(--track)',
-                    padding: 8,
-                    borderRadius: 6,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {coachText}
-                </p>
-              )}
-            </>
-          ) : (
-            engineReady && (
-              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                Add an OpenAI key (.env, server-side) for written commentary.
-              </p>
-            )
-          )}
-        </div>
+        <PlayCommentaryPanel
+          narrationAvailable={!!narrateMove}
+          canExplain={!!liveAnalysis}
+          explaining={explaining}
+          coachText={coachText}
+          engineReady={engineReady}
+          onExplain={explain}
+        />
 
         <PlayMoveHistory rows={rows} />
 
