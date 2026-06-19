@@ -5,7 +5,7 @@ import { describe, expect, it, afterAll } from 'vitest';
 import { existsSync } from 'node:fs';
 import { Chess } from 'chess.js';
 import { createEngineBackend, resolveBackendKind, RustBackend, TsLegacyBackend } from '../engine-backend';
-import { DEFAULT_RUST_EXE } from '../engine-backend/rust-backend';
+import { DEFAULT_RUST_EXE, rustBackendExtraArgs } from '../engine-backend/rust-backend';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const FORENSIC_549 = '5r2/pp5R/1kp3p1/6b1/4P1b1/1BNP2P1/PPP4P/1K6 w - - 1 22';
@@ -17,6 +17,30 @@ afterAll(() => {
 });
 
 describe('backend selector', () => {
+  it('maps neural and search environment settings to Rust CLI flags', () => {
+    expect(rustBackendExtraArgs({
+      CVS_RUST_NNUE: 'main.json',
+      CVS_RUST_HELPER_NNUE: 'helper.json',
+      CVS_RUST_ALLOW_UNVERIFIED: '1',
+      CVS_RUST_FUTILITY: '1',
+      CVS_RUST_RFP: '1',
+      CVS_RUST_TTPS: '1',
+      CVS_RUST_QTT: '1',
+      CVS_RUST_HISTMALUS: '1',
+      CVS_RUST_HISTLMR: '1',
+    })).toEqual([
+      '--nnue', 'main.json',
+      '--helper-nnue', 'helper.json',
+      '--allow-unverified-net',
+      '--futility',
+      '--rfp',
+      '--tt-prune-store',
+      '--qtt',
+      '--histmalus',
+      '--histlmr',
+    ]);
+  });
+
   it('resolves rust by default and ts on request', () => {
     expect(resolveBackendKind(undefined)).toBe(process.env.CVS_ENGINE_BACKEND === 'ts' ? 'ts' : 'rust');
     expect(resolveBackendKind('ts')).toBe('ts');

@@ -74,7 +74,13 @@ def load(path, max_rows):
                 break
             try:
                 j = json.loads(line)
-                idx, cp, res = encode(j['fen'], j['cp'], j['res'])
+                cp = j.get('cp', j.get('sfCp'))
+                mate = j.get('mate', j.get('sfMate'))
+                if mate is not None:
+                    cp = 10000 if mate > 0 else -10000
+                elif cp is None:
+                    continue
+                idx, cp, res = encode(j['fen'], cp, j['res'])
             except Exception:
                 continue
             feats.append(idx)

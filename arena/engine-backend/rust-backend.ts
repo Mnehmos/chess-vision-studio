@@ -23,6 +23,20 @@ export interface RustBackendOptions {
   defaultDepth?: number;
 }
 
+export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): string[] {
+  const extra: string[] = [];
+  if (env.CVS_RUST_NNUE) extra.push('--nnue', env.CVS_RUST_NNUE);
+  if (env.CVS_RUST_HELPER_NNUE) extra.push('--helper-nnue', env.CVS_RUST_HELPER_NNUE);
+  if (env.CVS_RUST_ALLOW_UNVERIFIED === '1') extra.push('--allow-unverified-net');
+  if (env.CVS_RUST_FUTILITY === '1') extra.push('--futility');
+  if (env.CVS_RUST_RFP === '1') extra.push('--rfp');
+  if (env.CVS_RUST_TTPS === '1') extra.push('--tt-prune-store');
+  if (env.CVS_RUST_QTT === '1') extra.push('--qtt');
+  if (env.CVS_RUST_HISTMALUS === '1') extra.push('--histmalus');
+  if (env.CVS_RUST_HISTLMR === '1') extra.push('--histlmr');
+  return extra;
+}
+
 export class RustBackend implements CvsEngineBackend {
   private engines = new Map<number, RustEngine>(); // one serve process per depth
   private opts: Required<RustBackendOptions>;
@@ -50,24 +64,16 @@ export class RustBackend implements CvsEngineBackend {
   private engineFor(depth: number): RustEngine {
     let e = this.engines.get(depth);
     if (!e) {
-      // CVS_RUST_NNUE loads a net (e.g. the gen7 champion); unset = classical.
-      const nnue = process.env.CVS_RUST_NNUE;
-      const extra = nnue ? ['--nnue', nnue] : [];
+      const extra = rustBackendExtraArgs();
       // CVS_RUST_FUTILITY=1 enables futility pruning (accepted-with-note,
       // 2026-06-11: fixed-N +34, gen7 blunder collapse preserved at depth).
-      if (process.env.CVS_RUST_FUTILITY === '1') extra.push('--futility');
       // CVS_RUST_RFP=1 enables reverse futility pruning (accepted-with-note,
       // 2026-06-11: standard engine practice; SPRT +68.8 and 100-game 63.5%
       // screen on record, user ruling: accept with note).
-      if (process.env.CVS_RUST_RFP === '1') extra.push('--rfp');
       // 2026-06-12 accepted-with-note TT pair (fixed-N +15.6/+17.4; pair
       // confirmation 56.0% over 100 games, no interaction).
-      if (process.env.CVS_RUST_TTPS === '1') extra.push('--tt-prune-store');
-      if (process.env.CVS_RUST_QTT === '1') extra.push('--qtt');
       // 2026-06-12 history rework (accepted with note, fixed-N 53.2%/400):
       // maluses+gravity substrate + history-informed LMR. -23% nodes, +3 depth.
-      if (process.env.CVS_RUST_HISTMALUS === '1') extra.push('--histmalus');
-      if (process.env.CVS_RUST_HISTLMR === '1') extra.push('--histlmr');
       e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
       this.engines.set(depth, e);
     }

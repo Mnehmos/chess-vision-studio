@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { EngineTransport } from './evaluation';
 
-const require = createRequire(import.meta.url);
+const nodeRequire = createRequire(import.meta.url);
 
 interface SfEngine {
   addMessageListener(cb: (line: unknown) => void): void;
@@ -19,10 +19,10 @@ interface SfEngine {
  * exist single-threaded), and output arrives via `addMessageListener`.
  */
 export async function createNodeStockfishTransport(): Promise<EngineTransport> {
-  const entry = require.resolve('stockfish/src/stockfish-nnue-16-single.js');
+  const entry = nodeRequire.resolve('stockfish/src/stockfish-nnue-16-single.js');
   const wasm = join(dirname(entry), 'stockfish-nnue-16-single.wasm');
   // The module exports a factory-of-a-factory (see package internals).
-  const outer = require(entry) as () => (opts: {
+  const outer = nodeRequire(entry) as () => (opts: {
     locateFile: (f: string) => string;
   }) => Promise<SfEngine>;
   const engine = await outer()({

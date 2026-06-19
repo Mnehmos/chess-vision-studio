@@ -8,6 +8,7 @@
 //     [--output arena/gauntlet/runs/<id>] [--movetime 80] [--max-plies 200]
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { basename } from 'node:path';
 import { Chess } from 'chess.js';
 import { RustEngine } from './gauntlet/rust-engine';
 import { SfOpponent } from './gauntlet/sf-opponent';
@@ -29,6 +30,7 @@ interface Cfg {
   /** CVS wall-clock per move (ms). When set, cvsDepth becomes a cap and the
    * clock drives the search — the equal-clock format (pair with --movetime). */
   cvsMovetimeMs: number | null;
+  nnue: string | null;
 }
 
 function parseArgs(argv: string[]): Cfg {
@@ -45,6 +47,7 @@ function parseArgs(argv: string[]): Cfg {
     rung2Weights: 'arena/out/rung2-weights-mixed.json',
     danger: false,
     cvsMovetimeMs: null,
+    nnue: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -58,6 +61,7 @@ function parseArgs(argv: string[]): Cfg {
     else if (a === '--max-plies') cfg.maxPlies = Number(next()) || cfg.maxPlies;
     else if (a === '--danger') cfg.danger = true;
     else if (a === '--cvs-movetime') cfg.cvsMovetimeMs = Number(next()) || null;
+    else if (a === '--nnue') cfg.nnue = next();
   }
   if (!cfg.output) {
     const d = new Date();
@@ -101,9 +105,11 @@ async function main(): Promise<void> {
   const extraArgs: string[] = [];
   if (cfg.danger) extraArgs.push('--danger');
   if (cfg.cvsMovetimeMs) extraArgs.push('--movetime', String(cfg.cvsMovetimeMs));
+  if (cfg.nnue) extraArgs.push('--nnue', cfg.nnue);
   const rust = new RustEngine(cfg.rustExe, rustDepth, cfg.baseWeights, cfg.rung2Weights, extraArgs);
   const idCore = cfg.cvsMovetimeMs ? `${cfg.cvsMovetimeMs}ms` : `d${cfg.cvsDepth}`;
-  const engineLabel = cfg.danger ? `CVS-Rust-${idCore}+danger` : `CVS-Rust-${idCore}`;
+  const modelLabel = cfg.nnue ? `+${basename(cfg.nnue).replace(/\.[^.]+$/, '')}` : '';
+  const engineLabel = `CVS-Rust-${idCore}${modelLabel}${cfg.danger ? '+danger' : ''}`;
   if (cfg.danger) console.log('⚠ EXPERIMENTAL run (--danger): results do NOT count toward the official ladder');
   if (cfg.cvsMovetimeMs) console.log(`equal-clock mode: CVS ${cfg.cvsMovetimeMs}ms/move (depth cap ${rustDepth}), SF movetime ${cfg.movetimeMs}ms`);
 
@@ -244,6 +250,7 @@ async function main(): Promise<void> {
     cvsMovetimeMs: cfg.cvsMovetimeMs, // equal-clock mode when set (depth becomes a cap)
     cvsDepthCap: cfg.cvsMovetimeMs ? Math.max(cfg.cvsDepth, 30) : cfg.cvsDepth,
     weights: { base: cfg.baseWeights, rung2: cfg.rung2Weights },
+    nnue: cfg.nnue,
     opponents: cfg.opponents,
     opponentSettings: allSettings,
     gamesPerOpponent: cfg.gamesPerOpponent,
