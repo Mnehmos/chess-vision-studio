@@ -18,6 +18,8 @@ const rev = (over: Partial<ReviewedPly>): ReviewedPly => ({
   cpLoss: 0,
   classification: 'best',
   evalBeforeCp: 0.1,
+  oracleDepth: 24,
+  available: true,
   ...over,
 });
 

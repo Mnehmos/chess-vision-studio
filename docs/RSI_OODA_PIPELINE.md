@@ -38,9 +38,13 @@ CVS feature registry compatibility is mandatory:
 Any geometry-feature change must bump the registry contract, relabel rows,
 retrain, and pass holdout validation before adoption.
 
-## Deferred Optimization
+## Lazy Review Policy
 
-Lazy reviewing is not implemented yet. The intended design is a cheap prefilter
-that only triggers Stockfish depth-24 review when a CVS static/search signal
-suggests a likely tactical drop or meaningful disagreement.
+Lazy reviewing is enabled by default. Every selected CVS ply receives a shallow
+depth-8 review. Unavailable labels and divergent moves whose shallow loss reaches
+half the configured disagreement threshold are then confirmed at the full
+depth-24 oracle setting.
 
+Round reports record `deepReviews/cvsPlies`, making the runtime/coverage tradeoff
+visible. Set `lazyReview: false` to restore full-depth review on every selected
+ply.

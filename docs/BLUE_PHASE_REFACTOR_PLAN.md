@@ -52,8 +52,9 @@ Rust engine. App-local types should describe UI state and view models only.
 - Promote modern engine features only after benchmark and correctness gates.
 - Existing gated move-ordering features are validation work, not greenfield
   implementation work.
-- Add lazy OODA reviewing as a follow-up optimization: cheap prefilter first,
-  depth-24 Stockfish review only for likely meaningful disagreements.
+- Lazy OODA reviewing uses a cheap shallow prefilter first and reserves
+  depth-24 Stockfish confirmation for likely meaningful disagreements or
+  unavailable shallow labels.
 - Any CVS feature registry change must bump version/hash, relabel datasets,
   retrain NNUE, and pass holdout validation.
 
@@ -64,4 +65,3 @@ Rust engine. App-local types should describe UI state and view models only.
   expensive for routine CI.
 - Rust: `cargo fmt --check`, `cargo test`, and focused release tests where
   supported.
-

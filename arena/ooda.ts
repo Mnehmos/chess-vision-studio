@@ -23,7 +23,7 @@ import {
 import type { PolicyWeights, TrainingPosition } from '@cvs/engine';
 import { stockfishPlayer, cvsPlayer } from './players';
 import { playGame } from './match';
-import { reviewGame } from './review';
+import { reviewGame, reviewGameLazy } from './review';
 import { findDisagreements, playOutBest } from './disagree';
 import { reviewedToTraining, playoutToTraining } from './dataset';
 import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from './review-config';
@@ -35,6 +35,9 @@ export interface OodaConfig {
   playDepthSF: number; // Stockfish opponent search depth
   playDepthCVS: number; // CVS engine search depth
   reviewDepth: number; // Stockfish review/oracle depth
+  lazyReview: boolean; // shallow prefilter before full-depth oracle review
+  prefilterDepth: number;
+  prefilterCandidateRatio: number;
   branchPlies: number; // how far to "play out" each disagreement (0 = off)
   minCpLoss: number; // pawns: a divergence below this isn't a disagreement
   epochs: number; // policy training epochs per round
@@ -49,6 +52,9 @@ export const DEFAULT_CONFIG: OodaConfig = {
   playDepthSF: 6,
   playDepthCVS: 3,
   reviewDepth: DEFAULT_STOCKFISH_REVIEW_DEPTH,
+  lazyReview: true,
+  prefilterDepth: 8,
+  prefilterCandidateRatio: 0.5,
   branchPlies: 2,
   minCpLoss: 0.5,
   epochs: 60,
@@ -96,6 +102,7 @@ export interface RoundReport {
   games: number;
   cvsPlies: number;
   disagreements: number;
+  deepReviews: number;
   datasetSize: number;
   trainTop1: number; // training-set top-1 accuracy after this round's fit
   holdoutTop1: number; // top-1 agreement with Stockfish on the fixed holdout
@@ -135,6 +142,7 @@ export async function runOoda(cfg: OodaConfig = DEFAULT_CONFIG, log: (m: string)
       const reviewedRound: ReturnType<typeof reviewedToTraining>[] = [];
       let cvsPlies = 0;
       let disagreements = 0;
+      let deepReviews = 0;
       const gameResults: string[] = [];
 
       for (let g = 1; g <= cfg.gamesPerRound; g++) {
@@ -144,7 +152,25 @@ export async function runOoda(cfg: OodaConfig = DEFAULT_CONFIG, log: (m: string)
         const game = await playGame(cvsWhite ? cvsP : sfP, cvsWhite ? sfP : cvsP, { maxPlies: cfg.maxPlies });
         gameResults.push(`${game.result} (${game.termination}, ${game.plies.length} plies, CVS=${cvsSide})`);
 
-        const reviewed = await reviewGame(sf, game.plies, cfg.reviewDepth, (p) => p.by === cvsSide);
+        const reviewFilter = (p: (typeof game.plies)[number]) => p.by === cvsSide;
+        const reviewResult = cfg.lazyReview
+          ? await reviewGameLazy(
+              sf,
+              game.plies,
+              {
+                prefilterDepth: cfg.prefilterDepth,
+                reviewDepth: cfg.reviewDepth,
+                minCpLoss: cfg.minCpLoss,
+                candidateRatio: cfg.prefilterCandidateRatio,
+              },
+              reviewFilter,
+            )
+          : {
+              reviewed: await reviewGame(sf, game.plies, cfg.reviewDepth, reviewFilter),
+              deepReviewed: game.plies.filter(reviewFilter).length,
+            };
+        const reviewed = reviewResult.reviewed;
+        deepReviews += reviewResult.deepReviewed;
         cvsPlies += reviewed.length;
         for (const r of reviewed) {
           const row = reviewedToTraining(r);
@@ -175,6 +201,7 @@ export async function runOoda(cfg: OodaConfig = DEFAULT_CONFIG, log: (m: string)
         games: cfg.gamesPerRound,
         cvsPlies,
         disagreements,
+        deepReviews,
         datasetSize: dataset.length,
         trainTop1: trained.history.at(-1)?.top1Accuracy ?? 0,
         holdoutTop1: bench.top1Match,
@@ -182,7 +209,7 @@ export async function runOoda(cfg: OodaConfig = DEFAULT_CONFIG, log: (m: string)
         gameResults,
       });
       log(
-        `  Round ${round}: dataset=${dataset.length}, train top-1=${(trained.history.at(-1)?.top1Accuracy ?? 0) * 100 | 0
+        `  Round ${round}: dataset=${dataset.length}, deep reviews=${deepReviews}/${cvsPlies}, train top-1=${(trained.history.at(-1)?.top1Accuracy ?? 0) * 100 | 0
         }%, holdout top-1=${(bench.top1Match * 100).toFixed(1)}% (was ${(prevTop1 * 100).toFixed(1)}%)`,
       );
 
@@ -230,7 +257,7 @@ if (!process.env.VITEST) {
       console.log(`baseline holdout top-1: ${(res.baselineHoldoutTop1 * 100).toFixed(1)}%`);
       for (const r of res.rounds) {
         console.log(
-          `round ${r.round}: holdout top-1 ${(r.holdoutTop1 * 100).toFixed(1)}%  | dataset ${r.datasetSize}  | disagreements ${r.disagreements}  | ${r.gameResults.join('; ')}`,
+          `round ${r.round}: holdout top-1 ${(r.holdoutTop1 * 100).toFixed(1)}%  | dataset ${r.datasetSize}  | deep reviews ${r.deepReviews}/${r.cvsPlies}  | disagreements ${r.disagreements}  | ${r.gameResults.join('; ')}`,
         );
       }
       console.log(`best holdout top-1: ${(res.bestHoldoutTop1 * 100).toFixed(1)}%  → arena/out/{weights,report}.json, dataset.jsonl`);
