@@ -6,10 +6,6 @@ import { computeLedMap, allSquares } from '../engine/led';
 import { analyzeMoveLive } from '../engine/analyze';
 import { repetitionConversionWarning } from '../engine/repetition';
 import type { AnalyzedEntry } from '../engine/analytics';
-import {
-  extractPlyFeatures,
-  type FeatureEntry,
-} from '../engine/features';
 import { UciEngine } from '../engine/evaluation';
 import {
   getStockfishHealth,
@@ -98,6 +94,12 @@ import {
   teachingNodeArrows,
   type VerboseMove,
 } from './play-mode-helpers';
+import {
+  gameCacheKey,
+  getFeatureEntry,
+  safePlyUci,
+  type CachedFeatureEntry,
+} from './app-data-helpers';
 
 const env = import.meta.env as Record<string, string | undefined>;
 const initialKey = () => env.VITE_OPENAI_API_KEY || localStorage.getItem('cvs_openai_key') || '';
@@ -1870,58 +1872,4 @@ function safeGames(pgn: string): ParsedGame[] {
   } catch {
     return [];
   }
-}
-
-function safePlyUci(ply: PlyRecord | undefined): string | undefined {
-  if (!ply) return undefined;
-  try {
-    return plyRecordToUci(ply);
-  } catch {
-    return undefined;
-  }
-}
-
-function gameCacheKey(game: ParsedGame | undefined): string {
-  if (!game) return 'no-game';
-  const first = game.plies[0]?.fenBefore ?? game.initialFen ?? '';
-  const last = game.plies[game.plies.length - 1]?.fenAfter ?? game.initialFen ?? '';
-  return [
-    game.headers.White ?? '?',
-    game.headers.Black ?? '?',
-    game.headers.Result ?? '*',
-    game.headers.Date ?? '?',
-    game.plies.length,
-    first,
-    last,
-  ].join('|');
-}
-
-interface CachedFeatureEntry {
-  analysis: MoveAnalysis;
-  entry: FeatureEntry;
-}
-
-function getFeatureEntry(
-  cacheRoot: Map<string, Map<number, CachedFeatureEntry>>,
-  gameKey: string,
-  ply: PlyRecord,
-  plyIndex: number,
-  analysis: MoveAnalysis,
-): FeatureEntry {
-  let gameCache = cacheRoot.get(gameKey);
-  if (!gameCache) {
-    gameCache = new Map();
-    cacheRoot.set(gameKey, gameCache);
-  }
-  const cached = gameCache.get(plyIndex);
-  if (cached?.analysis === analysis) return cached.entry;
-
-  const entry: FeatureEntry = {
-    ply: ply.ply,
-    color: ply.color,
-    analysis,
-    features: extractPlyFeatures(ply.fenBefore, ply.fenAfter, ply.san, analysis),
-  };
-  gameCache.set(plyIndex, { analysis, entry });
-  return entry;
 }
