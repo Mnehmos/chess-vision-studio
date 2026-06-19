@@ -14,7 +14,7 @@ interface SfResult {
   depth: number;
 }
 
-interface SfPending {
+export interface SfPending {
   fen: string;
   depth: number;
   movetimeMs?: number;
@@ -23,6 +23,7 @@ interface SfPending {
   reject: (e: Error) => void;
   timer: NodeJS.Timeout;
   best: { depth: number; scoreCp: number; mate: number | null; pv: string[] } | null;
+  settled: boolean;
 }
 
 interface SfProcess {
@@ -33,6 +34,57 @@ interface SfProcess {
   queue: SfPending[];
   current: SfPending | null;
   stderr: string[];
+}
+
+interface SfRequestState {
+  busy: boolean;
+  queue: SfPending[];
+  current: SfPending | null;
+}
+
+export function expireStockfishRequest(
+  state: SfRequestState,
+  request: SfPending,
+  stopSearch: () => void,
+): void {
+  if (request.settled) return;
+  const queuedIndex = state.queue.indexOf(request);
+  if (queuedIndex >= 0) {
+    state.queue.splice(queuedIndex, 1);
+  } else if (state.current === request) {
+    // Keep the active request as a tombstone until Stockfish emits the
+    // terminating bestmove. Pumping the next request before then would let the
+    // late bestmove resolve the wrong caller.
+    stopSearch();
+  }
+  request.settled = true;
+  request.reject(new Error('Stockfish request timed out'));
+}
+
+export function completeStockfishRequest(
+  state: SfRequestState,
+  bestmove: string,
+  pumpNext: () => void,
+): void {
+  const request = state.current;
+  state.current = null;
+  state.busy = false;
+  if (request) {
+    clearTimeout(request.timer);
+    if (!request.settled) {
+      request.settled = true;
+      const best = request.best;
+      request.resolve({
+        fen: request.fen,
+        bestmove,
+        scoreCp: best?.scoreCp ?? 0,
+        mate: best?.mate ?? null,
+        pv: best?.pv ?? [],
+        depth: best?.depth ?? 0,
+      });
+    }
+  }
+  pumpNext();
 }
 
 // Native Stockfish, the leakage-free reference oracle, as a pooled UCI
@@ -79,22 +131,7 @@ export function stockfishProxy(env: Record<string, string>): Plugin {
   };
 
   const finish = (proc: SfProcess, bestmove: string) => {
-    const req = proc.current;
-    proc.current = null;
-    proc.busy = false;
-    if (req) {
-      clearTimeout(req.timer);
-      const b = req.best;
-      req.resolve({
-        fen: req.fen,
-        bestmove,
-        scoreCp: b?.scoreCp ?? 0,
-        mate: b?.mate ?? null,
-        pv: b?.pv ?? [],
-        depth: b?.depth ?? 0,
-      });
-    }
-    pump(proc);
+    completeStockfishRequest(proc, bestmove, () => pump(proc));
   };
 
   const createSf = (cfg: ReturnType<typeof sfConfig>): SfProcess => {
@@ -148,7 +185,10 @@ export function stockfishProxy(env: Record<string, string>): Plugin {
       proc.queue = [];
       for (const q of pendings) {
         clearTimeout(q.timer);
-        q.reject(err);
+        if (!q.settled) {
+          q.settled = true;
+          q.reject(err);
+        }
       }
     };
     child.on('error', (e) => fail(e));
@@ -170,7 +210,10 @@ export function stockfishProxy(env: Record<string, string>): Plugin {
       const pendings = proc.current ? [proc.current, ...proc.queue] : proc.queue;
       for (const q of pendings) {
         clearTimeout(q.timer);
-        q.reject(new Error('Stockfish stopped'));
+        if (!q.settled) {
+          q.settled = true;
+          q.reject(new Error('Stockfish stopped'));
+        }
       }
       try {
         send(proc, 'quit');
@@ -202,12 +245,23 @@ export function stockfishProxy(env: Record<string, string>): Plugin {
     forcedMove?: string,
   ): Promise<SfResult> =>
     new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const ix = proc.queue.findIndex((p) => p.resolve === resolve);
-        if (ix >= 0) proc.queue.splice(ix, 1);
-        reject(new Error('Stockfish request timed out'));
-      }, 30_000);
-      proc.queue.push({ fen, depth, movetimeMs, forcedMove, resolve, reject, timer, best: null });
+      let pending!: SfPending;
+      const timer = setTimeout(
+        () => expireStockfishRequest(proc, pending, () => send(proc, 'stop')),
+        30_000,
+      );
+      pending = {
+        fen,
+        depth,
+        movetimeMs,
+        forcedMove,
+        resolve,
+        reject,
+        timer,
+        best: null,
+        settled: false,
+      };
+      proc.queue.push(pending);
       pump(proc);
     });
 
