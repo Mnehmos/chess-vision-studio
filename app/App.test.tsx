@@ -29,6 +29,8 @@ describe('App — move history + navigation', () => {
     const { container, getAllByText } = render(<App />);
     const legend = container.querySelector('.cvs-workspace')?.firstElementChild as HTMLElement | null;
     expect(legend?.classList.contains('annotation-command-list')).toBe(true);
+    expect(container.querySelector('.cvs-gif-capture--analysis')).toBeTruthy();
+    expect(container.querySelector('.cvs-gif-capture--play')).toBeNull();
     // 61 half-moves → ≥ 31 rows in the grouped move-history table.
     const rows = container.querySelectorAll('table tr');
     expect(rows.length).toBeGreaterThanOrEqual(31);

@@ -1652,7 +1652,10 @@ export function App() {
           <>
             <div className="cvs-workspace">
               <AnnotationCommandList />
-              <div ref={gifCaptureRef} className="cvs-gif-capture">
+              <div
+                ref={gifCaptureRef}
+                className="cvs-gif-capture cvs-gif-capture--analysis"
+              >
               <AnalysisBoardPanel
                 modeId={modeId}
                 onModePick={setModeId}

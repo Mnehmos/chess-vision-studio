@@ -38,6 +38,8 @@ afterEach(() => {
 describe('PlayMode — legal chess', () => {
   it('starts at the initial position with White to move', () => {
     const { container } = render(<PlayMode />);
+    expect(container.querySelector('.cvs-gif-capture--play')).toBeTruthy();
+    expect(container.querySelector('.cvs-gif-capture--analysis')).toBeNull();
     expect(container.querySelectorAll('[data-square]')).toHaveLength(64);
     expect(container.querySelector('[data-square="e2"]')!.getAttribute('data-piece')).toBe('wP');
     expect(container.querySelector('[data-testid="play-status"]')!.textContent).toBe('White to move');

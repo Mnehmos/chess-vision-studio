@@ -785,7 +785,7 @@ export function PlayMode({
       {/* ── Board + controls ───────────────────────────────────────────── */}
       <div
         ref={gifCaptureRef}
-        className="cvs-gif-capture"
+        className="cvs-gif-capture cvs-gif-capture--play"
       >
         <div className="play-board-card">
         <div data-gif-crop="true">
@@ -896,6 +896,7 @@ export function PlayMode({
       </div>
 
       {/* ── Right column: Teaching (board-level) · Facts · Engine · Moves ── */}
+      </div>
       <div className="play-side-column">
         <div data-gif-crop="true">
         {gifJob.running && previewLine ? (
@@ -967,7 +968,6 @@ export function PlayMode({
           />
         )}
         </div>
-      </div>
       </div>
     </div>
   );
