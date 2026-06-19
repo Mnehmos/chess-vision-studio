@@ -17,6 +17,67 @@ interface CvsEnginePending {
   resolve: (line: string) => void;
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
+  settled: boolean;
+}
+
+export interface CvsLineDispatcher {
+  request(line: string): Promise<string>;
+  handleLine(line: string): void;
+  fail(error: Error): void;
+  pendingCount(): number;
+}
+
+export function createCvsLineDispatcher(
+  writeLine: (line: string) => void,
+  timeoutMs = 20_000,
+): CvsLineDispatcher {
+  const queue: CvsEnginePending[] = [];
+
+  return {
+    request(line) {
+      return new Promise((resolve, reject) => {
+        const pending: CvsEnginePending = {
+          resolve,
+          reject,
+          settled: false,
+          timer: setTimeout(() => {
+            pending.settled = true;
+            reject(new Error('CVS Engine request timed out'));
+          }, timeoutMs),
+        };
+        queue.push(pending);
+        try {
+          writeLine(line);
+        } catch (error) {
+          queue.pop();
+          clearTimeout(pending.timer);
+          pending.settled = true;
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    },
+    handleLine(line) {
+      const pending = queue.shift();
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      if (!pending.settled) {
+        pending.settled = true;
+        pending.resolve(line);
+      }
+    },
+    fail(error) {
+      for (const pending of queue.splice(0)) {
+        clearTimeout(pending.timer);
+        if (!pending.settled) {
+          pending.settled = true;
+          pending.reject(error);
+        }
+      }
+    },
+    pendingCount() {
+      return queue.length;
+    },
+  };
 }
 
 interface CvsEngineProcess {
@@ -25,7 +86,7 @@ interface CvsEngineProcess {
   depth: number;
   argsKey: string;
   poolKey: string;
-  queue: CvsEnginePending[];
+  dispatcher: CvsLineDispatcher;
   stderr: string[];
 }
 
@@ -40,10 +101,7 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
     const procs = [...pools.values()].flat();
     pools.clear();
     for (const proc of procs) {
-      for (const pending of proc.queue.splice(0)) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error('CVS Engine process stopped'));
-      }
+      proc.dispatcher.fail(new Error('CVS Engine process stopped'));
       try {
         proc.child.stdin.write('quit\n');
         proc.child.kill();
@@ -137,29 +195,22 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
   const createProc = (cfg: ReturnType<typeof configFor>, poolKey: string): CvsEngineProcess => {
     const child = spawn(cfg.exe, cfg.args, { cwd: process.cwd(), stdio: 'pipe' });
     const rl = createInterface({ input: child.stdout });
+    const dispatcher = createCvsLineDispatcher((line) => child.stdin.write(`${line}\n`));
     const proc: CvsEngineProcess = {
       child,
       rl,
       depth: cfg.depth,
       argsKey: cfg.argsKey,
       poolKey,
-      queue: [],
+      dispatcher,
       stderr: [],
     };
-    rl.on('line', (line) => {
-      const next = proc.queue.shift();
-      if (!next) return;
-      clearTimeout(next.timer);
-      next.resolve(line);
-    });
+    rl.on('line', (line) => proc.dispatcher.handleLine(line));
     child.stderr.on('data', (data) => {
       proc.stderr = [...proc.stderr, ...String(data).split(/\r?\n/).filter(Boolean)].slice(-20);
     });
     child.on('error', (error) => {
-      for (const pending of proc.queue.splice(0)) {
-        clearTimeout(pending.timer);
-        pending.reject(error);
-      }
+      proc.dispatcher.fail(error);
     });
     child.on('close', (code) => {
       pools.set(
@@ -167,10 +218,7 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
         (pools.get(proc.poolKey) ?? []).filter((candidate) => candidate !== proc),
       );
       const suffix = proc.stderr.length ? `: ${proc.stderr.join(' | ')}` : '';
-      for (const pending of proc.queue.splice(0)) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error(`CVS Engine exited with code ${code}${suffix}`));
-      }
+      proc.dispatcher.fail(new Error(`CVS Engine exited with code ${code}${suffix}`));
     });
     return proc;
   };
@@ -183,21 +231,14 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
     if (pool.length < POOL_SIZE) pool.push(createProc(cfg, key));
     pools.set(key, pool);
     return pool.reduce(
-      (best, proc) => (proc.queue.length < best.queue.length ? proc : best),
+      (best, proc) =>
+        proc.dispatcher.pendingCount() < best.dispatcher.pendingCount() ? proc : best,
       pool[0],
     );
   };
 
   const requestEngine = (proc: CvsEngineProcess, line: string): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const ix = proc.queue.findIndex((p) => p.resolve === resolve);
-        if (ix >= 0) proc.queue.splice(ix, 1);
-        reject(new Error('CVS Engine request timed out'));
-      }, 20_000);
-      proc.queue.push({ resolve, reject, timer });
-      proc.child.stdin.write(`${line}\n`);
-    });
+    proc.dispatcher.request(line);
 
   return {
     name: 'cvs-engine-proxy',
