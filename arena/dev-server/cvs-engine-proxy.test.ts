@@ -1,11 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCvsLineDispatcher } from './cvs-engine-proxy';
+import { createCvsLineDispatcher, cvsEngineFeatureFlags } from './cvs-engine-proxy';
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
 describe('CVS engine line dispatcher', () => {
+  it('forwards the explicit unverified-network development override', () => {
+    expect(cvsEngineFeatureFlags({
+      CVS_RUST_ALLOW_UNVERIFIED: '1',
+      CVS_RUST_FUTILITY: '0',
+    })).toContain('--allow-unverified-net');
+  });
+
   it('preserves response ordering when timed-out stdout arrives late', async () => {
     vi.useFakeTimers();
     const writes: string[] = [];

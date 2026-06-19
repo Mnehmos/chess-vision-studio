@@ -27,6 +27,33 @@ export interface CvsLineDispatcher {
   pendingCount(): number;
 }
 
+export function cvsEngineFeatureFlags(env: Record<string, string>): string[] {
+  const flags: string[] = [];
+  const add = (envKey: string, flag: string, defaultOn = false) => {
+    const value = env[envKey];
+    if ((defaultOn && value !== '0') || (!defaultOn && value === '1')) {
+      flags.push(flag);
+    }
+  };
+  add('CVS_RUST_ALLOW_UNVERIFIED', '--allow-unverified-net');
+  add('CVS_RUST_FUTILITY', '--futility', true);
+  add('CVS_RUST_RFP', '--rfp');
+  add('CVS_RUST_LMP', '--lmp');
+  add('CVS_RUST_SEEPRUNE', '--seeprune');
+  add('CVS_RUST_DELTA', '--delta');
+  add('CVS_RUST_COUNTERMOVE', '--countermove');
+  add('CVS_RUST_CONTHIST', '--conthist');
+  add('CVS_RUST_TTPS', '--tt-prune-store');
+  add('CVS_RUST_QTT', '--qtt');
+  add('CVS_RUST_HISTMALUS', '--histmalus');
+  add('CVS_RUST_HISTLMR', '--histlmr');
+  add('CVS_RUST_CAPHIST', '--caphist');
+  add('CVS_RUST_TT2', '--tt2');
+  add('CVS_RUST_IMPROVING', '--improving');
+  add('CVS_RUST_RULE50', '--rule50');
+  return flags;
+}
+
 export function createCvsLineDispatcher(
   writeLine: (line: string) => void,
   timeoutMs = 20_000,
@@ -164,29 +191,9 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
       );
     }
 
-    const addFlag = (envKey: string, flag: string, defaultOn = false) => {
-      const value = env[envKey];
-      if ((defaultOn && value !== '0') || (!defaultOn && value === '1')) {
-        args.push(flag);
-        flags.push(flag);
-      }
-    };
     if (!options.factsOnly) {
-      addFlag('CVS_RUST_FUTILITY', '--futility', true);
-      addFlag('CVS_RUST_RFP', '--rfp');
-      addFlag('CVS_RUST_LMP', '--lmp');
-      addFlag('CVS_RUST_SEEPRUNE', '--seeprune');
-      addFlag('CVS_RUST_DELTA', '--delta');
-      addFlag('CVS_RUST_COUNTERMOVE', '--countermove');
-      addFlag('CVS_RUST_CONTHIST', '--conthist');
-      addFlag('CVS_RUST_TTPS', '--tt-prune-store');
-      addFlag('CVS_RUST_QTT', '--qtt');
-      addFlag('CVS_RUST_HISTMALUS', '--histmalus');
-      addFlag('CVS_RUST_HISTLMR', '--histlmr');
-      addFlag('CVS_RUST_CAPHIST', '--caphist');
-      addFlag('CVS_RUST_TT2', '--tt2');
-      addFlag('CVS_RUST_IMPROVING', '--improving');
-      addFlag('CVS_RUST_RULE50', '--rule50');
+      flags.push(...cvsEngineFeatureFlags(env));
+      args.push(...flags);
     }
 
     return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags };
