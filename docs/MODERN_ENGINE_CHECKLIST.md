@@ -23,9 +23,9 @@ some are gated or still need strength/safety validation.
 | Null move pruning | Present | Default-on option. |
 | LMR | Present | Default-on option. |
 | Futility/RFP/LMP/SEE/delta pruning | Present, mixed defaults | Some remain off by default after Elo gates. |
-| Singular extensions | Missing | Defer to a dedicated search-strength branch. |
-| Syzygy tablebases | Missing | Tournament-strength follow-up. |
-| Polyglot book | Missing | Optional opening-resource follow-up. |
+| Singular extensions | Present, gated | Search option and exclusion-search path exist; promotion remains benchmark-gated. |
+| Syzygy tablebases | Present, optional | Native probing is configured through the Rust search options and UCI integration. |
+| Polyglot book | Present, optional | Native book loading/probing exists and remains an opt-in external resource. |
 
 ## Blue Phase Rule
 
@@ -39,6 +39,5 @@ the existing search stack first.
   history, capture history, history malus, history-informed LMR, and TT2.
 - Add Channel-A/foreign TT safety tests before changing specialist-lane bound
   usage.
-- Benchmark any singular extension, tablebase, book, PGO, or TT-alignment work
-  in a separate branch.
-
+- Benchmark promotion or tuning of singular extensions, tablebases, books, PGO,
+  and TT alignment in separate strength branches.

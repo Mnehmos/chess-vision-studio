@@ -217,9 +217,16 @@ Important environment variables:
 |---|---|
 | `src/main.tsx` | React entry point; mounts `App`. |
 | `src/vite-env.d.ts` | Vite type declarations. |
-| `vite.config.ts` | Vite config plus local process/API bridges for OpenAI, Rust CVS Engine, native Stockfish, and training supervisor. |
-| `app/App.tsx` | Main Analyze/Insights/Play shell, PGN import, selected game/ply state, caches, engine health, teaching facts, commentary, export, mode state, and board layout. |
-| `app/PlayMode.tsx` | Standalone play workflow, opponent selection, move application, engine replies, live analysis, teaching facts, review moments, and play-mode board controls. |
+| `vite.config.ts` | Vite composition root; mounts the extracted OpenAI, CVS, Stockfish, and training plugins. |
+| `app/styles/index.css` | Global design tokens, structural layout classes, responsive rules, panel surfaces, and reduced-motion behavior. |
+| `app/App.tsx` | Analyze/Insights/Play orchestration shell: state, effects, caches, and composition of extracted UI sections. |
+| `app/AppHeader.tsx`, `app/AppSourceBar.tsx` | Product navigation, runtime health, and PGN/source controls. |
+| `app/AnalysisBoardPanel.tsx`, `app/AnalysisMoveHistory.tsx` | Analyze board workspace and bounded move-history rendering. |
+| `app/PlayMode.tsx` | Play workflow orchestration: legal move state, engine turns, analysis, facts, teaching, and composition. |
+| `app/PlayModeControls.tsx`, `app/PlayOpponentControls.tsx` | Play display settings and opponent/runtime controls. |
+| `app/PlayBoardHeader.tsx`, `app/PlayBoardHelp.tsx`, `app/PlayTurnPlate.tsx`, `app/PlayMoveHistory.tsx` | Play board context, interaction help, turn state, and move list. |
+| `app/PlayGameReview.tsx`, `app/PlayCommentaryPanel.tsx`, `app/PlayDebugOverlay.tsx`, `app/PlayPromotionOverlay.tsx` | Review, narration, diagnostics, and promotion UI. |
+| `app/VariationPreviewPanel.tsx` | Alternative-line preview controls and state rendering. |
 | `app/Board2D.tsx` | Chessboard rendering, pieces, coordinates, click/drag moves, legal dots, promotions, LED map, and arrow overlay placement. |
 | `app/BoardArrows.tsx` | Reusable SVG arrow layer for attacks, defenses, played moves, tactical lines, labels, and dashed arrows. |
 | `app/modes.ts` | UI mode registry: labels, legend entries, and color CSS values for every board mode. |
@@ -249,6 +256,8 @@ Important environment variables:
 |---|---|
 | `app/cvs-engine-client.ts` | Browser client for `/api/cvs-engine/*`; validates facts schema before returning it. |
 | `app/stockfish-client.ts` | Browser client for `/api/stockfish/*`; adapts native Stockfish HTTP results to `UciEngine.evaluate`. |
+| `app/openai-client.ts` | Browser health client for the server-side OpenAI proxy. |
+| `app/training-client.ts` | Browser API/SSE client for training supervisor lifecycle. |
 | `app/engine-browser.ts` | Browser Stockfish worker transport fallback. |
 | `app/engine-pool.ts` | Fixed browser Stockfish worker pool for parallel analysis when native Stockfish is not used. |
 | `app/analysis-store.ts` | IndexedDB persistence for analysis and teaching caches. |
@@ -256,6 +265,12 @@ Important environment variables:
 | `app/exportState.ts` | Pure JSON snapshot builder plus browser download sinks. |
 | `app/gif-export.ts` | GIF/image export workflow for board or line previews. |
 | `app/gifenc.d.ts` | Local TypeScript declaration for `gifenc`. |
+| `app/app-data-helpers.ts` | Pure cache-key and safe ply/UCI derivation helpers used by the app shell. |
+| `app/teaching-facts-request.ts` | Pure construction of versioned Rust teaching-facts requests. |
+| `app/variation-preview.ts` | Pure FEN/line derivation for alternative preview playback. |
+| `app/play-mode-state.ts` | Pure Play mode position/move-state derivation. |
+| `app/play-mode-review.ts` | Pure review-moment and summary derivation. |
+| `app/play-mode-export.ts` | Pure Play export payload construction. |
 
 ### Pure Analysis Engine
 
@@ -352,6 +367,35 @@ Important environment variables:
 | `arena/teaching-audit.ts`, `arena/teaching-replay.ts` | Teaching corpus audit and replay scripts. |
 | `arena/train-*.ts` | Dataset, policy/value/ranking/mixed/Rung-3/2B training loops. |
 
+### Dev Server Modules
+
+| File | Responsibility |
+|---|---|
+| `arena/dev-server/http.ts` | Shared JSON/body/error response helpers for local API plugins. |
+| `arena/dev-server/openai-proxy.ts` | Server-side OpenAI health and completion proxy. |
+| `arena/dev-server/cvs-engine-proxy.ts` | Rust line-protocol process lifecycle, request queue, timeout, and late-output isolation. |
+| `arena/dev-server/stockfish-uci.ts` | Native Stockfish UCI session lifecycle and command parsing. |
+| `arena/dev-server/stockfish-proxy.ts` | Stockfish process pool, request queue, stop/timeout cleanup, and HTTP endpoints. |
+| `arena/dev-server/training-state.ts` | Pure training configuration and public status mapping. |
+| `arena/dev-server/training-supervisor.ts` | Training process lifecycle and server-sent event fan-out. |
+
+### Rust Engine Search
+
+These files live in `../chess-vision-studio-rust-engine`.
+
+| File | Responsibility |
+|---|---|
+| `src/search.rs` | Public search composition, searcher construction, iterative deepening, TT/PV glue, and root-attention preparation. |
+| `src/search/types.rs` | Search options, result, telemetry, specialist lanes, and root geometry/attention contracts. |
+| `src/search/time_control.rs` | External-stop and deadline polling. |
+| `src/search/eval_adapter.rs` | NNUE accumulator updates, classical/NNUE evaluation, rule-50 scaling, and TT key adjustment. |
+| `src/search/ordering.rs` | Killer/history/counter/continuation/capture history, move ordering, and specialist-lane bonuses. |
+| `src/search/qsearch.rs` | Quiescence search and noisy/check-evasion move selection. |
+| `src/search/root.rs` | Root search, negamax, pruning/reductions, singular extension, tablebase probe, and terminal handling. |
+| `src/search/smp.rs` | Lazy/heterogeneous SMP helper orchestration and shared-TT aggregation. |
+| `src/book.rs` | Optional Polyglot opening-book loading and legal move matching. |
+| `src/syzygy.rs` | Optional Syzygy tablebase loading and WDL probing. |
+
 ### Tests
 
 Tests are colocated by surface:
@@ -414,7 +458,7 @@ Rust engine checks live in the sibling repo:
 
 ```bash
 cd ../chess-vision-studio-rust-engine
-cargo fmt
+cargo fmt --check
 cargo test
 cargo test --release
 ```

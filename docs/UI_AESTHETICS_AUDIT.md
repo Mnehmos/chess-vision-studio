@@ -9,7 +9,7 @@
 - The Play tab needed stronger grid bounds and panel overflow rules to prevent
   narrow-view collapse.
 
-## Implemented Baseline
+## Implemented Result
 
 - Global CSS now lives in `app/styles/index.css`.
 - `src/main.tsx` imports the stylesheet once.
@@ -18,6 +18,13 @@
   Stockfish/CVS accent colors, transitions, shadows, and reduced-motion rules.
 - `.cvs-workspace` and `.cvs-gif-capture` define responsive grid behavior with
   `minmax(0, ...)` constraints.
+- Analyze shell responsibilities are split across `AppHeader`, `AppSourceBar`,
+  `AnalysisBoardPanel`, `AnalysisMoveHistory`, and `VariationPreviewPanel`.
+- Play responsibilities are split across board header/help, opponent and mode
+  controls, turn plate, move history, commentary, debug, promotion, review, and
+  export helpers.
+- Analyze and Play layouts were manually checked at desktop and narrow
+  viewports after the extraction.
 
 ## Design Direction
 
@@ -29,11 +36,11 @@
 - Animate interactions only when they improve clarity, and respect reduced
   motion.
 
-## Next Extraction Targets
+## Ongoing Standard
 
-- Move source/import controls, mode controls, move strip/history, turn plate,
-  game review, variation preview, and side panels into small components.
-- Convert large inline layout objects into classes as components are extracted.
-- Add responsive screenshots after PlayMode and App are thin enough to test
-  without brittle layout coupling.
-
+- New layout rules belong in `app/styles/index.css`, not render-time style
+  injection.
+- Components may retain small value-dependent inline styles, but structural
+  spacing, sizing, grid, and responsive behavior belong to named classes.
+- Every UI change must preserve bounded board/panel tracks, internal scrolling,
+  and readable sub-980px layouts.
