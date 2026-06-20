@@ -13,6 +13,11 @@ import type { SessionResult } from './session';
 import type { LichessConfig } from './env';
 
 type StockfishFactory = () => Promise<UciEngine>;
+type HarvestTrainingPosition = TrainingPosition & {
+  gameId: string;
+  sourceKey: string;
+  labelDepth: number;
+};
 
 let sharedStockfish: Promise<UciEngine> | undefined;
 let activeStockfish: UciEngine | undefined;
@@ -49,6 +54,19 @@ export function disposeHarvestStockfish(): void {
   sharedStockfish = undefined;
 }
 
+export function withGameProvenance(
+  row: TrainingPosition,
+  gameId: string,
+  labelDepth: number,
+): HarvestTrainingPosition {
+  return {
+    ...row,
+    gameId,
+    sourceKey: `lichess:${gameId}`,
+    labelDepth,
+  };
+}
+
 export async function harvestGame(
   res: SessionResult,
   cfg: LichessConfig,
@@ -61,15 +79,17 @@ export async function harvestGame(
     cfg.reviewDepth,
     (p) => p.by === res.cvsColor,
   );
-  const rows: TrainingPosition[] = [];
+  const rows: HarvestTrainingPosition[] = [];
   for (const r of reviewed) {
     const row = reviewedToTraining(r); // source defaults to 'bot_game'
-    if (row) rows.push(row);
+    if (row) rows.push(withGameProvenance(row, res.gameId, cfg.reviewDepth));
   }
   const dis = findDisagreements(reviewed, 0.5);
   for (const d of dis) {
     const line = await playOutBest(sf, d, 2, cfg.reviewDepth);
-    for (const p of line) rows.push(playoutToTraining(p));
+    for (const p of line) {
+      rows.push(withGameProvenance(playoutToTraining(p), res.gameId, cfg.reviewDepth));
+    }
   }
   if (rows.length) {
     mkdirSync(cfg.outDir, { recursive: true });

@@ -1,12 +1,26 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { TrainingPosition } from '@cvs/engine';
 import type { UciEngine } from '../../engine/evaluation';
-import { disposeHarvestStockfish, getHarvestStockfish } from './harvest';
+import { disposeHarvestStockfish, getHarvestStockfish, withGameProvenance } from './harvest';
 
 afterEach(() => {
   disposeHarvestStockfish();
 });
 
 describe('Lichess harvest Stockfish lifecycle', () => {
+  it('attaches game and label provenance to every harvested row', () => {
+    const row = {
+      fen: '8/8/8/8/8/8/8/K6k w - - 0 1',
+      source: 'bot_game',
+    } as TrainingPosition;
+
+    expect(withGameProvenance(row, 'game123', 24)).toMatchObject({
+      gameId: 'game123',
+      sourceKey: 'lichess:game123',
+      labelDepth: 24,
+    });
+  });
+
   it('reuses one UCI engine across completed games', async () => {
     const engine = { dispose: vi.fn() } as unknown as UciEngine;
     const factory = vi.fn(async () => engine);
