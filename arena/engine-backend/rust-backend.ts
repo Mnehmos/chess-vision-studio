@@ -82,6 +82,20 @@ export class RustBackend implements CvsEngineBackend {
     return e;
   }
 
+  private discardEngine(depth: number): void {
+    this.engines.get(depth)?.dispose();
+    this.engines.delete(depth);
+  }
+
+  private async withEngine<T>(depth: number, run: (engine: RustEngine) => Promise<T>): Promise<T> {
+    try {
+      return await run(this.engineFor(depth));
+    } catch (error) {
+      this.discardEngine(depth);
+      throw error;
+    }
+  }
+
   id(): BackendId {
     const w = `${this.opts.baseWeights.split(/[\\/]/).pop()}+${this.opts.rung2Weights.split(/[\\/]/).pop()}`;
     return { backend: 'rust', engine: `cvs-bitboard-core@${this.engineVersion}`, weightsId: w };
@@ -93,7 +107,7 @@ export class RustBackend implements CvsEngineBackend {
 
   async analyze(fen: string, options: SearchOpts = {}, context?: PositionContext): Promise<MoveResult> {
     const depth = options.depth ?? this.opts.defaultDepth;
-    const p = await this.engineFor(depth).analyze(fen, context);
+    const p = await this.withEngine(depth, (engine) => engine.analyze(fen, context));
     if (p.error) throw new Error(`rust analyze failed: ${p.error}`);
     return {
       uci: p.uci,
@@ -111,14 +125,14 @@ export class RustBackend implements CvsEngineBackend {
 
   async evaluate(fen: string): Promise<EvalResult> {
     // Any serve process answers `eval`; reuse (or create) the default-depth one.
-    const evalWhiteCp = await this.engineFor(this.opts.defaultDepth).evalStatic(fen);
+    const evalWhiteCp = await this.withEngine(this.opts.defaultDepth, (engine) => engine.evalStatic(fen));
     return { evalWhiteCp };
   }
 
   /** Clock-budgeted best move (`go <ms>`): depth 30 cap, wall clock drives the
    * search — the Lichess-bot / equal-clock mode. */
   async bestMoveTimed(fen: string, budgetMs: number, context?: PositionContext): Promise<MoveResult> {
-    const p = await this.engineFor(30).analyzeTimed(fen, budgetMs, context);
+    const p = await this.withEngine(30, (engine) => engine.analyzeTimed(fen, budgetMs, context));
     if (p.error) throw new Error(`rust timed analyze failed: ${p.error}`);
     return {
       uci: p.uci,

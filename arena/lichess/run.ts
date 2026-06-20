@@ -21,6 +21,7 @@ import { harvestGame } from './harvest';
 export interface RunBotOptions {
   client?: LichessClient;
   picker?: MovePicker;
+  harvest?: typeof harvestGame;
   /** Test hook: undefined means keep reconnecting forever. */
   maxEventStreamRestarts?: number;
   reconnectDelayMs?: number;
@@ -204,6 +205,11 @@ export async function runBot(
           const gameId = ev.game.gameId ?? ev.game.id ?? ev.game.fullId;
           if (!gameId || active.has(gameId)) continue;
           pendingOutbound.delete(gameId); // an accepted challenge keeps its id as the game id
+          for (const [challengeId, username] of pendingOutbound) {
+            const canceled = await client.cancelChallenge(challengeId);
+            if (canceled) pendingOutbound.delete(challengeId);
+            log(`${canceled ? 'canceled' : 'cancel-failed'} surplus outbound challenge ${challengeId} (${username})`);
+          }
           active.add(gameId);
           log(`game start ${gameId}`);
           // 12s cap: the budget formula (time/30 + 0.8*inc) governs normal
@@ -224,16 +230,19 @@ export async function runBot(
           });
           void Promise.race([playSession(client, gameId, botId, picker, { maxMoveMs: 12_000 }), watchdog])
             .then(async (res) => {
-              active.delete(gameId);
-              log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
-              if (cfg.review) {
-                try {
-                  await harvestGame(res, cfg, log);
-                } catch (e) {
-                  log(`harvest ${gameId} failed: ${String(e)}`);
+              try {
+                log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
+                if (cfg.review) {
+                  try {
+                    await (opts.harvest ?? harvestGame)(res, cfg, log);
+                  } catch (e) {
+                    log(`harvest ${gameId} failed: ${String(e)}`);
+                  }
                 }
+              } finally {
+                active.delete(gameId);
+                void maybeChallengeBot(); // back on the ladder once idle
               }
-              void maybeChallengeBot(); // back on the ladder once idle
             })
             .catch((e) => {
               active.delete(gameId);

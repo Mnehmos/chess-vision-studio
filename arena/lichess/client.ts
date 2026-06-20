@@ -108,6 +108,10 @@ export class LichessClient {
     return this.postOk(`/api/challenge/${challengeId}/decline`, reason ? new URLSearchParams({ reason }) : undefined);
   }
 
+  cancelChallenge(challengeId: string): Promise<boolean> {
+    return this.postOk(`/api/challenge/${challengeId}/cancel`);
+  }
+
   chat(gameId: string, text: string, room: 'player' | 'spectator' = 'player'): Promise<boolean> {
     return this.postOk(`/api/bot/game/${gameId}/chat`, new URLSearchParams({ room, text }));
   }

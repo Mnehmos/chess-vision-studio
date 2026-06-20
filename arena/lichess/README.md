@@ -54,6 +54,16 @@ for analysis UI experiments. Raw play is the default. A helper must pass its
 same-budget gate and then be opted in explicitly with
 `CVS_LICHESS_RUST_HELPER_NNUE`.
 
+## Operational safety
+
+- A game remains active until its optional Stockfish review finishes, so review
+  work cannot overlap a newly accepted game.
+- Surplus outbound challenges are canceled when a game starts.
+- Illegal or stale Stockfish PV tails are truncated at the last legal move; an
+  analysis artifact cannot terminate the bot process.
+- Rust move requests have wall-clock deadlines. A failed worker is discarded,
+  and the session retry starts a fresh process instead of waiting indefinitely.
+
 ## Pre-live training from public Lichess games
 
 Before the bot plays rated/casual games, use the Lichess open database offline:

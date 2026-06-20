@@ -32,7 +32,13 @@ export async function createNodeStockfishTransport(): Promise<EngineTransport> {
   const handlers: ((line: string) => void)[] = [];
   engine.addMessageListener((line) => {
     const s = String(line);
-    for (const h of handlers) h(s);
+    for (const h of handlers) {
+      try {
+        h(s);
+      } catch (error) {
+        console.error(`Stockfish line handler failed: ${String(error)}`);
+      }
+    }
   });
 
   return {

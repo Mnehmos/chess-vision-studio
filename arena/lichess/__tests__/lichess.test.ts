@@ -111,6 +111,18 @@ describe('LichessClient (mock transport)', () => {
     for await (const ev of c.streamEvents()) types.push((ev as { type: string }).type);
     expect(types).toEqual(['challenge', 'gameStart']);
   });
+
+  it('cancelChallenge() POSTs to the outbound challenge cancel endpoint', async () => {
+    let captured = '';
+    const fetchLike = async (url: string) => {
+      captured = url;
+      return { ok: true, status: 200, body: null, async json() { return {}; }, async text() { return ''; } };
+    };
+    const c = new LichessClient({ token: 't', fetchLike });
+
+    expect(await c.cancelChallenge('c9')).toBe(true);
+    expect(captured).toBe('https://lichess.org/api/challenge/c9/cancel');
+  });
 });
 
 describe('playSession', () => {
@@ -315,5 +327,75 @@ describe('runBot protocol resilience', () => {
     expect(streams).toBe(2);
     expect(accepted).toEqual(['c2']);
     expect(logs.some((l) => l.includes('event stream error'))).toBe(true);
+  });
+
+  it('remains busy until post-game review completes', async () => {
+    let startHarvest!: () => void;
+    const harvestStarted = new Promise<void>((resolve) => { startHarvest = resolve; });
+    let releaseHarvest!: () => void;
+    const harvestRelease = new Promise<void>((resolve) => { releaseHarvest = resolve; });
+    let finishHarvest!: () => void;
+    const harvestFinished = new Promise<void>((resolve) => { finishHarvest = resolve; });
+    const accepted: string[] = [];
+    const declined: string[] = [];
+    const challenge: LichessEvent = {
+      type: 'challenge',
+      challenge: {
+        id: 'during-review',
+        rated: false,
+        variant: { key: 'standard' },
+        speed: 'rapid',
+        timeControl: { type: 'clock', limit: 600, increment: 0 },
+        challenger: { id: 'human' },
+      },
+    };
+    const fakeClient = {
+      async account() {
+        return { id: 'cvsbot', username: 'cvsbot', title: 'BOT' };
+      },
+      async *streamEvents<T>() {
+        yield { type: 'gameStart', game: { gameId: 'g-review' } } as T;
+        await harvestStarted;
+        yield challenge as T;
+        releaseHarvest();
+        await harvestFinished;
+      },
+      async *streamGame<T>() {
+        yield {
+          type: 'gameFull',
+          id: 'g-review',
+          initialFen: 'startpos',
+          white: { id: 'human', name: 'human' },
+          black: { id: 'cvsbot', name: 'cvsbot' },
+          state: { type: 'gameState', moves: '', status: 'aborted' },
+        } as T;
+      },
+      async acceptChallenge(id: string) {
+        accepted.push(id);
+        return true;
+      },
+      async declineChallenge(id: string) {
+        declined.push(id);
+        return true;
+      },
+      async cancelChallenge() {
+        return true;
+      },
+    } as unknown as LichessClient;
+
+    await runBot({ ...CFG, review: true }, () => {}, {
+      client: fakeClient,
+      picker: scriptedPicker('unused', []),
+      harvest: async () => {
+        startHarvest();
+        await harvestRelease;
+        finishHarvest();
+        return 0;
+      },
+      maxEventStreamRestarts: 0,
+    });
+
+    expect(accepted).toEqual([]);
+    expect(declined).toEqual(['during-review']);
   });
 });

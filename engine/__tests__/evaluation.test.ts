@@ -1,7 +1,7 @@
 // A failed or stalled Stockfish search must resolve an explicit 'unavailable' Eval —
 // never hang, and never masquerade as a genuine 0.00 (which would read as 'best').
 import { describe, it, expect } from 'vitest';
-import { UciEngine, type EngineTransport } from '../evaluation';
+import { UciEngine, uciPvToSan, type EngineTransport } from '../evaluation';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -21,6 +21,21 @@ function stub(onGo: (emit: (line: string) => void) => void): EngineTransport {
 }
 
 describe('UciEngine — a failed/stalled search is "unavailable", never a fake 0.00', () => {
+  it('truncates an illegal PV tail instead of throwing', () => {
+    expect(uciPvToSan(START, ['e2e4', 'e7e5', 'd5f5'])).toEqual(['e4', 'e5']);
+  });
+
+  it('survives a malformed asynchronous PV and returns its legal prefix', async () => {
+    const engine = new UciEngine(stub((emit) => {
+      emit('info depth 12 score cp 18 pv e2e4 e7e5 d5f5');
+      emit('bestmove e2e4');
+    }));
+
+    const result = await engine.evaluate({ fen: START, depth: 12, timeoutMs: 1000 });
+
+    expect(result).toMatchObject({ cp: 18, depth: 12, pv: ['e4', 'e5'] });
+  });
+
   it('marks an empty (no usable info line) result unavailable', async () => {
     const engine = new UciEngine(stub((emit) => emit('bestmove (none)')));
     const e = await engine.evaluate({ fen: START, depth: 12, timeoutMs: 1000 });

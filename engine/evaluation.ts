@@ -19,12 +19,18 @@ export function uciPvToSan(fen: string, uciMoves: string[]): string[] {
   const chess = new Chess(fen);
   const san: string[] = [];
   for (const uci of uciMoves) {
+    if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) break;
     const from = uci.slice(0, 2);
     const to = uci.slice(2, 4);
     const promotion = uci.length > 4 ? uci.slice(4, 5) : undefined;
-    const move = chess.move({ from, to, promotion });
-    if (!move) break; // PV occasionally over-runs; stop at first illegal
-    san.push(move.san);
+    try {
+      const move = chess.move({ from, to, promotion });
+      if (!move) break;
+      san.push(move.san);
+    } catch {
+      // A stopped search may emit a stale PV tail. Preserve the legal prefix.
+      break;
+    }
   }
   return san;
 }
@@ -108,29 +114,32 @@ export class UciEngine {
         resolve(out);
       };
       const onLine = (line: string) => {
-        if (line.startsWith('info') && line.includes(' pv ')) {
-          const parsed = parseInfoLine(line);
-          if (parsed && parsed.depth >= 1) {
-            const prev = byMultipv.get(parsed.multipv);
-            if (!prev || parsed.depth >= prev.depth) {
-              byMultipv.set(parsed.multipv, {
-                cp: parsed.cp,
-                mate: parsed.mate,
-                depth: parsed.depth,
-                pv: uciPvToSan(req.fen, parsed.pvUci),
-              });
+        try {
+          if (line.startsWith('info') && line.includes(' pv ')) {
+            const parsed = parseInfoLine(line);
+            if (parsed && parsed.depth >= 1) {
+              const prev = byMultipv.get(parsed.multipv);
+              if (!prev || parsed.depth >= prev.depth) {
+                byMultipv.set(parsed.multipv, {
+                  cp: parsed.cp,
+                  mate: parsed.mate,
+                  depth: parsed.depth,
+                  pv: uciPvToSan(req.fen, parsed.pvUci),
+                });
+              }
             }
+          } else if (line.startsWith('bestmove')) {
+            const out: Eval[] = [];
+            for (let i = 1; i <= multipv; i++) {
+              const r = byMultipv.get(i);
+              if (r) out.push({ cp: r.cp, mate: r.mate, depth: r.depth, pv: r.pv });
+            }
+            if (out.length === 0) out.push({ depth: req.depth, pv: [], status: 'unavailable', reason: 'no_pv' });
+            finish(out);
           }
-        } else if (line.startsWith('bestmove')) {
-          const out: Eval[] = [];
-          for (let i = 1; i <= multipv; i++) {
-            const r = byMultipv.get(i);
-            if (r) out.push({ cp: r.cp, mate: r.mate, depth: r.depth, pv: r.pv });
-          }
-          // No parseable info line came back — the search produced nothing usable.
-          // Flag it 'unavailable' so it is NEVER mistaken for a genuine 0.00 eval.
-          if (out.length === 0) out.push({ depth: req.depth, pv: [], status: 'unavailable', reason: 'no_pv' });
-          finish(out);
+        } catch {
+          // Malformed asynchronous engine output is unusable data, not a
+          // process-level failure. Continue until bestmove or timeout.
         }
       };
       // A stalled search must not hang forever; resolve an explicit 'unavailable'.

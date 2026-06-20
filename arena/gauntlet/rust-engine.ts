@@ -27,10 +27,18 @@ export interface RustPositionContext {
   moves: string[];
 }
 
+interface PendingRequest {
+  resolve(line: string): void;
+  reject(error: Error): void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 export class RustEngine {
   private proc: ChildProcessWithoutNullStreams;
   private rl: Interface;
-  private queue: ((line: string) => void)[] = [];
+  private queue: PendingRequest[] = [];
+  private failed?: Error;
+  private stderrTail = '';
 
   constructor(
     exe: string,
@@ -46,67 +54,78 @@ export class RustEngine {
     this.rl = createInterface({ input: this.proc.stdout });
     this.rl.on('line', (line) => {
       const next = this.queue.shift();
-      if (next) next(line);
+      if (next) {
+        clearTimeout(next.timer);
+        next.resolve(line);
+      }
+    });
+    this.proc.stderr.on('data', (chunk: Buffer | string) => {
+      this.stderrTail = (this.stderrTail + String(chunk)).slice(-8_192);
+    });
+    this.proc.once('error', (error) => this.fail(new Error(`Rust engine process error: ${error.message}`)));
+    this.proc.once('exit', (code, signal) => {
+      const detail = this.stderrTail.trim();
+      this.fail(new Error(
+        `Rust engine exited${code != null ? ` with code ${code}` : ''}${signal ? ` (${signal})` : ''}${detail ? `: ${detail}` : ''}`,
+      ));
     });
   }
 
   /** Search `fen` at the configured depth; resolves with the pick + telemetry. */
-  analyze(fen: string, context?: RustPositionContext): Promise<RustPick> {
-    return new Promise((resolve, reject) => {
-      this.queue.push((line) => {
-        try {
-          resolve(JSON.parse(line) as RustPick);
-        } catch (e) {
-          reject(e);
-        }
-      });
-      if (context) {
-        this.proc.stdin.write(JSON.stringify({ cmd: 'analyze', fen, initialFen: context.initialFen, moves: context.moves }) + '\n');
-      } else {
-        this.proc.stdin.write(fen + '\n');
-      }
-    });
+  async analyze(fen: string, context?: RustPositionContext): Promise<RustPick> {
+    const command = context
+      ? JSON.stringify({ cmd: 'analyze', fen, initialFen: context.initialFen, moves: context.moves })
+      : fen;
+    return JSON.parse(await this.request(command, 120_000)) as RustPick;
   }
 
   /** Search with a per-request wall-clock budget via `go <ms> <fen>` (the
    * process's depth acts as the cap — spawn with a high cap for clock mode). */
-  analyzeTimed(fen: string, budgetMs: number, context?: RustPositionContext): Promise<RustPick> {
-    return new Promise((resolve, reject) => {
-      this.queue.push((line) => {
-        try {
-          resolve(JSON.parse(line) as RustPick);
-        } catch (e) {
-          reject(e);
-        }
-      });
-      const cappedBudgetMs = Math.max(50, Math.round(budgetMs));
-      if (context) {
-        this.proc.stdin.write(
-          JSON.stringify({ cmd: 'go', budgetMs: cappedBudgetMs, fen, initialFen: context.initialFen, moves: context.moves }) + '\n',
-        );
-      } else {
-        this.proc.stdin.write(`go ${cappedBudgetMs} ${fen}\n`);
-      }
-    });
+  async analyzeTimed(fen: string, budgetMs: number, context?: RustPositionContext): Promise<RustPick> {
+    const cappedBudgetMs = Math.max(50, Math.round(budgetMs));
+    const command = context
+      ? JSON.stringify({ cmd: 'go', budgetMs: cappedBudgetMs, fen, initialFen: context.initialFen, moves: context.moves })
+      : `go ${cappedBudgetMs} ${fen}`;
+    return JSON.parse(await this.request(command, Math.max(5_000, cappedBudgetMs + 5_000))) as RustPick;
   }
 
   /** Static eval (White-POV rounded cp; exact TS-eval parity) via `eval <fen>`. */
-  evalStatic(fen: string): Promise<number> {
+  async evalStatic(fen: string): Promise<number> {
+    const out = JSON.parse(await this.request('eval ' + fen, 10_000)) as { evalWhiteCp?: number; error?: string };
+    if (typeof out.evalWhiteCp === 'number') return out.evalWhiteCp;
+    throw new Error(out.error ?? 'eval failed');
+  }
+
+  private request(command: string, timeoutMs: number): Promise<string> {
+    if (this.failed) return Promise.reject(this.failed);
     return new Promise((resolve, reject) => {
-      this.queue.push((line) => {
-        try {
-          const o = JSON.parse(line) as { evalWhiteCp?: number; error?: string };
-          if (typeof o.evalWhiteCp === 'number') resolve(o.evalWhiteCp);
-          else reject(new Error(o.error ?? 'eval failed'));
-        } catch (e) {
-          reject(e);
-        }
+      const pending: PendingRequest = {
+        resolve,
+        reject,
+        timer: setTimeout(() => {
+          this.fail(new Error(`Rust engine request timed out after ${timeoutMs}ms`));
+          this.proc.kill();
+        }, timeoutMs),
+      };
+      pending.timer.unref?.();
+      this.queue.push(pending);
+      this.proc.stdin.write(command + '\n', (error) => {
+        if (error) this.fail(new Error(`Rust engine stdin failed: ${error.message}`));
       });
-      this.proc.stdin.write('eval ' + fen + '\n');
     });
   }
 
+  private fail(error: Error): void {
+    if (this.failed) return;
+    this.failed = error;
+    for (const pending of this.queue.splice(0)) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+  }
+
   dispose(): void {
+    this.fail(new Error('Rust engine disposed'));
     try {
       this.proc.stdin.write('quit\n');
       this.proc.kill();
