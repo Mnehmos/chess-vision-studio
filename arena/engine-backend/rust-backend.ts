@@ -21,6 +21,7 @@ export interface RustBackendOptions {
   baseWeights?: string;
   rung2Weights?: string;
   defaultDepth?: number;
+  extraArgs?: string[];
 }
 
 export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): string[] {
@@ -48,6 +49,7 @@ export class RustBackend implements CvsEngineBackend {
       baseWeights: options.baseWeights ?? DEFAULT_BASE_WEIGHTS,
       rung2Weights: options.rung2Weights ?? DEFAULT_RUNG2_WEIGHTS,
       defaultDepth: options.defaultDepth ?? RUST_DEFAULT_DEPTH,
+      extraArgs: options.extraArgs ?? rustBackendExtraArgs(),
     };
     if (!existsSync(this.opts.exe)) {
       throw new Error(`Rust engine binary not found at ${this.opts.exe} — run 'cargo build --release' in chess-vision-studio-rust-engine`);
@@ -64,7 +66,7 @@ export class RustBackend implements CvsEngineBackend {
   private engineFor(depth: number): RustEngine {
     let e = this.engines.get(depth);
     if (!e) {
-      const extra = rustBackendExtraArgs();
+      const extra = [...this.opts.extraArgs];
       // CVS_RUST_FUTILITY=1 enables futility pruning (accepted-with-note,
       // 2026-06-11: fixed-N +34, gen7 blunder collapse preserved at depth).
       // CVS_RUST_RFP=1 enables reverse futility pruning (accepted-with-note,

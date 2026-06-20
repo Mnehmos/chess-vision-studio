@@ -49,6 +49,11 @@ for on-demand diversity without waiting for human challengers.
 All policy knobs live in `.env` (see `.env.example`): casual/rated, min clock,
 correspondence, bots-only, concurrency, AI-seed levels, review depth.
 
+The live Rust bot does not inherit `CVS_RUST_HELPER_NNUE`, which is reserved
+for analysis UI experiments. Raw play is the default. A helper must pass its
+same-budget gate and then be opted in explicitly with
+`CVS_LICHESS_RUST_HELPER_NNUE`.
+
 ## Pre-live training from public Lichess games
 
 Before the bot plays rated/casual games, use the Lichess open database offline:

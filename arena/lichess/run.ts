@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { CvsEngine, type PolicyWeights } from '@cvs/engine';
 import { resolveBackendKind } from '../engine-backend';
+import { RustBackend, rustBackendExtraArgs } from '../engine-backend/rust-backend';
 import { ponderPicker } from './ponder-picker';
 import { rustPicker } from './rust-picker';
 import { LichessClient, type LichessEvent } from './client';
@@ -23,6 +24,16 @@ export interface RunBotOptions {
   /** Test hook: undefined means keep reconnecting forever. */
   maxEventStreamRestarts?: number;
   reconnectDelayMs?: number;
+}
+
+export function lichessRustExtraArgs(
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
+  const helper = env.CVS_LICHESS_RUST_HELPER_NNUE?.trim() ?? '';
+  return rustBackendExtraArgs({
+    ...env,
+    CVS_RUST_HELPER_NNUE: helper,
+  });
 }
 
 export async function runBot(
@@ -46,9 +57,20 @@ export async function runBot(
   if (opts.picker) {
     picker = opts.picker;
   } else if (backendKind === 'rust') {
+    const extraArgs = lichessRustExtraArgs();
+    const helper = process.env.CVS_LICHESS_RUST_HELPER_NNUE?.trim();
+    const backend = () => new RustBackend({ extraArgs });
+    const base = rustPicker({ backend: backend() });
     // Opponent-clock ponder cache (gated 2026-06-11): ~89% hit rate, banks
     // ~3/4 of the clock on agreed hits. CVS_PONDER=0 reverts to plain picks.
-    picker = process.env.CVS_PONDER !== '0' ? ponderPicker(rustPicker()) : rustPicker();
+    picker = process.env.CVS_PONDER !== '0'
+      ? ponderPicker(base, { backend: backend() })
+      : base;
+    log(
+      helper
+        ? `live Rust helper: ${helper}`
+        : 'live Rust helper: disabled (raw play policy)',
+    );
   } else {
     const weights = loadWeights(cfg.weightsPath, log);
     picker = cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });

@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { Chess } from 'chess.js';
 import { createEngineBackend, resolveBackendKind, RustBackend, TsLegacyBackend } from '../engine-backend';
 import { DEFAULT_RUST_EXE, rustBackendExtraArgs } from '../engine-backend/rust-backend';
+import { lichessRustExtraArgs } from '../lichess/run';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const FORENSIC_549 = '5r2/pp5R/1kp3p1/6b1/4P1b1/1BNP2P1/PPP4P/1K6 w - - 1 22';
@@ -38,6 +39,26 @@ describe('backend selector', () => {
       '--qtt',
       '--histmalus',
       '--histlmr',
+    ]);
+  });
+
+  it('keeps the analysis helper out of Lichess unless explicitly opted in', () => {
+    const baseEnv = {
+      CVS_RUST_NNUE: 'main.json',
+      CVS_RUST_HELPER_NNUE: 'analysis-helper.json',
+      CVS_RUST_FUTILITY: '1',
+    };
+    expect(lichessRustExtraArgs(baseEnv)).toEqual([
+      '--nnue', 'main.json',
+      '--futility',
+    ]);
+    expect(lichessRustExtraArgs({
+      ...baseEnv,
+      CVS_LICHESS_RUST_HELPER_NNUE: 'live-helper.json',
+    })).toEqual([
+      '--nnue', 'main.json',
+      '--helper-nnue', 'live-helper.json',
+      '--futility',
     ]);
   });
 
