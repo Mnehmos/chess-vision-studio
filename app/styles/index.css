@@ -5030,3 +5030,267 @@ select {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   AnalysisFrameV2 panels — PR-03 (move review / engine disagreement), PR-10
+   (position hazards / what-changed), PR-11 (engine internals), PR-12 (NNUE
+   inspector). Mirror the .facts-panel card language (stone card, copper + mono
+   titles) so engine-backed evidence reads as part of the redesigned column.
+   ────────────────────────────────────────────────────────────────────────── */
+.move-review,
+.engine-disagreement,
+.hazards-panel,
+.nnue-inspector {
+  min-width: 0;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.move-review__header,
+.engine-disagreement__header,
+.hazards-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.move-review__title,
+.engine-disagreement__title,
+.hazards-panel__title,
+.nnue-inspector__title {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.move-review__tag,
+.engine-disagreement__tag,
+.hazards-panel__tag {
+  color: var(--text-faint);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.move-review__value,
+.engine-disagreement__value {
+  color: var(--text);
+}
+.move-review__value--muted,
+.engine-disagreement__value--muted {
+  color: var(--muted);
+}
+.move-review__value--small,
+.engine-disagreement__value--small {
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+/* Engine disagreement — Stockfish vs CVS, side by side */
+.engine-disagreement__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.engine-disagreement__column {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+.engine-disagreement__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.engine-disagreement__column:first-child .engine-disagreement__label {
+  color: var(--stockfish);
+}
+.engine-disagreement__column:last-child .engine-disagreement__label {
+  color: var(--cvs);
+}
+.engine-disagreement__root {
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.engine-disagreement__verdict {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+/* Engine internals — collapsible <details> with a stat grid */
+.engine-internals {
+  margin-top: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.engine-internals__summary {
+  cursor: pointer;
+  padding: 12px 0;
+  list-style: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.engine-internals__summary::-webkit-details-marker {
+  display: none;
+}
+.engine-internals__section {
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.engine-internals__section-title {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.engine-internals__stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 0;
+  font-size: 13px;
+}
+.engine-internals__stat-label {
+  color: var(--muted);
+}
+.engine-internals__stat-value {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+/* Position hazards + what-changed — sectioned evidence lists */
+.hazards-panel__section {
+  margin-top: 8px;
+}
+.hazards-panel__section-title {
+  margin: 0 0 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.hazards-panel__move {
+  font-family: var(--mono);
+  color: var(--accent-light);
+}
+.hazards-panel__status {
+  font-size: 13px;
+}
+.hazards-panel__status--muted {
+  color: var(--muted);
+}
+.hazards-panel__status--good {
+  color: var(--good);
+}
+.hazards-panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hazards-panel__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  border-left: 3px solid var(--border-strong);
+  font-size: 13px;
+}
+.hazards-panel__item--white {
+  border-left-color: var(--stockfish);
+}
+.hazards-panel__item--black {
+  border-left-color: var(--cvs);
+}
+.hazards-panel__kind {
+  font-weight: 600;
+  color: var(--text);
+}
+.hazards-panel__magnitude {
+  font-family: var(--mono);
+  color: var(--warn);
+}
+.hazards-panel__squares {
+  font-family: var(--mono);
+  color: var(--muted);
+  font-size: 12px;
+}
+.hazards-panel__moves {
+  font-family: var(--mono);
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* NNUE / feature inspector (dev) */
+.nnue-inspector__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+.nnue-inspector__muted {
+  color: var(--muted);
+}
+.nnue-inspector__warn {
+  color: var(--warn);
+}
+.nnue-inspector__features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.nnue-inspector__feature-title {
+  margin-bottom: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.nnue-inspector__feature-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nnue-inspector__feature-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-soft);
+}
