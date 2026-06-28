@@ -11,3 +11,4 @@ export * from './budget';
 export * from './score';
 export * from './history';
 export * from './facts-selector';
+export * from './telemetry';

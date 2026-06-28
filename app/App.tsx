@@ -43,6 +43,7 @@ import { AnnotationCommandList } from './AnnotationCommandList';
 import { FactsPanel } from './FactsPanel';
 import { MoveReviewCard } from './MoveReviewCard';
 import { EngineDisagreementCard } from './EngineDisagreementCard';
+import { EngineInternalsPanel } from './EngineInternalsPanel';
 import {
   buildEngineDisagreement,
   type EngineDisagreementView,
@@ -103,6 +104,7 @@ import {
   normalizedScoreFromSideToMove,
   replayReachesFen,
   selectPositionFacts,
+  isCvsSearchTelemetryV2,
   type FactsArtifactStatus,
 } from '../engine/analysis-frame';
 import {
@@ -632,6 +634,13 @@ export function App() {
     sfRootError,
     sfRootResult,
   ]);
+
+  // Full CVS search telemetry for the Engine Internals panel (PR-11). The CVS
+  // analysis response carries the complete telemetry object; the guard confirms
+  // it before the panel types every field.
+  const cvsTelemetry = isCvsSearchTelemetryV2(cvsEngineAnalysis?.telemetry)
+    ? cvsEngineAnalysis.telemetry
+    : null;
 
   useEffect(() => {
     if (tab !== 'board' || !cvsEngineHealth.available || view <= 0 || !plies[plyIndex]) {
@@ -1895,6 +1904,7 @@ export function App() {
                   move={moveLabel}
                 />
                 <EngineDisagreementCard view={disagreementView} />
+                <EngineInternalsPanel telemetry={cvsTelemetry} />
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}
                   facts={teachingFacts}
