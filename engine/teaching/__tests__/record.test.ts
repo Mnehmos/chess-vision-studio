@@ -38,7 +38,7 @@ describe('buildTeachingRecord', () => {
   });
 
   it('carries the Rust fact bundle and committed teaching', () => {
-    expect(record.facts.provenance.factsRegistryVersion).toBe(5);
+    expect(record.facts.provenance.factsRegistryVersion).toBe(6);
     expect(record.primaryTopicId).toBe('allowed_fork');
     expect(record.events.some((e) => e.topicId === 'allowed_fork')).toBe(true);
     expect(record.primaryPlan?.headline).toContain('fork');
@@ -51,7 +51,7 @@ describe('buildTeachingRecord', () => {
 
   it('stamps full provenance (schema/registry/compiler/engine/depth)', () => {
     expect(record.provenance.teachingSchemaVersion).toBe(1);
-    expect(record.provenance.factsRegistryVersion).toBe(5);
+    expect(record.provenance.factsRegistryVersion).toBe(6);
     expect(record.provenance.compilerVersion).toBe(TEACHING_COMPILER_VERSION);
     expect(record.provenance.engine).toBe('cvs-bitboard-core');
     expect(record.provenance.sfDepth).toBe(20);
@@ -64,8 +64,8 @@ describe('buildTeachingRecord', () => {
   });
 
   it('keys cache rows by game, ply, schema, registry, compiler, and Stockfish settings', () => {
-    expect(recordSignature(record.provenance)).toBe('t1.r5.c2.b20.a20.dx');
-    expect(teachingCacheKey(record)).toBe('g1|p14|t1.r5.c2.b20.a20.dx');
+    expect(recordSignature(record.provenance)).toBe('t1.r6.c2.b20.a20.dx');
+    expect(teachingCacheKey(record)).toBe('g1|p14|t1.r6.c2.b20.a20.dx');
   });
 
   it('rejects stale registry and Stockfish settings', () => {

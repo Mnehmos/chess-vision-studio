@@ -2,6 +2,7 @@
 // move analysis. The loop: click square -> arrows show relationships -> this card
 // explains in words -> LED preview mirrors it. A visual debugger for positions.
 import { squareReport, type SquareStatus } from '../engine/relationship';
+import { squareFactFor } from '../engine/facts-adapters';
 import type { InsightCandidate, MoveAnalysis, Square } from '../engine/types';
 import type { FactValue, PieceRef, PositionFacts, SeeLosingFact } from '../engine/teaching/types';
 
@@ -38,6 +39,9 @@ export function FactsPanel({
     selected && enginePosition
       ? enginePosition.pieces.find((piece) => piece.square === selected)
       : undefined;
+  // Rust square-control for an EMPTY inspected square (PR-07), when available.
+  const engineSquare =
+    selected && enginePosition ? squareFactFor(enginePosition, selected) : undefined;
   // Reject a stale artifact: only render an analysis that was computed for the board
   // currently shown (positionAfter === fen). Prevents a prior move's insights from
   // bleeding onto a different position (state-contamination guard).
@@ -111,6 +115,28 @@ export function FactsPanel({
             {report.safe ? 'safe' : `losing ${report.see}`}
           </div>
           <StatusLine status={{ label: report.statusLabel, className: legacyStatusClass(report.status) }} />
+          <DependentTactics insights={dependentTactics} onFocus={onFocus} />
+        </div>
+      ) : engineSquare && !engineSquare.occupied ? (
+        <div className="facts-panel__card facts-panel__card--empty">
+          <div className="facts-panel__card-title">
+            {engineSquare.square} - empty square{' '}
+            <span className="facts-panel__source-pill">engine</span>
+          </div>
+          <Row
+            label="Can move here"
+            items={[
+              ...(engineSquare.legalMoversWhite.status === 'computed'
+                ? engineSquare.legalMoversWhite.items.map(pieceRefLabel)
+                : []),
+              ...(engineSquare.legalMoversBlack.status === 'computed'
+                ? engineSquare.legalMoversBlack.items.map(pieceRefLabel)
+                : []),
+            ]}
+            tone="good"
+          />
+          <Row label="White controls" items={engineSquare.attackedByWhite.map(pieceRefLabel)} tone="muted" />
+          <Row label="Black controls" items={engineSquare.attackedByBlack.map(pieceRefLabel)} tone="muted" />
           <DependentTactics insights={dependentTactics} onFocus={onFocus} />
         </div>
       ) : report ? (

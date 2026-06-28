@@ -11,6 +11,7 @@ import {
   pawnStructureView,
   pieceFactForSquare,
   pinOpportunityView,
+  squareFactFor,
 } from '../facts-adapters';
 
 // The golden Rust fact corpus shipped with the app — covers the PR-06 parity
@@ -118,5 +119,31 @@ describe('Rust fact adapters (PR-06)', () => {
     expect(square).toBeTruthy();
     expect(pieceFactForSquare(before, square)?.square).toBe(square);
     expect(pieceFactForSquare(before, 'z9')).toBeUndefined();
+  });
+});
+
+describe('squareFactFor (PR-07 square-control)', () => {
+  const before = load('allowed-fork').before;
+
+  it('resolves a deterministic 64-square control map', () => {
+    expect(before.squareFacts?.status).toBe('computed');
+    if (before.squareFacts?.status === 'computed') {
+      expect(before.squareFacts.items).toHaveLength(64);
+    }
+    const a1 = squareFactFor(before, 'a1');
+    expect(a1?.square).toBe('a1');
+    expect(a1?.occupied).toBe(true); // white rook on a1 in the allowed-fork study
+    // b1 is an empty square the a1 rook geometrically attacks (controls).
+    const b1 = squareFactFor(before, 'b1');
+    expect(b1?.occupied).toBe(false);
+    expect(b1?.controlledByWhite).toBe(true);
+    expect(b1?.attackedByWhite.some((r) => r.square === 'a1')).toBe(true);
+    expect(b1?.legalMoversWhite.status).toBe('computed');
+  });
+
+  it('returns undefined for an unknown square or a bundle without squareFacts', () => {
+    expect(squareFactFor(before, 'z9')).toBeUndefined();
+    const legacy: PositionFacts = { ...before, squareFacts: undefined };
+    expect(squareFactFor(legacy, 'a1')).toBeUndefined();
   });
 });

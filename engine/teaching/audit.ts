@@ -1,7 +1,11 @@
 import type { TeachingRecordV1 } from './record';
 import { TEACHING_COMPILER_VERSION } from './record';
 import { buildTeachingProfile, classifyPhase, type TeachingSample } from './profile';
-import { TEACHING_EVENTS_SCHEMA_VERSION, type TeachingEvent } from './types';
+import {
+  TEACHING_EVENTS_SCHEMA_VERSION,
+  TEACHING_FACTS_REGISTRY_VERSION,
+  type TeachingEvent,
+} from './types';
 
 export type EventReviewVerdict = 'pending' | 'correct' | 'false_positive' | 'underexplained';
 
@@ -398,7 +402,8 @@ function checkStableOutput(
   for (const record of records) {
     if (record.schemaVersion !== TEACHING_EVENTS_SCHEMA_VERSION) add('schema_version', 'Unexpected teaching schema version.');
     if (record.provenance.compilerVersion !== TEACHING_COMPILER_VERSION) add('compiler_version', 'Unexpected teaching compiler version.');
-    if (record.provenance.factsRegistryVersion !== 5) add('facts_registry_version', 'Expected facts registry version 5.');
+    if (record.provenance.factsRegistryVersion !== TEACHING_FACTS_REGISTRY_VERSION)
+      add('facts_registry_version', `Expected facts registry version ${TEACHING_FACTS_REGISTRY_VERSION}.`);
   }
   const hashes = new Map<string, string>();
   for (const row of inputRows) {

@@ -1,5 +1,6 @@
 export const TEACHING_FACTS_SCHEMA_VERSION = 1 as const;
-export const TEACHING_FACTS_REGISTRY_VERSION = 5 as const;
+// v6: deterministic 64-square control + legal movers (squareFacts) — PR-07.
+export const TEACHING_FACTS_REGISTRY_VERSION = 6 as const;
 
 export interface TeachingFactsRequestV1 {
   schemaVersion: 1;
@@ -37,6 +38,9 @@ export interface PositionFacts {
   opponentAvailableMotifs: FactCollection<MotifOpportunity>;
   opponentAvailablePins: FactCollection<PinOpportunity>;
   hazards: FactCollection<HazardFact>;
+  // Deterministic 64-square control + legal movers (PR-07, facts registry v6).
+  // Optional so older fact bundles (registry <=5) still satisfy the type.
+  squareFacts?: FactCollection<SquareFact>;
 }
 
 export interface MoveStateFacts {
@@ -198,6 +202,23 @@ export interface HazardFact {
   moveUci?: string;
 }
 
+// Deterministic per-square control + legal movers (PR-07, facts registry v6).
+// attackedBy* are GEOMETRIC attackers (decision D1); controlledBy* derive from
+// them. legalMovers* lists legal moves TO the square for each side; the
+// non-side-to-move's collection is `unavailable` when the side to move is in
+// check (opposite-side probe), and en-passant belongs only to the real side to
+// move. No hypothetical SEE is included.
+export interface SquareFact {
+  square: string;
+  occupied: boolean;
+  attackedByWhite: PieceRef[];
+  attackedByBlack: PieceRef[];
+  controlledByWhite: boolean;
+  controlledByBlack: boolean;
+  legalMoversWhite: FactCollection<PieceRef>;
+  legalMoversBlack: FactCollection<PieceRef>;
+}
+
 export interface FactsProvenance {
   engine: string;
   engineCommit?: string;
@@ -245,7 +266,9 @@ function isPositionFactsShape(value: unknown): value is PositionFacts {
     isFactCollection(position.availablePins) &&
     isFactCollection(position.opponentAvailableMotifs) &&
     isFactCollection(position.opponentAvailablePins) &&
-    isFactCollection(position.hazards)
+    isFactCollection(position.hazards) &&
+    // Additive (registry v6): present on new bundles, absent on old ones.
+    (position.squareFacts === undefined || isFactCollection(position.squareFacts))
   );
 }
 

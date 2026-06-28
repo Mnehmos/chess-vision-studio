@@ -14,7 +14,7 @@ describe('TeachingFactBundleV1 Rust fixtures', () => {
       expect(isTeachingFactBundleV1(fixture)).toBe(true);
       const bundle = fixture as TeachingFactBundleV1;
       expect(bundle.provenance.engine).toBe('cvs-bitboard-core');
-      expect(bundle.provenance.factsRegistryVersion).toBe(5);
+      expect(bundle.provenance.factsRegistryVersion).toBe(6);
       expect(bundle.before.pieces.every((piece) => /^[a-h][1-8]$/.test(piece.square))).toBe(true);
       expect(bundle.played.move.uci).toMatch(/^[a-h][1-8][a-h][1-8][qrbn]?$/);
     }

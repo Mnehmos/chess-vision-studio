@@ -18,7 +18,7 @@ describe('getTeachingFacts', () => {
       fenBefore: allowedFork.fenBefore,
       playedMoveUci: allowedFork.played.move.uci,
     });
-    expect(result.provenance.factsRegistryVersion).toBe(5);
+    expect(result.provenance.factsRegistryVersion).toBe(6);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/cvs-engine/facts',
       expect.objectContaining({ method: 'POST' }),

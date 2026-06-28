@@ -206,6 +206,1428 @@
     "hazards": {
       "status": "computed",
       "items": []
+    },
+    "squareFacts": {
+      "status": "computed",
+      "items": [
+        {
+          "square": "a1",
+          "occupied": true,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            },
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              },
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "g1",
+          "occupied": true,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h1",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "a2",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b2",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c2",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d2",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e2",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f2",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "g2",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h2",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-king-g1",
+              "side": "white",
+              "pieceType": "king",
+              "square": "g1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "a3",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "g3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h3",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "a4",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "f4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "g4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h4",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "a5",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "g5",
+          "occupied": true,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h5",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "a6",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "f6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "g6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h6",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "a7",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-king-g8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "g8"
+            },
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "g7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-king-g8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "g8"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ]
+          }
+        },
+        {
+          "square": "h7",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-king-g8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "g8"
+            },
+            {
+              "id": "black-knight-g5",
+              "side": "black",
+              "pieceType": "knight",
+              "square": "g5"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ]
+          }
+        },
+        {
+          "square": "a8",
+          "occupied": false,
+          "attackedByWhite": [
+            {
+              "id": "white-rook-a1",
+              "side": "white",
+              "pieceType": "rook",
+              "square": "a1"
+            }
+          ],
+          "attackedByBlack": [],
+          "controlledByWhite": true,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ]
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "b8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "c8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "d8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "e8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "f8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-king-g8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "g8"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ]
+          }
+        },
+        {
+          "square": "g8",
+          "occupied": true,
+          "attackedByWhite": [],
+          "attackedByBlack": [],
+          "controlledByWhite": false,
+          "controlledByBlack": false,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": []
+          }
+        },
+        {
+          "square": "h8",
+          "occupied": false,
+          "attackedByWhite": [],
+          "attackedByBlack": [
+            {
+              "id": "black-king-g8",
+              "side": "black",
+              "pieceType": "king",
+              "square": "g8"
+            }
+          ],
+          "controlledByWhite": false,
+          "controlledByBlack": true,
+          "legalMoversWhite": {
+            "status": "computed",
+            "items": []
+          },
+          "legalMoversBlack": {
+            "status": "computed",
+            "items": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ]
+          }
+        }
+      ]
     }
   },
   "played": {
@@ -460,6 +1882,1428 @@
             ],
             "magnitudeCp": 500,
             "moveUci": "g5f3"
+          }
+        ]
+      },
+      "squareFacts": {
+        "status": "computed",
+        "items": [
+          {
+            "square": "a1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e1",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              },
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                },
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g1",
+            "occupied": true,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e3",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "a4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e4",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": true,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "f4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e5",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g5",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e6",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": true,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "f6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e7",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                },
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
+          },
+          {
+            "square": "h7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                },
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "a8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e8",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-e1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "e1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g8",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
           }
         ]
       }
@@ -760,6 +3604,1414 @@
             "moveUci": "a1g1"
           }
         ]
+      },
+      "squareFacts": {
+        "status": "computed",
+        "items": [
+          {
+            "square": "a1",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-h1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "h1"
+              },
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-h1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "h1"
+                },
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h1",
+            "occupied": true,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-h1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "h1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-h1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "h1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-h1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "h1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-h1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "h1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a3",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "a4",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "f4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a5",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g5",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a6",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "f6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "g6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "a7",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                },
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
+          },
+          {
+            "square": "h7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              },
+              {
+                "id": "black-knight-g5",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "g5"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                },
+                {
+                  "id": "black-knight-g5",
+                  "side": "black",
+                  "pieceType": "knight",
+                  "square": "g5"
+                }
+              ]
+            }
+          },
+          {
+            "square": "a8",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-a1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "a1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-rook-a1",
+                  "side": "white",
+                  "pieceType": "rook",
+                  "square": "a1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "b8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "c8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "d8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "e8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "f8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
+          },
+          {
+            "square": "g8",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": []
+            }
+          },
+          {
+            "square": "h8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "black-king-g8",
+                  "side": "black",
+                  "pieceType": "king",
+                  "square": "g8"
+                }
+              ]
+            }
+          }
+        ]
       }
     },
     "deltas": {
@@ -1031,6 +5283,1279 @@
       "hazards": {
         "status": "unavailable",
         "reason": "symmetric_hazard_probe_unavailable"
+      },
+      "squareFacts": {
+        "status": "computed",
+        "items": [
+          {
+            "square": "a1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e1",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              },
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g1",
+            "occupied": true,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": true,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h1",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d2",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": [
+                {
+                  "id": "white-king-g1",
+                  "side": "white",
+                  "pieceType": "king",
+                  "square": "g1"
+                }
+              ]
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h2",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-king-g1",
+                "side": "white",
+                "pieceType": "king",
+                "square": "g1"
+              }
+            ],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": true,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e3",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f3",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h3",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e4",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h4",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e5",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": true,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-knight-f3",
+                "side": "black",
+                "pieceType": "knight",
+                "square": "f3"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h5",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e6",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h6",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e7",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h7",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "a8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "b8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "c8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "d8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "e8",
+            "occupied": false,
+            "attackedByWhite": [
+              {
+                "id": "white-rook-e1",
+                "side": "white",
+                "pieceType": "rook",
+                "square": "e1"
+              }
+            ],
+            "attackedByBlack": [],
+            "controlledByWhite": true,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "f8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "g8",
+            "occupied": true,
+            "attackedByWhite": [],
+            "attackedByBlack": [],
+            "controlledByWhite": false,
+            "controlledByBlack": false,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          },
+          {
+            "square": "h8",
+            "occupied": false,
+            "attackedByWhite": [],
+            "attackedByBlack": [
+              {
+                "id": "black-king-g8",
+                "side": "black",
+                "pieceType": "king",
+                "square": "g8"
+              }
+            ],
+            "controlledByWhite": false,
+            "controlledByBlack": true,
+            "legalMoversWhite": {
+              "status": "computed",
+              "items": []
+            },
+            "legalMoversBlack": {
+              "status": "unavailable",
+              "reason": "opposite_side_probe_while_in_check"
+            }
+          }
+        ]
       }
     },
     "deltas": {
@@ -1058,7 +6583,7 @@
   },
   "provenance": {
     "engine": "cvs-bitboard-core",
-    "factsRegistryVersion": 5,
+    "factsRegistryVersion": 6,
     "validators": [
       "legal_move_generation",
       "attack_map",
@@ -1066,6 +6591,7 @@
       "capture_opportunities",
       "king_safety",
       "pawn_structure",
+      "square_control",
       "fork_validation",
       "pin_validation"
     ]

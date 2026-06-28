@@ -18,6 +18,7 @@ import type {
   PieceRef,
   PinOpportunity,
   PositionFacts,
+  SquareFact,
 } from './teaching/types';
 
 export interface LensView<T> {
@@ -40,6 +41,20 @@ export function pieceFactForSquare(
   square: string,
 ): PieceFact | undefined {
   return position.pieces.find((piece) => piece.square === square);
+}
+
+/**
+ * The Rust square-control fact for a square (PR-07), or undefined when the bundle
+ * predates registry v6 (no squareFacts) or the collection is not computed. Lets
+ * empty-square consumers prefer Rust control + legal movers with a clean fallback.
+ */
+export function squareFactFor(
+  position: PositionFacts,
+  square: string,
+): SquareFact | undefined {
+  const collection = position.squareFacts;
+  if (!collection || collection.status !== 'computed') return undefined;
+  return collection.items.find((fact) => fact.square === square);
 }
 
 export interface OccupiedPieceThreat {
