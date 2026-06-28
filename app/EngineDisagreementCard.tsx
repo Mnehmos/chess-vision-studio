@@ -70,20 +70,13 @@ function EngineColumn({ label, slot }: { label: string; slot: EngineSlot }) {
   );
 }
 
-// The header budget tag, derived from what each engine ACTUALLY searched. Both
-// engines run depth-limited (often at DIFFERENT depths — SF deeper than CVS), so the
-// configured movetime budget is never what runs. Only claim "equal" when both engines
-// computed at the SAME depth; when only one ran (e.g. Stockfish is off in Play) name
-// that engine's depth so the tag matches the per-engine `d6 · …` provenance below.
+// The header budget tag. Both engines run the SAME time budget (movetime, ≥1000ms),
+// so the budget is real — show it. Only claim "equal" when both engines actually
+// computed; when only one ran (e.g. Stockfish is off in Play) drop "equal" so the tag
+// doesn't imply a comparison that didn't happen.
 function budgetTag(view: EngineDisagreementView): string {
-  const sfDepth = view.stockfish.status === 'computed' ? view.stockfish.result.depth : undefined;
-  const cvsDepth = view.cvs.status === 'computed' ? view.cvs.result.depth : undefined;
-  if (typeof sfDepth === 'number' && typeof cvsDepth === 'number') {
-    return sfDepth === cvsDepth ? `equal depth ${sfDepth}` : `SF d${sfDepth} · CVS d${cvsDepth}`;
-  }
-  if (typeof cvsDepth === 'number') return `CVS depth ${cvsDepth}`;
-  if (typeof sfDepth === 'number') return `SF depth ${sfDepth}`;
-  return budgetLabel(view.budget);
+  const bothRan = view.stockfish.status === 'computed' && view.cvs.status === 'computed';
+  return `${bothRan ? 'equal ' : ''}${budgetLabel(view.budget)}`;
 }
 
 function provenanceLine(slot: Extract<EngineSlot, { status: 'computed' }>): string {

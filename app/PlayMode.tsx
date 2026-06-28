@@ -442,9 +442,11 @@ export function PlayMode({
     const moves = history.map((h) => h.uci);
     const historyOk = moves.length > 0 && replayReachesFen(START_FEN, moves, fen);
     const t = setTimeout(() => {
+      // Equal-time comparison budget (movetime, ≥1000ms) — same as Analyze — so the
+      // disagreement card reflects a real timed search, NOT a hardcoded depth.
       analyzeWithCvsEngineRequest({
         fen,
-        depth: cvsHealth.depth,
+        budget: DEFAULT_ENGINE_COMPARISON_BUDGET,
         ...(historyOk ? { initialFen: START_FEN, moves } : {}),
       })
         .then((r) => { if (!cancelled) { setCvsAnalysis(r); setCvsError(undefined); } })
@@ -452,7 +454,7 @@ export function PlayMode({
         .finally(() => { if (!cancelled) setCvsBusy(false); });
     }, 60);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [fen, cvsHealth?.available, cvsHealth?.depth, history]);
+  }, [fen, cvsHealth?.available, history]);
 
   // The board overlay: the SAME mode-scoped lenses as the analysis view, applied
   // live to the current position. 'legal' doubles as the move-target hint; the
