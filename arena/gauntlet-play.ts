@@ -62,6 +62,8 @@ function parseArgs(argv: string[]): Cfg {
     else if (a === '--danger') cfg.danger = true;
     else if (a === '--cvs-movetime') cfg.cvsMovetimeMs = Number(next()) || null;
     else if (a === '--nnue') cfg.nnue = next();
+    else if (a === '--base') cfg.baseWeights = next();
+    else if (a === '--rung2') cfg.rung2Weights = next();
   }
   if (!cfg.output) {
     const d = new Date();

@@ -62,6 +62,7 @@ const ENGINE_VALUE_PATHS: Record<string, { base: string; rung2: string }> = {
   mixed: { base: 'arena/out/value-weights-mixed.json', rung2: 'arena/out/rung2-weights-mixed.json' },
   regression: { base: 'arena/out/value-weights.json', rung2: 'default' },
   ranking: { base: 'arena/out/value-weights-ranking.json', rung2: 'default' },
+  candidate: { base: 'arena/out/value-weights-cand.json', rung2: 'arena/out/rung2-weights-cand.json' },
 };
 
 const loadJson = <T,>(p: string, d: T): T => (p === 'default' ? d : (JSON.parse(readFileSync(p, 'utf8')) as T));

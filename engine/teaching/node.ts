@@ -250,8 +250,7 @@ export function proposeTeachingHypotheses(
       const conceptCode = `${pieceType}_multi_attack`;
       const id = `fork:${request.subjectMove}:${fork.moveUci}`;
       const involvedSquares = [
-        fork.forkingPiece.square,
-        ...fork.targets.map((t) => t.square),
+        ...new Set([fork.forkingPiece.square, ...fork.targets.map((t) => t.square)]),
       ].sort();
 
       const node: TeachingNode = {
@@ -308,10 +307,7 @@ export function proposeTeachingHypotheses(
     for (const pin of newPins) {
       const id = `pin:${request.subjectMove}:${pin.moveUci}`;
       const involvedSquares = [
-        pin.pinner.square,
-        pin.pinned.square,
-        pin.anchor.square,
-        ...pin.ray,
+        ...new Set([pin.pinner.square, pin.pinned.square, pin.anchor.square, ...pin.ray]),
       ].sort();
 
       const node: TeachingNode = {
@@ -373,7 +369,7 @@ export function proposeTeachingHypotheses(
 
     if (hazard) {
       const id = `failed_defense:${request.subjectMove}:${refutationUci}`;
-      const involvedSquares = [...hazard.squares].sort();
+      const involvedSquares = [...new Set(hazard.squares)].sort();
 
       const node: TeachingNode = {
         schemaVersion: TEACHING_NODE_SCHEMA_VERSION,

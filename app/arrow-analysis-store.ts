@@ -793,6 +793,130 @@ export function useArrowAnalysis(
     }
   };
 
+  // Surface a *new* alternative line — the next-best candidate move from this
+  // position — instead of deepening the existing one. We restrict the root
+  // search (UCI `searchmoves`) to the legal moves NOT already shown, so each
+  // press yields the next distinct line. Later plies use the best continuation.
+  const generateNextBestLine = async (requestedPlies: number) => {
+    const targetLength = Math.max(1, Math.min(12, Math.round(requestedPlies)));
+    const depth = stockfishReady ? 12 : (cvsHealth?.depth ?? 12);
+
+    const usedFirsts = new Set<string>();
+    for (const alt of alternatives) {
+      if (alt.rootFen === fen && alt.moves.length > 0) usedFirsts.add(alt.moves[0]!.uci);
+    }
+
+    let rootChess: Chess;
+    try {
+      rootChess = new Chess(fen);
+    } catch {
+      return;
+    }
+    const remaining = (
+      rootChess.moves({ verbose: true }) as Array<{ from: string; to: string; promotion?: string }>
+    )
+      .map((m) => `${m.from}${m.to}${m.promotion ?? ''}`)
+      .filter((uci) => !usedFirsts.has(uci));
+    if (remaining.length === 0) return; // every legal move is already represented
+
+    const id = `alt-${fen}-${Date.now()}`;
+    const jobKey = `${id}:next-best-line`;
+    activeKeysRef.current.add(jobKey);
+    setGeneratingBestLine(true);
+    setActiveAltId(id);
+    setAlternatives((prev) => [
+      ...prev,
+      {
+        id,
+        rootFen: fen,
+        moves: [],
+        source: 'best-line',
+        isAnalyzing: true,
+        scoreCp: 0,
+        mate: null,
+        pv: [],
+        depth: 0,
+        teachingNodes: [],
+        pinned: false,
+        revealed: true,
+      },
+    ]);
+
+    try {
+      // Best move among the not-yet-shown moves = the next-best line's first move.
+      const rootBest = await analyzeEngine(fen, depth, remaining.join(' '));
+      if (!activeKeysRef.current.has(jobKey)) return;
+      let nextUci: string | undefined = bestMoveUci(rootBest);
+      if (!nextUci) {
+        setAlternatives((prev) => prev.filter((x) => x.id !== id));
+        return;
+      }
+
+      const moves: AlternativeLineMove[] = [];
+      let currentFen = fen;
+      let firstMove = true;
+
+      while (moves.length < targetLength && nextUci && activeKeysRef.current.has(jobKey)) {
+        const best = firstMove ? rootBest : await analyzeEngine(currentFen, depth);
+        if (!activeKeysRef.current.has(jobKey)) return;
+        const candidate =
+          nextUci === bestMoveUci(best) ? best : await analyzeEngine(currentFen, depth, nextUci);
+        if (!activeKeysRef.current.has(jobKey)) return;
+
+        const from = nextUci.slice(0, 2) as Square;
+        const to = nextUci.slice(2, 4) as Square;
+        const promotion = nextUci.slice(4) || undefined;
+        if (!isMoveLegal(currentFen, from, to, promotion)) break;
+
+        const fenAfter = getPositionAfterMove(currentFen, nextUci);
+        if (!fenAfter) break;
+
+        moves.push({
+          uci: nextUci,
+          san: getMoveSan(currentFen, from, to, promotion),
+          origin: 'engine',
+          from,
+          to,
+          promotion,
+          fenBefore: currentFen,
+          fenAfter,
+          scoreCp: candidate.scoreCp,
+          mate: candidate.mate,
+          ...classifyAlternativeMove(currentFen, nextUci, best, candidate),
+        });
+
+        currentFen = fenAfter;
+        firstMove = false;
+        setAlternatives((prev) =>
+          prev.map((x) =>
+            x.id === id
+              ? { ...x, moves: [...moves], scoreCp: rootBest.scoreCp, mate: rootBest.mate, depth: candidate.depth }
+              : x,
+          ),
+        );
+
+        if (legalMoveCount(currentFen) === 0) break;
+        const nextBest = await analyzeEngine(currentFen, depth);
+        if (!activeKeysRef.current.has(jobKey)) return;
+        nextUci = bestMoveUci(nextBest);
+      }
+
+      setAlternatives((prev) =>
+        prev.map((x) =>
+          x.id === id
+            ? { ...x, isAnalyzing: false, scoreCp: rootBest.scoreCp, mate: rootBest.mate, depth: rootBest.depth }
+            : x,
+        ),
+      );
+    } catch (err) {
+      logger.error('Next best line generation failed:', err);
+      setAlternatives((prev) => prev.map((x) => (x.id === id ? { ...x, isAnalyzing: false } : x)));
+    } finally {
+      activeKeysRef.current.delete(jobKey);
+      setGeneratingBestLine(false);
+    }
+  };
+
   const refuteLine = async (id: string) => {
     const alt = alternatives.find((x) => x.id === id);
     if (!alt) return;
@@ -927,6 +1051,7 @@ export function useArrowAnalysis(
     deleteMove,
     deepenAlternative,
     generateBestLine,
+    generateNextBestLine,
     generatingBestLine,
     refuteLine,
     toggleReveal,

@@ -96,6 +96,23 @@ export function seeOnSquareBoard(board: Board, square: Square): SEEResult {
 }
 
 /**
+ * Static Exchange Evaluation of OCCUPYING an (empty) `square`: the material `side`
+ * would LOSE by moving its least-valuable attacker onto it, i.e. the opponent's
+ * best capture sequence against that piece.
+ *   0   → `side` can occupy the square safely (it controls / shares it)
+ *   > 0 → the opponent controls it; this is what `side` loses by contesting
+ *   null → `side` has no attacker of the square (cannot contest it at all)
+ * Full SEE — handles any depth of attackers/defenders and their values in one pass.
+ */
+export function occupationLoss(board: Board, square: string, side: Color): number | null {
+  const lva = leastValuableAttacker(board, square, side, new Set());
+  if (!lva) return null;
+  // `side`'s LVA has moved onto `square`; the opponent now tries to win it.
+  const ignore = new Set<string>([lva.square]);
+  return seeRec(board, square, other(side), PIECE_VALUE[lva.type], ignore);
+}
+
+/**
  * Poisoned captures (UC2) — moves that are physically legal but tactically
  * unsafe: the capture wins a piece that is defended, so SEE on the move is
  * negative for the mover. "Qxc2 ?? …Bxc2" — legal, but loses the queen.

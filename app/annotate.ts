@@ -31,7 +31,9 @@ export function selectionArrows(fen: string, selected: Square, cascade = true): 
     const key = `${from}>${to}:${color}:${dashed ? 'd' : 's'}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ from, to, color, dashed });
+    // Dashed selection arrows are the cascade (next-hop context) — render weak so
+    // the direct attackers/defenders of the selection lead visually.
+    out.push({ from, to, color, dashed, weak: dashed });
   };
 
   // Level 1 — direct relations of the selection.
@@ -94,7 +96,8 @@ export function emptySquareArrows(fen: string, square: Square): Arrow[] {
   const add = (from: Square, color: string, dashed = false) => {
     if (seen.has(from)) return; // one arrow per source piece (mover wins over control)
     seen.add(from);
-    out.push({ from, to: square, color, dashed });
+    // Dashed = "controls but can't occupy" — secondary to the solid movers.
+    out.push({ from, to: square, color, dashed, weak: dashed });
   };
 
   // Side-to-move pieces that can legally land here → solid green ("can move here").

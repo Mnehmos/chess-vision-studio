@@ -11,6 +11,7 @@ export interface Arrow {
   dashed?: boolean;
   move?: boolean; // the played move — subtle slate, thin, small arrowhead
   dim?: boolean; // de-emphasized (focus mode)
+  weak?: boolean; // secondary/cascade context — rendered thin + faint so primaries lead
   pulse?: boolean;
   promotion?: string;
   deletable?: boolean;
@@ -22,10 +23,10 @@ export interface Arrow {
 //   orange = tactical candidate / threat line (numbered for call-and-response)
 //   slate  = the move that was just PLAYED (so "moved here" never reads as "attacks here")
 export const ARROW = {
-  defend: '#2f855a', // green
-  attack: '#c53030', // red
-  tactical: '#dd6b20', // orange
-  move: '#4a5568', // slate — the played move
+  defend: '#5fa05f', // green — matches the Defense overlay
+  attack: '#cc5a4d', // danger red — matches the Threat overlay
+  tactical: '#d98a3d', // warm orange — calculated / tactical line
+  move: '#57534e', // warm slate (stone-600) — the played move
 };
 
 const CELL = 56;
@@ -102,6 +103,10 @@ export function BoardArrows({
           a.color === '#1a1a1a' || a.color === 'black'
             ? 'rgba(255, 255, 255, 0.7)'
             : 'rgba(16, 24, 40, 0.35)';
+        // Visual hierarchy: primary relations lead; weak (cascade) context recedes
+        // to a thin faint line; the played move stays subtle.
+        const w = a.move ? 2.5 : a.weak ? 2 : 3.5;
+        const op = a.dim ? 0.16 : a.move ? 0.5 : a.weak ? 0.42 : 0.85;
         return (
           <g key={i}>
             {/* Outline line to ensure high contrast against any light/dark board square */}
@@ -111,8 +116,8 @@ export function BoardArrows({
               x2={x2}
               y2={y2}
               stroke={outlineColor}
-              strokeWidth={(a.move ? 3 : 4) + 1.5}
-              strokeOpacity={a.dim ? 0.18 : a.move ? 0.5 : 0.85}
+              strokeWidth={w + 1.2}
+              strokeOpacity={op * 0.9}
               strokeLinecap="round"
               strokeDasharray={a.dashed ? '6 5' : undefined}
             />
@@ -122,11 +127,11 @@ export function BoardArrows({
               x2={x2}
               y2={y2}
               stroke={a.color}
-              strokeWidth={a.move ? 3 : 4}
-              strokeOpacity={a.dim ? 0.18 : a.move ? 0.5 : 0.85}
+              strokeWidth={w}
+              strokeOpacity={op}
               strokeLinecap="round"
               strokeDasharray={a.dashed ? '6 5' : undefined}
-              markerEnd={`url(#ah${a.move ? 's' : ''}-${a.color.replace('#', '')})`}
+              markerEnd={`url(#ah${a.move || a.weak ? 's' : ''}-${a.color.replace('#', '')})`}
             />
             {a.deletable && onArrowRightClick && (
               <line

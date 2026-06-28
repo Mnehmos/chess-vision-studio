@@ -7,6 +7,9 @@ export interface ElementGifOptions {
   frameCount: number;
   filename: string;
   setFrame: (index: number) => void;
+  // Runs after the frame has painted but BEFORE it is rasterized — e.g. to pin a
+  // nested scroll container to the bottom so the captured image reflects it.
+  beforeCapture?: (index: number) => void;
   delayMs?: number;
   pixelRatio?: number;
   backgroundColor?: string;
@@ -74,6 +77,7 @@ export async function exportElementGif({
   frameCount,
   filename,
   setFrame,
+  beforeCapture,
   delayMs = 850,
   pixelRatio = 1,
   backgroundColor = '#15120f',
@@ -85,6 +89,7 @@ export async function exportElementGif({
   for (let i = 0; i < frameCount; i += 1) {
     setFrame(i);
     await waitForPaint();
+    beforeCapture?.(i);
 
     const fullCanvas = await toCanvas(element, {
       cacheBust: true,

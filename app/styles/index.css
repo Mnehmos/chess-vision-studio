@@ -1,30 +1,73 @@
 :root {
   color-scheme: dark;
-  --bg: #020617;
+
+  /* ── Mnehmos design system — stone neutral scale ───────────────── */
+  --stone-50: #fafaf9;
+  --stone-100: #f5f5f4;
+  --stone-200: #e7e5e4;
+  --stone-300: #d6d3d1;
+  --stone-400: #a8a29e;
+  --stone-500: #78716c;
+  --stone-600: #57534e;
+  --stone-700: #44403c;
+  --stone-800: #292524;
+  --stone-900: #1c1917;
+  --stone-950: #0c0a09;
+
+  /* copper accent + gold spark */
+  --copper: #b87333;
+  --copper-light: #d4956a;
+  --copper-dark: #a06429;
+  --gold: #fcd34d;
+
+  /* status */
+  --success: #5fa05f;
+  --info: #5b8fc7;
+  --danger: #cc5a4d;
+
+  /* ── semantic roles (mockup var names) ─────────────────────────── */
+  --surface: var(--stone-900);
+  --surface-sunken: var(--stone-950);
+  --border-subtle: var(--stone-800);
+  --border-strong: var(--stone-700);
+  --text-strong: var(--stone-50);
+  --text-body: var(--stone-300);
+  --text-muted: var(--stone-400);
+  --text-faint: var(--stone-600);
+  --accent-contrast: #fff;
+  --accent-hover: var(--copper-light);
+  --accent-soft: rgba(184, 115, 51, 0.14);
+
+  /* type */
+  --font-display: "Space Grotesk", Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-body: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* ── legacy token aliases — remapped onto the warm system ──────── */
+  --bg: var(--stone-950);
   --page-bg:
-    radial-gradient(circle at 22% 0%, rgba(37, 99, 235, 0.18), transparent 34rem),
-    radial-gradient(circle at 88% 12%, rgba(139, 92, 246, 0.14), transparent 28rem),
-    linear-gradient(145deg, #0f172a 0%, #07111f 46%, #020617 100%);
-  --card: rgba(15, 23, 42, 0.78);
-  --card2: rgba(30, 41, 59, 0.72);
-  --track: rgba(51, 65, 85, 0.76);
-  --border: rgba(148, 163, 184, 0.2);
-  --glass-bg: rgba(255, 255, 255, 0.035);
-  --glass-border: rgba(255, 255, 255, 0.09);
-  --text: #f5f2ea;
-  --text-soft: #d7d0c3;
-  --muted: #9aa7b7;
-  --accent: #d08b45;
-  --accent-light: #f0b86d;
-  --stockfish: #38bdf8;
-  --cvs: #a78bfa;
-  --good: #4ade80;
-  --bad: #fb7185;
-  --warn: #fbbf24;
-  --accent-glow: 0 0 18px rgba(56, 189, 248, 0.24);
-  --panel-shadow: 0 18px 55px rgba(2, 6, 23, 0.38);
+    radial-gradient(circle at 50% -8%, rgba(184, 115, 51, 0.06), transparent 38rem),
+    var(--stone-950);
+  --card: var(--surface);
+  --card2: var(--stone-800);
+  --track: var(--stone-800);
+  --border: var(--border-subtle);
+  --glass-bg: rgba(255, 255, 255, 0.025);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --text: var(--text-strong);
+  --text-soft: var(--text-body);
+  --muted: var(--text-muted);
+  --accent: var(--copper);
+  --accent-light: var(--copper-light);
+  --stockfish: var(--info);
+  --cvs: #9662a8;
+  --good: var(--success);
+  --bad: var(--danger);
+  --warn: var(--gold);
+  --accent-glow: 0 4px 12px rgba(184, 115, 51, 0.15);
+  --panel-shadow: 0 14px 38px rgba(0, 0, 0, 0.5);
   --transition-smooth: 160ms cubic-bezier(0.4, 0, 0.2, 1);
-  --mono: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --mono: var(--font-mono);
 }
 
 html,
@@ -41,7 +84,7 @@ body {
 
 body {
   color: var(--text);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   letter-spacing: 0;
 }
 
@@ -55,11 +98,17 @@ section {
 
 section h2 {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--accent);
+}
+
+/* Mnehmos signature eyebrow: copper, mono, prefixed with `//`. */
+section h2::before {
+  content: "// ";
+  opacity: 0.7;
 }
 
 h1,
@@ -172,6 +221,37 @@ select {
   animation: csvBlink 0.8s steps(2, start) infinite;
 }
 
+/* Hanging (SEE) ring: a coloured outline inset from the square edge, plus a
+   faint inner wash so an empty danger square still reads. */
+.board2d__ring {
+  position: absolute;
+  inset: 3px;
+  border: 2.5px solid var(--ring-color, #cc5a4d);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ring-color, #cc5a4d) 12%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.board2d__ring.is-blinking {
+  animation: csvBlink 0.8s steps(2, start) infinite;
+}
+
+.board2d__badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0 2px;
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: calc(var(--cvs-sq) * 0.12);
+  font-weight: 600;
+  line-height: 1.4;
+  opacity: 0.9;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
 .board2d__coord {
   position: absolute;
   color: #333;
@@ -190,11 +270,20 @@ select {
 
 .board2d__piece {
   position: relative;
+  z-index: 2;
+  width: calc(var(--cvs-sq) * 0.92);
+  height: calc(var(--cvs-sq) * 0.92);
   cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
 }
 
 .board2d__piece.is-draggable {
   cursor: grab;
+  pointer-events: auto;
+  -webkit-user-drag: element;
 }
 
 .board2d__promotion {
@@ -219,7 +308,11 @@ select {
   padding: 0;
   border: 0;
   background: none;
-  font-size: calc(var(--cvs-sq) * 0.55);
+}
+
+.board2d__promotion-piece img {
+  width: 80%;
+  height: 80%;
 }
 
 .board-arrows {
@@ -482,7 +575,10 @@ select {
 .app-shell__inner {
   max-width: 1500px;
   margin: 0 auto;
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) prevents horizontal overflow WITHOUT establishing a
+     scroll container — `hidden` here would coerce overflow-y to auto and break
+     the sticky side rails (they'd stick to this box instead of the viewport). */
+  overflow-x: clip;
   padding: 20px clamp(10px, 3vw, 24px) 56px;
 }
 
@@ -494,10 +590,18 @@ select {
   gap: 14px;
   padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 14px;
   background: var(--card);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   color: var(--text-soft);
+  /* Follow the scroll like the mockup's left rail instead of leaving the column
+     empty under the tall board/review content. Internal scroll guards a short
+     viewport. align-self:start keeps it from stretching to the grid row height. */
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
 }
@@ -643,10 +747,31 @@ select {
 
 .teaching-log__list {
   display: flex;
-  max-height: 360px;
+  /* Grow to use the available vertical space (taller than the old fixed 360px),
+     but cap near the board's height so the Engine / Coach panels below stay on
+     screen; a long game scrolls inside instead of stretching the page. */
+  max-height: clamp(320px, calc(100vh - 240px), 640px);
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden; /* never a horizontal scrollbar — content wraps instead */
+  overflow-anchor: none; /* don't let the browser shift scroll as the bottom card grows */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.teaching-log__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.teaching-log__list::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 8px;
+}
+
+.teaching-log__list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .teaching-log__earlier {
@@ -662,10 +787,13 @@ select {
 }
 
 .teaching-log-row {
+  position: relative; /* anchor the eval bar to the top-right corner */
   padding: 6px 9px;
   border-left: 3px solid var(--accent);
   border-radius: 6px;
   background: var(--card2);
+  min-width: 0; /* allow the row to shrink so its text wraps, not overflows */
+  overflow-wrap: anywhere;
 }
 
 .teaching-log-row__header {
@@ -673,8 +801,21 @@ select {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  /* Reserve room so the move/badge wrap to the LEFT of the pinned eval instead of
+     under it; the eval no longer joins the wrapping flow and can't land between
+     the header and the body. */
+  padding-right: 74px;
   margin-bottom: 4px;
   font-size: 12px;
+}
+
+/* Pin the position eval to the row's top-right corner — out of the header's
+   wrap flow, so it never overlaps the teaching body. */
+.teaching-log-row__eval {
+  position: absolute;
+  top: 6px;
+  right: 9px;
+  margin-left: 0;
 }
 
 .teaching-log-row__label {
@@ -686,9 +827,6 @@ select {
   font-family: var(--mono);
 }
 
-.teaching-log-row__eval {
-  margin-left: auto;
-}
 
 .teaching-log-row__analyzing {
   color: var(--muted);
@@ -3310,6 +3448,22 @@ select {
   text-transform: uppercase;
 }
 
+/* Unify the card eyebrows to the Mnehmos copper `//` signature. Placed after the
+   individual kicker rules so it wins by source order. The app-header subtitle is
+   deliberately excluded — it reads as a tagline, not a card label. */
+.teaching-panel__kicker,
+.teaching-log__kicker,
+.preview-teaching-card__kicker {
+  color: var(--accent);
+}
+
+.teaching-panel__kicker::before,
+.teaching-log__kicker::before,
+.preview-teaching-card__kicker::before {
+  content: "// ";
+  opacity: 0.7;
+}
+
 .teaching-panel__state,
 .teaching-panel__empty,
 .teaching-panel__summary {
@@ -3430,7 +3584,7 @@ select {
 
 .cvs-workspace {
   display: grid;
-  grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 340px) minmax(280px, 1fr);
+  grid-template-columns: minmax(168px, 220px) minmax(0, 560px) minmax(300px, 340px) minmax(260px, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -3442,7 +3596,7 @@ select {
 .cvs-gif-capture {
   grid-column: 2 / span 2;
   display: grid;
-  grid-template-columns: minmax(0, 480px) minmax(300px, 340px);
+  grid-template-columns: minmax(0, 560px) minmax(300px, 340px);
   gap: 20px;
   align-items: start;
   justify-self: stretch;
@@ -3464,6 +3618,13 @@ select {
   gap: 16px;
   min-width: 0;
   min-height: 0;
+  /* Sticky in the wide 4-column layout; reset to static at ≤1380 where it wraps
+     to a full-width row below the board (see media query). */
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .analysis-detail-column {
@@ -3475,18 +3636,24 @@ select {
 
 .analysis-board-card {
   width: 100%;
-  max-width: 480px;
-  padding: 12px;
+  max-width: 560px;
+  padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   background: var(--card);
   box-shadow: var(--panel-shadow);
 }
 
 .analysis-board-stage {
   position: relative;
-  width: max-content;
-  max-width: 100%;
+  /* Fill the card and act as a size container so the board can be sized as a
+     fraction of the available width (12.5cqw = 1/8). This keeps the square grid,
+     the overlay tints, and the arrow SVG all on the SAME coordinate space — no
+     overflow, no arrow drift — while still growing to the 64px cap on wide columns. */
+  width: 100%;
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
 }
 
 .analysis-mode-bar {
@@ -3569,9 +3736,16 @@ select {
 }
 
 .analysis-promotion-overlay__piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 42px;
-  padding: 8px 0;
-  text-transform: uppercase;
+  padding: 6px 0;
+}
+
+.analysis-promotion-overlay__piece img {
+  width: 30px;
+  height: 30px;
 }
 
 .analysis-promotion-overlay__cancel {
@@ -4012,6 +4186,18 @@ select {
   background: transparent;
 }
 
+.alternative-lines__button--solidify {
+  border-color: var(--copper, #b87333);
+  background: var(--copper, #b87333);
+  color: #fff;
+}
+
+.alternative-lines__button--solidify:disabled {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
 .alternative-lines__button--delete {
   border-color: var(--bad);
   background: transparent;
@@ -4436,12 +4622,19 @@ select {
 }
 
 .play-promotion-overlay__piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
   border-radius: 8px;
   background: var(--card);
-  font-size: 30px;
   line-height: 1;
+}
+
+.play-promotion-overlay__piece img {
+  width: 34px;
+  height: 34px;
 }
 
 .play-mode-legend {
@@ -4780,12 +4973,12 @@ select {
 
 @media (max-width: 1380px) {
   .cvs-workspace {
-    grid-template-columns: minmax(168px, 220px) minmax(0, 480px) minmax(300px, 1fr);
+    grid-template-columns: minmax(168px, 210px) minmax(0, 560px) minmax(300px, 1fr);
   }
 
   .cvs-gif-capture {
     grid-column: 2 / span 2;
-    grid-template-columns: minmax(0, 480px) minmax(300px, 1fr);
+    grid-template-columns: minmax(0, 560px) minmax(300px, 1fr);
   }
 
   .cvs-gif-capture--play {
@@ -4795,6 +4988,9 @@ select {
 
   .cvs-side-column {
     grid-column: 2 / span 2;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .play-side-column {

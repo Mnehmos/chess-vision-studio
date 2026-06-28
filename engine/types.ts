@@ -235,4 +235,13 @@ export type LedColor =
 export interface LedMap {
   mode: string;
   squares: Record<Square, LedColor>; // all 64
+  // Optional per-square strength (e.g. attacker count). When present, the React
+  // board graduates the overlay opacity by it so a lightly-held square reads
+  // faint and a heavily-contested one reads strong — instead of one flat tint
+  // across the whole board. The LED twin ignores it; absence = uniform opacity.
+  intensity?: Record<Square, number>;
+  // Optional per-square short label (e.g. SEE swing "+3" or attacker-vs-defender
+  // ratio "3v1"). Hanging (SEE) mode renders these as a corner badge on the ring
+  // so the danger reads quantitatively — including on EMPTY threatened squares.
+  badges?: Record<Square, string>;
 }

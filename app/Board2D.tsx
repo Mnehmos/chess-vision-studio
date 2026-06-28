@@ -6,25 +6,16 @@ import { parseFen } from '../engine/board';
 import type { LedMap, Square } from '../engine/types';
 import { LED_CSS } from './modes';
 import { BoardArrows, type Arrow } from './BoardArrows';
+import { pieceSvg, pieceLabel } from './piece-set';
 import { useState, type CSSProperties } from 'react';
 
-const GLYPH: Record<string, string> = {
-  wP: '♙',
-  wN: '♘',
-  wB: '♗',
-  wR: '♖',
-  wQ: '♕',
-  wK: '♔',
-  bP: '♟',
-  bN: '♞',
-  bB: '♝',
-  bR: '♜',
-  bQ: '♛',
-  bK: '♚',
-};
+// Warm neutral squares so the colored control overlays read clearly on top.
+const LIGHT = '#e4dccb';
+const DARK = '#a3917a';
 
-const LIGHT = '#ebe6d6';
-const DARK = '#9b8b6b';
+// Graduated overlay strength: a single attacker is faint (0.16), each extra
+// holder ramps it up, capped so a hot square never fully hides the board.
+const ledOpacity = (n: number) => Math.min(0.16 + (n - 1) * 0.1, 0.5);
 
 export function Board2D({
   legalDots,
@@ -160,7 +151,7 @@ export function Board2D({
   }
 
   const boardStyle = {
-    ['--cvs-sq' as string]: squareSizeCss ?? 'clamp(34px, calc((100vw - 40px) / 8), 56px)',
+    ['--cvs-sq' as string]: squareSizeCss ?? 'clamp(36px, calc((100vw - 40px) / 8), 56px)',
   } as CSSProperties;
 
   const promoStyle: CSSProperties = {
@@ -207,23 +198,38 @@ export function Board2D({
               }
               style={{
                 background: base,
-                color: piece?.color === 'w' ? '#fff' : '#111',
-                textShadow: piece?.color === 'w' ? '0 0 2px #000' : 'none',
-                boxShadow: isSel ? 'inset 0 0 0 3px #16a' : undefined,
+                boxShadow: isSel ? 'inset 0 0 0 3px var(--accent)' : undefined,
               }}
               className="board2d__square"
             >
               {legalDots?.includes(sq) && (
                 <span className={`board2d__legal-dot${piece ? ' is-capture' : ''}`} />
               )}
-              {led !== 'off' && (
-                <span
-                  className={`board2d__led${led === 'red_blink' ? ' is-blinking' : ''}`}
-                  style={{
-                    background: LED_CSS[led],
-                  }}
-                />
-              )}
+              {led !== 'off' &&
+                (ledMap.mode === 'hanging' ? (
+                  // Hanging (SEE): a coloured ring + count badge reads more
+                  // precisely than a fill and survives several at once.
+                  <span
+                    className={`board2d__ring${led === 'red_blink' ? ' is-blinking' : ''}`}
+                    style={{ ['--ring-color' as string]: LED_CSS[led] } as CSSProperties}
+                  >
+                    {ledMap.badges?.[sq] && (
+                      <span className="board2d__badge" style={{ background: LED_CSS[led] }}>
+                        {ledMap.badges[sq]}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span
+                    className={`board2d__led${led === 'red_blink' ? ' is-blinking' : ''}`}
+                    style={{
+                      background: LED_CSS[led],
+                      // Graduate strength by attacker count when the mode supplies
+                      // it: a lone controller reads faint, a contested square strong.
+                      opacity: ledMap.intensity?.[sq] != null ? ledOpacity(ledMap.intensity[sq]) : undefined,
+                    }}
+                  />
+                ))}
               {f === leftFile && (
                 <span className="board2d__coord board2d__coord--rank">
                   {r + 1}
@@ -235,7 +241,9 @@ export function Board2D({
                 </span>
               )}
               {piece && (
-                <span
+                <img
+                  src={pieceSvg(piece.color, piece.type)}
+                  alt={pieceLabel(piece.color, piece.type)}
                   draggable={dragOn || undefined}
                   onDragStart={
                     dragOn
@@ -247,9 +255,7 @@ export function Board2D({
                       : undefined
                   }
                   className={`board2d__piece${dragOn ? ' is-draggable' : ''}`}
-                >
-                  {GLYPH[piece.color + piece.type.toUpperCase()]}
-                </span>
+                />
               )}
             </div>
           );
@@ -258,25 +264,21 @@ export function Board2D({
       </div>
       {promotionPending && (
         <div className="board2d__promotion" style={promoStyle}>
-          {['q', 'r', 'b', 'n'].map((piece) => {
-            const pieceCode = promoColor + piece.toUpperCase();
-            return (
-              <button
-                key={piece}
-                onClick={() => {
-                  onArrowDrawn?.(promotionPending.from, promotionPending.to, piece);
-                  setPromotionPending(null);
-                }}
-                style={{
-                  color: promoColor === 'w' ? '#fff' : '#111',
-                  textShadow: promoColor === 'w' ? '0 0 2px #000' : 'none',
-                }}
-                className="board2d__promotion-piece"
-              >
-                {GLYPH[pieceCode]}
-              </button>
-            );
-          })}
+          {['q', 'r', 'b', 'n'].map((piece) => (
+            <button
+              key={piece}
+              onClick={() => {
+                onArrowDrawn?.(promotionPending.from, promotionPending.to, piece);
+                setPromotionPending(null);
+              }}
+              className="board2d__promotion-piece"
+            >
+              <img
+                src={pieceSvg(promoColor as 'w' | 'b', piece)}
+                alt={pieceLabel(promoColor as 'w' | 'b', piece)}
+              />
+            </button>
+          ))}
         </div>
       )}
       <BoardArrows arrows={mergedArrows} orientation={orientation} onArrowRightClick={onArrowRightClick} />

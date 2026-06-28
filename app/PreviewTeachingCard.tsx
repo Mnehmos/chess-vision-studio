@@ -23,10 +23,21 @@ function qualityLabel(move: AlternativeLineMove): string {
   }
 }
 
-function formatEval(move: AlternativeLineMove): string {
-  if (move.mate !== undefined && move.mate !== null) return `M${move.mate}`;
+// move.scoreCp / move.mate are from the MOVER's POV, so they flip sign every ply.
+// Normalize to White (like the main teaching log) so the line reads as a steady
+// "who's winning" number instead of flip-flopping.
+function moverIsWhite(move: AlternativeLineMove): boolean {
+  return move.fenBefore.split(' ')[1] === 'w';
+}
+
+export function formatEval(move: AlternativeLineMove): string {
+  const sign = moverIsWhite(move) ? 1 : -1;
+  if (move.mate !== undefined && move.mate !== null) {
+    const m = move.mate * sign;
+    return `${m >= 0 ? 'M' : 'M-'}${Math.abs(m)}`;
+  }
   if (move.scoreCp === undefined) return '';
-  const pawns = move.scoreCp / 100;
+  const pawns = (move.scoreCp * sign) / 100;
   return `${pawns > 0 ? '+' : ''}${pawns.toFixed(2)}`;
 }
 

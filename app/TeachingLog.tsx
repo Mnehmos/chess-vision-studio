@@ -116,15 +116,23 @@ export function TeachingLog({
     if (scrollRef) scrollRef.current = node;
   };
 
+  // Keep the newest row pinned to the bottom. The teaching cards render a summary
+  // first and grow taller once the on-demand facts arrive, so a one-shot scroll
+  // would leave the latest move below the fold. A MutationObserver re-pins on every
+  // content change, and the effect re-runs on each new move (and when the list
+  // first mounts at view 0). `overflow-anchor: none` on the list (CSS) stops the
+  // browser's scroll-anchoring from fighting the pin as the bottom card grows.
   useEffect(() => {
     const node = scrollRef?.current ?? internalScrollRef.current;
     if (!node) return;
-    if (typeof node.scrollTo === 'function') {
-      node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
-    } else {
+    const pin = () => {
       node.scrollTop = node.scrollHeight;
-    }
-  }, [log.length, latestPly, thinking, focusedId, scrollRef]);
+    };
+    pin();
+    const observer = new MutationObserver(pin);
+    observer.observe(node, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [scrollRef, log.length, latestPly, thinking, focusedId]);
 
   const labelFor = (turn: CoachTurn) =>
     bothSides ? (turn.side === 'w' ? 'White' : 'Black') : turn.who === 'you' ? 'You' : coachName ?? 'Coach';

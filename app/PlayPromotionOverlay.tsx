@@ -1,10 +1,7 @@
 import type { Square } from '../engine/types';
+import { pieceSvg, pieceLabel } from './piece-set';
 
 const PROMO_PIECES = ['q', 'r', 'n', 'b'] as const;
-const PROMO_GLYPH: Record<'w' | 'b', Record<(typeof PROMO_PIECES)[number], string>> = {
-  w: { q: '\u2655', r: '\u2656', n: '\u2658', b: '\u2657' },
-  b: { q: '\u265b', r: '\u265c', n: '\u265e', b: '\u265d' },
-};
 
 export function PlayPromotionOverlay({
   promo,
@@ -28,7 +25,7 @@ export function PlayPromotionOverlay({
             onClick={() => onPromote(piece)}
             className="play-promotion-overlay__piece"
           >
-            {PROMO_GLYPH[turn][piece]}
+            <img src={pieceSvg(turn, piece)} alt={pieceLabel(turn, piece)} />
           </button>
         ))}
       </div>

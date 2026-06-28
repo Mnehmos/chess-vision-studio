@@ -3,6 +3,7 @@
 // What-Changed matches the ply's MoveAnalysis.
 import { describe, it, expect } from 'vitest';
 import { computeLedMap, allSquares, type ModeId } from '../led';
+import { parseFen } from '../board';
 import type { MoveAnalysis } from '../types';
 
 const G4_FEN = 'r3r1k1/ppp2ppp/5q2/3p4/3N2n1/3BP3/PPP2PPP/R2Q1RK1 w - - 4 15';
@@ -18,14 +19,56 @@ describe('M7 — every mode yields all 64 squares', () => {
 });
 
 describe('M7 — Hanging mode flags the loose g4 knight (before 15.Qxg4)', () => {
-  it('paints g4 red (SEE-losing)', () => {
+  it('paints g4 blue — White wins the exchange (SEE +3 for White)', () => {
     const map = computeLedMap('hanging', { fen: G4_FEN });
-    expect(map.squares['g4']).toBe('red'); // SEE +3 for White
+    expect(map.squares['g4']).toBe('blue'); // White is winning the exchange → blue
   });
   it('does not paint a safe, defended pawn red', () => {
     const map = computeLedMap('hanging', { fen: G4_FEN });
     expect(map.squares['a2']).not.toBe('red');
     expect(map.squares['a2']).not.toBe('red_blink');
+  });
+  it('attaches a SEE / ratio badge to a flagged piece', () => {
+    const map = computeLedMap('hanging', { fen: G4_FEN });
+    expect(map.badges?.['g4']).toBeTruthy(); // "+3" SEE swing on the losing knight
+  });
+  it('flags an EMPTY break-in square with the points won if the opponent contests (Qxh7# geometry)', () => {
+    // N g5 + B d3 (value 3) and Q h5 hit h7; only Kg8 (capped to 9) guards it.
+    // White contests with the cheaper piece (3 < 9) → White controls → blue, and
+    // wins Black's cheapest committed piece (the king, capped 9) → "+9".
+    const mate = 'r1bq1rk1/pppn1pp1/4p3/6NQ/3P4/3B1R2/PPP3PP/4R1K1 w - - 0 1';
+    const map = computeLedMap('hanging', { fen: mate });
+    expect(map.squares['h7']).toBe('blue'); // White's cheaper attacker controls it
+    expect(map.badges?.['h7']).toBe('+9'); // points won if Black contests
+  });
+  it('badges a piece by MATERIAL points, not piece count — queen for a knight is +6, not "1v1"', () => {
+    // Black Qd5 attacked once (Nf4) and defended once (Nf6): "1 vs 1" by count,
+    // but White wins a queen for a knight → SEE +6, coloured blue (White wins).
+    const fen = 'k7/8/5n2/3q4/5N2/8/8/K7 w - - 0 1';
+    const map = computeLedMap('hanging', { fen });
+    expect(map.squares['d5']).toBe('blue'); // White is winning the exchange
+    expect(map.badges?.['d5']).toBe('+6'); // material points, never "1v1"
+  });
+  it('shows a true standoff (equal cheapest value AND count) as purple with no winner', () => {
+    // Pd3 (White) and Pf5 (Black) both hit e4: pawn vs pawn, neither invests less.
+    const fen = 'k7/8/8/5p2/8/3P4/8/K7 w - - 0 1';
+    const map = computeLedMap('hanging', { fen });
+    expect(map.squares['e4']).toBe('purple'); // contested standoff stays shown
+    expect(map.badges?.['e4']).toBe('0'); // neutral eval gets an explicit 0 indicator
+  });
+  it('focused view = pieces only: keeps the hanging piece, drops empty-square analysis', () => {
+    // g4 (black knight, occupied) is a piece signal; the board also has empty
+    // contested squares in the full view. Focused keeps the piece, hides the rest.
+    const full = computeLedMap('hanging', { fen: G4_FEN, seeDetail: 'full' });
+    const focused = computeLedMap('hanging', { fen: G4_FEN, seeDetail: 'focused' });
+    expect(focused.squares['g4']).toBe(full.squares['g4']); // occupied piece kept
+    expect(focused.squares['g4']).not.toBe('off');
+    // every still-lit square in focused must be occupied (no empty-square rings)
+    for (const [sq, color] of Object.entries(focused.squares)) {
+      if (color === 'off') continue;
+      const [f, r] = [sq.charCodeAt(0) - 97, sq.charCodeAt(1) - 49];
+      expect(parseFen(G4_FEN).grid[f][r]).toBeTruthy();
+    }
   });
 });
 
@@ -92,14 +135,20 @@ describe('M7 — What Changed mode matches the ply MoveAnalysis', () => {
 });
 
 describe('M7 — Threat & Defense modes show BOTH sides with per-side schemes', () => {
-  it('threat map: White=blue, Black=red, contested=purple, king zones in darker team shades', () => {
+  it('threat map: White=blue, Black=red, contested=purple, graduated by attacker count', () => {
     const map = computeLedMap('threat', { fen: G4_FEN });
     const colors = new Set(Object.values(map.squares));
     expect(colors.has('blue')).toBe(true); // White controls
-    expect(colors.has('red')).toBe(true); // Black controls (base color)
+    expect(colors.has('red')).toBe(true); // Black controls
     expect(colors.has('purple')).toBe(true); // contested
-    // both kings have enemy pressure in this sharp position → darker team shades
-    expect(colors.has('dark_blue') || colors.has('dark_red')).toBe(true);
+    // King-zone squares are no longer singled out — control heat carries it.
+    expect(colors.has('dark_blue') || colors.has('dark_red')).toBe(false);
+    // Intensity is populated for every tinted square (≥1 attacker) and absent for empty ones.
+    expect(map.intensity).toBeDefined();
+    for (const [sq, color] of Object.entries(map.squares)) {
+      if (color === 'off') expect(map.intensity![sq]).toBeUndefined();
+      else expect(map.intensity![sq]).toBeGreaterThanOrEqual(1);
+    }
   });
   it('defense map: White=blue/yellow, Black=green/orange', () => {
     const map = computeLedMap('defense', { fen: G4_FEN });
