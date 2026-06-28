@@ -44,6 +44,9 @@ import { FactsPanel } from './FactsPanel';
 import { MoveReviewCard } from './MoveReviewCard';
 import { EngineDisagreementCard } from './EngineDisagreementCard';
 import { EngineInternalsPanel } from './EngineInternalsPanel';
+import { PositionHazardsPanel } from './PositionHazardsPanel';
+import { HazardDeltaPanel } from './HazardDeltaPanel';
+import { positionHazardsView, hazardDeltaView } from '../engine/hazard-view';
 import {
   buildEngineDisagreement,
   type EngineDisagreementView,
@@ -1204,8 +1207,13 @@ export function App() {
     if (hideOverlays) return { mode: 'off' as any, squares: {} };
     if (teachingFocus) return teachingNodeLedMap(teachingFocus, 'focus');
     if (focused) return focusLedMap(focused);
-    return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
-  }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays]);
+    return computeLedMap(modeId, {
+      fen,
+      selectedSquare: selected,
+      analysis,
+      enginePosition: engineSquareFacts,
+    });
+  }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays, engineSquareFacts]);
 
   // Annotation arrows:
   //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
@@ -1904,6 +1912,10 @@ export function App() {
                   move={moveLabel}
                 />
                 <EngineDisagreementCard view={disagreementView} />
+                {engineSquareFacts && (
+                  <PositionHazardsPanel view={positionHazardsView(engineSquareFacts)} />
+                )}
+                {teachingFacts && <HazardDeltaPanel view={hazardDeltaView(teachingFacts.played)} />}
                 <EngineInternalsPanel telemetry={cvsTelemetry} />
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}

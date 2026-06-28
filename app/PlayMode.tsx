@@ -11,6 +11,9 @@ import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
 import { MoveReviewCard } from './MoveReviewCard';
 import { EngineDisagreementCard } from './EngineDisagreementCard';
+import { PositionHazardsPanel } from './PositionHazardsPanel';
+import { HazardDeltaPanel } from './HazardDeltaPanel';
+import { positionHazardsView, hazardDeltaView } from '../engine/hazard-view';
 import {
   buildEngineDisagreement,
   type EngineDisagreementView,
@@ -21,6 +24,7 @@ import {
   type FactsArtifactStatus,
   buildHistoryHash,
   DEFAULT_ENGINE_COMPARISON_BUDGET,
+  matchPositionFacts,
   normalizedScoreFromSideToMove,
   replayReachesFen,
   selectPositionFacts,
@@ -455,9 +459,11 @@ export function PlayMode({
             fen,
             selectedSquare: selected ?? undefined,
             analysis: liveAnalysis ?? undefined,
+            // Engine as source of truth for threat/defense overlays (PR-16).
+            enginePosition: playFacts ? (matchPositionFacts(playFacts, fen)?.position ?? null) : null,
           });
     },
-    [mode, fen, selected, liveAnalysis, teachingFocus, hideOverlays],
+    [mode, fen, selected, liveAnalysis, teachingFocus, hideOverlays, playFacts],
   );
 
   // Validated coaching for the played move: hazard diff → control action.
@@ -1044,6 +1050,10 @@ export function PlayMode({
           move={liveAnalysis?.move}
         />
         {cvsHealth && <EngineDisagreementCard view={disagreementView} />}
+        {playFactsSelection.position && (
+          <PositionHazardsPanel view={positionHazardsView(playFactsSelection.position)} />
+        )}
+        {playFacts && <HazardDeltaPanel view={hazardDeltaView(playFacts.played)} />}
 
         <PlayCommentaryPanel
           narrationAvailable={!!narrateMove}

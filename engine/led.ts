@@ -7,6 +7,7 @@ import { seeOnSquare } from './see';
 import { detectAvailableMotifs } from './motif';
 import { parseFen, allPieces, fileOf } from './board';
 import type { LedColor, LedMap, MoveAnalysis, Square } from './types';
+import type { PositionFacts } from './teaching/types';
 
 export type ModeId =
   | 'legal'
@@ -21,6 +22,12 @@ export interface LedContext {
   fen: string;
   selectedSquare?: Square;
   analysis?: MoveAnalysis; // required for 'what_changed'
+  // Rust-computed facts for the displayed position (PR-16). When present, the
+  // threat (square control) and defense (piece defenders) overlays derive from the
+  // ENGINE — the source of truth — instead of the chess.js relation map. Falls back
+  // to chess.js when absent (old binary / facts pending / unavailable). Hanging
+  // stays chess.js: Rust SEE is computed only for the side-to-move's targets.
+  enginePosition?: PositionFacts | null;
 }
 
 const FILES = 'abcdefgh';
@@ -106,9 +113,19 @@ function legalMode(ctx: LedContext): LedMap {
 //    dark_red (king danger).
 function threatMode(ctx: LedContext): LedMap {
   const map = blankMap('threat');
-  const rel = buildRelationMap(ctx.fen);
-  const w = new Set(rel.controlledByWhite);
-  const b = new Set(rel.controlledByBlack);
+  // Engine as source of truth: per-square control from Rust squareFacts when
+  // computed; otherwise the chess.js relation map (PR-16).
+  let w: Set<string>;
+  let b: Set<string>;
+  const squareFacts = ctx.enginePosition?.squareFacts;
+  if (squareFacts && squareFacts.status === 'computed') {
+    w = new Set(squareFacts.items.filter((s) => s.controlledByWhite).map((s) => s.square));
+    b = new Set(squareFacts.items.filter((s) => s.controlledByBlack).map((s) => s.square));
+  } else {
+    const rel = buildRelationMap(ctx.fen);
+    w = new Set(rel.controlledByWhite);
+    b = new Set(rel.controlledByBlack);
+  }
   for (const sq of allSquares()) {
     const byW = w.has(sq);
     const byB = b.has(sq);
@@ -132,6 +149,17 @@ function threatMode(ctx: LedContext): LedMap {
 //    White: blue = defended, yellow = loose.   Black: green = defended, orange = loose.
 function defenseMode(ctx: LedContext): LedMap {
   const map = blankMap('defense');
+  // Engine as source of truth: per-piece defender facts from Rust when present
+  // (covers both sides); otherwise the chess.js relation map (PR-16).
+  const ep = ctx.enginePosition;
+  if (ep) {
+    for (const piece of ep.pieces) {
+      const defended = piece.defenders.length > 0;
+      if (piece.side === 'white') map.squares[piece.square] = defended ? 'blue' : 'yellow';
+      else map.squares[piece.square] = defended ? 'green' : 'orange';
+    }
+    return map;
+  }
   const rel = buildRelationMap(ctx.fen);
   for (const sq of Object.keys(rel.bySquare)) {
     const r = rel.bySquare[sq];

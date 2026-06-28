@@ -10,6 +10,9 @@ import { trainingSupervisor } from './arena/dev-server/training-supervisor';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), ''); // '' = load ALL vars, incl. non-VITE_
   return {
+    // Allow a second dev server (e.g. a git worktree) to use an isolated dep cache
+    // so it never contends with the primary node_modules/.vite. Default unchanged.
+    cacheDir: env.CVS_VITE_CACHE || undefined,
     plugins: [
       react(),
       openaiProxy(env),
