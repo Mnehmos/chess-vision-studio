@@ -9,7 +9,19 @@ import { Chess } from 'chess.js';
 import { Board2D } from './Board2D';
 import { ARROW, type Arrow } from './BoardArrows';
 import { FactsPanel } from './FactsPanel';
-import { EngineComparisonPanel } from './EngineComparisonPanel';
+import { MoveReviewCard } from './MoveReviewCard';
+import { EngineDisagreementCard } from './EngineDisagreementCard';
+import {
+  buildEngineDisagreement,
+  type EngineDisagreementView,
+  type EngineSlot,
+} from './engine-disagreement';
+import {
+  type AnalysisIdentityV2,
+  buildHistoryHash,
+  DEFAULT_ENGINE_COMPARISON_BUDGET,
+  normalizedScoreFromSideToMove,
+} from '../engine/analysis-frame';
 import {
   analyzeWithCvsEngine,
   getTeachingFacts,
@@ -399,7 +411,7 @@ export function PlayMode({
 
   // Native engine eval of the current board (same panel as Analyze mode).
   const [cvsAnalysis, setCvsAnalysis] = useState<CvsEngineAnalysis | null>(null);
-  const [cvsBusy, setCvsBusy] = useState(false);
+  const [, setCvsBusy] = useState(false);
   const [cvsError, setCvsError] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!cvsHealth?.available) return;
@@ -440,6 +452,57 @@ export function PlayMode({
     [liveAnalysis],
   );
   const last = history[history.length - 1];
+
+  // Engine disagreement on the current board (PR-03). Play does not yet run an
+  // equal-budget Stockfish root search, so the Stockfish slot is unavailable here;
+  // CVS is shown with explicit identity/provenance. (Play parity arrives with the
+  // PR-04/05 history + frame work.)
+  const playRootIdentity = useMemo<AnalysisIdentityV2>(() => {
+    const historyUci = history.map((h) => h.uci);
+    return {
+      schemaVersion: 2,
+      gameKey: 'play',
+      ply: history.length,
+      initialFen: fen,
+      historyUci,
+      historyHash: buildHistoryHash(historyUci),
+      fenBefore: fen,
+      branch: { role: 'root', source: 'game' },
+    };
+  }, [history, fen]);
+
+  const disagreementView = useMemo<EngineDisagreementView>(() => {
+    const root = playRootIdentity;
+    const cvsSlot: EngineSlot = !cvsHealth?.available
+      ? { status: 'unavailable', reason: cvsHealth?.error || 'CVS engine off' }
+      : cvsError
+        ? { status: 'unavailable', reason: cvsError }
+        : cvsAnalysis
+          ? {
+              status: 'computed',
+              result: {
+                engine: 'cvs',
+                identity: root,
+                bestMoveUci: cvsAnalysis.uci,
+                score: normalizedScoreFromSideToMove({
+                  fen: cvsAnalysis.fen,
+                  cp: cvsAnalysis.scoreCp,
+                  mate: cvsAnalysis.mate,
+                }),
+                pvUci: cvsAnalysis.pv,
+                depth: cvsAnalysis.depth,
+                timeMs: cvsAnalysis.timeMs,
+                nodes: cvsAnalysis.nodes,
+              },
+            }
+          : { status: 'pending' };
+    return buildEngineDisagreement({
+      rootIdentity: root,
+      budget: DEFAULT_ENGINE_COMPARISON_BUDGET,
+      stockfish: { status: 'unavailable', reason: 'not run in Play' },
+      cvs: cvsSlot,
+    });
+  }, [playRootIdentity, cvsHealth, cvsError, cvsAnalysis]);
 
   // The full annotation suite, live: focus mode spotlights one tactic; otherwise
   // the played-move arrow (follow move) + the selected piece's attack/defend/
@@ -930,19 +993,12 @@ export function PlayMode({
           onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
         />
 
-        {cvsHealth && (
-          <EngineComparisonPanel
-            stockfishState={engineReady ? 'ready' : 'off'}
-            stockfishAnalysis={liveAnalysis ?? undefined}
-            move={liveAnalysis?.move}
-            cvsHealth={cvsHealth}
-            cvsAnalysis={cvsAnalysis}
-            cvsBusy={cvsBusy}
-            cvsError={cvsError}
-            cvsContext="current board"
-            cvsPlayedUci={last?.uci}
-          />
-        )}
+        <MoveReviewCard
+          stockfishState={engineReady ? 'ready' : 'off'}
+          analysis={liveAnalysis ?? undefined}
+          move={liveAnalysis?.move}
+        />
+        {cvsHealth && <EngineDisagreementCard view={disagreementView} />}
 
         <PlayCommentaryPanel
           narrationAvailable={!!narrateMove}

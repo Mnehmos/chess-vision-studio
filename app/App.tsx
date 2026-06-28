@@ -8,14 +8,17 @@ import { repetitionConversionWarning } from '../engine/repetition';
 import type { AnalyzedEntry } from '../engine/analytics';
 import { UciEngine } from '../engine/evaluation';
 import {
+  analyzeWithStockfishRequest,
   getStockfishHealth,
   makeNativeStockfishEngine,
   type StockfishHealth,
+  type StockfishResult,
 } from './stockfish-client';
 import type { InsightCandidate, LedColor, LedMap, MoveAnalysis, Square } from '../engine/types';
 import { tryCreateEngine } from './engine-browser';
 import {
   analyzeWithCvsEngine,
+  analyzeWithCvsEngineRequest,
   getCvsEngineHealth,
   getTeachingFacts,
   type CvsEngineAnalysis,
@@ -38,7 +41,13 @@ import { AnalysisBoardPanel } from './AnalysisBoardPanel';
 import { AnalysisMoveHistory as MoveHistory } from './AnalysisMoveHistory';
 import { AnnotationCommandList } from './AnnotationCommandList';
 import { FactsPanel } from './FactsPanel';
-import { EngineComparisonPanel } from './EngineComparisonPanel';
+import { MoveReviewCard } from './MoveReviewCard';
+import { EngineDisagreementCard } from './EngineDisagreementCard';
+import {
+  buildEngineDisagreement,
+  type EngineDisagreementView,
+  type EngineSlot,
+} from './engine-disagreement';
 import { MateCard } from './MateCard';
 import { AnalyticsPanel, type TeachingThemesJob } from './AnalyticsPanel';
 import { DatasetPanel } from './DatasetPanel';
@@ -88,7 +97,13 @@ import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import { factsRequestForPly } from './teaching-facts-request';
-import { matchPositionFacts } from '../engine/analysis-frame';
+import {
+  type AnalysisIdentityV2,
+  buildHistoryHash,
+  DEFAULT_ENGINE_COMPARISON_BUDGET,
+  matchPositionFacts,
+  normalizedScoreFromSideToMove,
+} from '../engine/analysis-frame';
 import {
   legalMovesFrom,
   teachingLedMap as teachingNodeLedMap,
@@ -154,9 +169,13 @@ export function App() {
     ok: false,
     available: false,
   });
+  // Root engine-disagreement comparison (PR-03): Stockfish + CVS on the SAME
+  // fenBefore at the SAME budget. Per-engine pending is derived from
+  // result/error/health, so no separate busy flag is needed.
   const [cvsEngineAnalysis, setCvsEngineAnalysis] = useState<CvsEngineAnalysis | null>(null);
-  const [cvsEngineBusy, setCvsEngineBusy] = useState(false);
   const [cvsEngineError, setCvsEngineError] = useState('');
+  const [sfRootResult, setSfRootResult] = useState<StockfishResult | null>(null);
+  const [sfRootError, setSfRootError] = useState('');
   const [teachingFactsRequest, setTeachingFactsRequest] = useState<TeachingFactsRequestV1 | null>(
     null,
   );
@@ -473,34 +492,123 @@ export function App() {
       ? `${plies[plyIndex].moveNumber}${plies[plyIndex].color === 'w' ? '.' : '...'} ${plies[plyIndex].san}`
       : undefined;
   const cvsEngineFen = view > 0 ? (plies[plyIndex]?.fenBefore ?? fen) : fen;
-  const cvsEngineContext = view > 0 && moveLabel ? `before ${moveLabel}` : 'current board';
   const cvsPlayedUci = view > 0 ? safePlyUci(plies[plyIndex]) : undefined;
 
+  // Exact root identity for the disagreement comparison. History is threaded in
+  // PR-04; for now the gate uses gameKey + ply + fenBefore (+ empty-history hash).
+  const comparisonRootIdentity = useMemo<AnalysisIdentityV2>(
+    () => ({
+      schemaVersion: 2,
+      gameKey: currentGameKey,
+      ply: plyIndex >= 0 ? plyIndex : 0,
+      initialFen: currentGame?.initialFen ?? cvsEngineFen,
+      historyUci: [],
+      historyHash: buildHistoryHash([]),
+      fenBefore: cvsEngineFen,
+      playedMoveUci: cvsPlayedUci,
+      branch: { role: 'root', source: 'game' },
+    }),
+    [currentGameKey, plyIndex, currentGame, cvsEngineFen, cvsPlayedUci],
+  );
+
+  // One comparison: both engines on the SAME fenBefore at the SAME budget
+  // (DEFAULT_ENGINE_COMPARISON_BUDGET). Race-guarded so a late reply can't render.
   useEffect(() => {
-    if (tab !== 'board' || !cvsEngineHealth.available) return;
+    if (tab !== 'board') return;
     const run = ++cvsEngineRunRef.current;
-    setCvsEngineBusy(true);
-    setCvsEngineError('');
     setCvsEngineAnalysis(null);
+    setCvsEngineError('');
+    setSfRootResult(null);
+    setSfRootError('');
     const timer = window.setTimeout(() => {
-      analyzeWithCvsEngine(cvsEngineFen, cvsEngineHealth.depth)
-        .then((result) => {
-          if (cvsEngineRunRef.current !== run) return;
-          setCvsEngineAnalysis(result);
-        })
-        .catch((e) => {
-          if (cvsEngineRunRef.current !== run) return;
-          setCvsEngineError(String((e as Error)?.message ?? e));
-        })
-        .finally(() => {
-          if (cvsEngineRunRef.current === run) setCvsEngineBusy(false);
-        });
+      const budget = DEFAULT_ENGINE_COMPARISON_BUDGET;
+      if (cvsEngineHealth.available) {
+        analyzeWithCvsEngineRequest({ fen: cvsEngineFen, budget })
+          .then((r) => {
+            if (cvsEngineRunRef.current === run) setCvsEngineAnalysis(r);
+          })
+          .catch((e) => {
+            if (cvsEngineRunRef.current === run) setCvsEngineError(String((e as Error)?.message ?? e));
+          });
+      }
+      if (engineState === 'ready') {
+        analyzeWithStockfishRequest({ fen: cvsEngineFen, budget })
+          .then((r) => {
+            if (cvsEngineRunRef.current === run) setSfRootResult(r);
+          })
+          .catch((e) => {
+            if (cvsEngineRunRef.current === run) setSfRootError(String((e as Error)?.message ?? e));
+          });
+      }
     }, 60);
     return () => {
       window.clearTimeout(timer);
       if (cvsEngineRunRef.current === run) cvsEngineRunRef.current += 1;
     };
-  }, [cvsEngineFen, tab, cvsEngineHealth.available, cvsEngineHealth.depth]);
+  }, [cvsEngineFen, tab, cvsEngineHealth.available, engineState]);
+
+  const disagreementView = useMemo<EngineDisagreementView>(() => {
+    const root = comparisonRootIdentity;
+    const cvsSlot: EngineSlot = !cvsEngineHealth.available
+      ? { status: 'unavailable', reason: cvsEngineHealth.error || 'CVS engine off' }
+      : cvsEngineError
+        ? { status: 'unavailable', reason: cvsEngineError }
+        : cvsEngineAnalysis
+          ? {
+              status: 'computed',
+              result: {
+                engine: 'cvs',
+                identity: root,
+                bestMoveUci: cvsEngineAnalysis.uci,
+                score: normalizedScoreFromSideToMove({
+                  fen: cvsEngineAnalysis.fen,
+                  cp: cvsEngineAnalysis.scoreCp,
+                  mate: cvsEngineAnalysis.mate,
+                }),
+                pvUci: cvsEngineAnalysis.pv,
+                depth: cvsEngineAnalysis.depth,
+                timeMs: cvsEngineAnalysis.timeMs,
+                nodes: cvsEngineAnalysis.nodes,
+              },
+            }
+          : { status: 'pending' };
+    const sfSlot: EngineSlot =
+      engineState !== 'ready'
+        ? { status: 'unavailable', reason: 'Stockfish off' }
+        : sfRootError
+          ? { status: 'unavailable', reason: sfRootError }
+          : sfRootResult
+            ? {
+                status: 'computed',
+                result: {
+                  engine: 'stockfish',
+                  identity: root,
+                  bestMoveUci: sfRootResult.bestmove || null,
+                  score: normalizedScoreFromSideToMove({
+                    fen: sfRootResult.fen,
+                    cp: sfRootResult.scoreCp,
+                    mate: sfRootResult.mate,
+                  }),
+                  pvUci: sfRootResult.pv,
+                  depth: sfRootResult.depth,
+                },
+              }
+            : { status: 'pending' };
+    return buildEngineDisagreement({
+      rootIdentity: root,
+      budget: DEFAULT_ENGINE_COMPARISON_BUDGET,
+      stockfish: sfSlot,
+      cvs: cvsSlot,
+    });
+  }, [
+    comparisonRootIdentity,
+    cvsEngineHealth,
+    cvsEngineError,
+    cvsEngineAnalysis,
+    engineState,
+    sfRootError,
+    sfRootResult,
+  ]);
 
   useEffect(() => {
     if (tab !== 'board' || !cvsEngineHealth.available || view <= 0 || !plies[plyIndex]) {
@@ -1606,7 +1714,7 @@ export function App() {
           analysesCount={analyses.size}
           plyCount={plies.length}
           cvsHealth={cvsEngineHealth}
-          cvsBusy={cvsEngineBusy}
+          cvsBusy={disagreementView.overall === 'pending'}
         />
 
         <AppSourceBar
@@ -1753,17 +1861,12 @@ export function App() {
                   onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
                   enginePosition={engineSquareFacts}
                 />
-                <EngineComparisonPanel
+                <MoveReviewCard
                   stockfishState={engineState}
-                  stockfishAnalysis={analysis}
+                  analysis={analysis}
                   move={moveLabel}
-                  cvsHealth={cvsEngineHealth}
-                  cvsAnalysis={cvsEngineAnalysis}
-                  cvsBusy={cvsEngineBusy}
-                  cvsError={cvsEngineError}
-                  cvsContext={cvsEngineContext}
-                  cvsPlayedUci={cvsPlayedUci}
                 />
+                <EngineDisagreementCard view={disagreementView} />
                 <TeachingFactsDebugPanel
                   request={teachingFactsRequest}
                   facts={teachingFacts}
