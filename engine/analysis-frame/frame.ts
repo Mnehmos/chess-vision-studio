@@ -8,6 +8,7 @@
  * migrated wholesale yet.
  */
 import type { PositionFacts, TeachingFactBundleV1 } from '../teaching/types';
+import type { CanonicalTeachingV2 } from '../teaching/canonical';
 import type { AttributedFactBranch } from './branch';
 import { type ArtifactState, idle } from './artifact';
 import {
@@ -46,10 +47,7 @@ export interface FactFrameV2 {
   cvsRefutation?: AttributedFactBranch;
 }
 
-/** PR-08 expands this into the canonical committed teaching claim set. */
-export interface CanonicalTeachingV2 {
-  nodes: unknown[];
-}
+// Teaching slot uses the real canonical claim set (PR-08): see engine/teaching/canonical.ts.
 
 export interface FrameProvenance {
   createdAt: string;

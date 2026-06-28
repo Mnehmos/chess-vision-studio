@@ -14,3 +14,4 @@ export * from './facts-selector';
 export * from './telemetry';
 export * from './inspection';
 export * from './branch';
+export * from './selectors';
