@@ -99,3 +99,8 @@ PLAN when screen done: (1) rebuild uci.exe (BUG2+conthist+countermove fixes bake
 - lmp+smarttime +111 (65.4%) ← BEST, PROMOTE THIS.
 - lmp+smarttime+improving +88 (improving DRAGS). smarttime alone +60. lmp+improving +37. lmp alone +14 (noisy; +51/+74 in earlier runs).
 - DECISION: promote CVS_RUST_LMP=1 + CVS_RUST_SMARTTIME=1 (exclude improving). smarttime = the "dead time-management logic" fix = the big win. See HANDOFF.md.
+
+## STATE 2026-06-28 — PROMOTED lmp + smarttime to the bot
+- Rebuilt analyze.exe (engine repo commit 75be171): BUG2 fix baked + `--lmp` flag + **smarttime PORTED to serve `go <ms>` path** (was uci.rs-only). Split: soft = ms·1.2 (≈ uci t/25), hard = ms·4.8 capped at ms·5 (≈ uci t/6, slightly safer), gated `--smarttime`. Bot passes ms ≈ clock/30 + 0.8·inc (uci's non-smart budget) so the ratios transfer. Verified: `go 300` → 325ms/d9 with flag vs 300ms/d8 without.
+- Promoted in main-tree `.env`: `CVS_RUST_LMP=1` + `CVS_RUST_SMARTTIME=1`. Bot restarted, connected as ChessVisionStudioEng, analyze.exe confirmed running `--lmp --smarttime`. Backup: `target/release/analyze.exe.bak-promote` (revert = restore + `CVS_RUST_SMARTTIME=0`/restart).
+- NEXT: monitor bot games for smarttime time-trouble (hard ≈ clock/6.25). If clean → BUG1 mate-TT (+unit test) / log-LMR / NNUE track. Optional: cutechess-gate the analyze.exe smarttime port at bot-like TC to confirm the bot-context gain (the +60 was uci.exe; the port replicates the ratios).
