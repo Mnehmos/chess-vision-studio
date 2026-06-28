@@ -1,6 +1,7 @@
 // Engine comparison card - Stockfish verdict vs native CVS engine, side by side.
 // Extracted from App so Play mode can render the same panel.
 import type { MoveAnalysis } from '../engine/types';
+import { normalizedScoreFromSideToMove } from '../engine/analysis-frame';
 import type { CvsEngineAnalysis, CvsEngineHealth } from './cvs-engine-client';
 
 export function EngineComparisonPanel({
@@ -100,9 +101,19 @@ function formatEval(evalInfo: MoveAnalysis['evalAfter']): string {
   return evalInfo.status === 'terminal' ? 'terminal' : 'unavailable';
 }
 
+// CVS eval is reported side-to-move (UCI). Display it White-normalized so it
+// reads on the same axis as the rest of the UI (plan §3.2/§6 PR-02); the "(W)"
+// marker makes the perspective explicit. Raw side-to-move values remain on the
+// result object for diagnostics.
 function formatCvsEval(result: CvsEngineAnalysis): string {
-  if (typeof result.mate === 'number') return `M${result.mate}`;
-  return formatCp(result.scoreCp);
+  const score = normalizedScoreFromSideToMove({
+    fen: result.fen,
+    cp: result.scoreCp,
+    mate: result.mate,
+  });
+  if (score.whiteMate !== null) return `M${score.whiteMate} (W)`;
+  if (score.whiteCp !== null) return `${formatCp(score.whiteCp)} (W)`;
+  return 'unavailable';
 }
 
 function formatCvsAgreement(playedUci: string | undefined, bestUci: string | null): string {

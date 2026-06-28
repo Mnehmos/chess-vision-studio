@@ -5,6 +5,7 @@
 // whole classification pipeline runs on native Stockfish when a binary is
 // configured — same moves at a given depth, just far faster wall-clock.
 import { uciPvToSan, type UciEngine } from '../engine/evaluation';
+import { type SearchBudget, searchBudgetToRequestFields } from '../engine/analysis-frame';
 
 export interface StockfishHealth {
   ok: boolean;
@@ -29,15 +30,44 @@ export async function getStockfishHealth(): Promise<StockfishHealth> {
   return (await response.json()) as StockfishHealth;
 }
 
-export async function analyzeWithStockfish(fen: string, depth?: number, forcedMove?: string): Promise<StockfishResult> {
+export interface StockfishAnalyzeRequest {
+  fen: string;
+  /** Preferred: explicit resource budget (movetime or depth). */
+  budget?: SearchBudget;
+  /** Legacy depth fallback when no budget is supplied. */
+  depth?: number;
+  forcedMove?: string;
+}
+
+// Request-object form (plan §6 PR-02). Serializes the budget to the proxy's
+// `movetimeMs`/`depth` fields; the proxy already supports both.
+export async function analyzeWithStockfishRequest(
+  request: StockfishAnalyzeRequest,
+): Promise<StockfishResult> {
+  const body = {
+    fen: request.fen,
+    forcedMove: request.forcedMove,
+    ...searchBudgetToRequestFields(request.budget, request.depth),
+  };
   const response = await fetch('/api/stockfish/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fen, depth, forcedMove }),
+    body: JSON.stringify(body),
   });
-  const body = (await response.json()) as StockfishResult | { error?: string };
-  if (!response.ok) throw new Error((body as { error?: string }).error || `Stockfish analyze failed (${response.status})`);
-  return body as StockfishResult;
+  const parsed = (await response.json()) as StockfishResult | { error?: string };
+  if (!response.ok)
+    throw new Error((parsed as { error?: string }).error || `Stockfish analyze failed (${response.status})`);
+  return parsed as StockfishResult;
+}
+
+// Positional compatibility wrapper (existing callers). Kept while callers migrate
+// to the request-object form.
+export async function analyzeWithStockfish(
+  fen: string,
+  depth?: number,
+  forcedMove?: string,
+): Promise<StockfishResult> {
+  return analyzeWithStockfishRequest({ fen, depth, forcedMove });
 }
 
 // A UciEngine-shaped adapter over the native subprocess. analyzeMoveLive only
