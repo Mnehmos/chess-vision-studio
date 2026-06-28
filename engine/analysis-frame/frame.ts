@@ -8,6 +8,7 @@
  * migrated wholesale yet.
  */
 import type { PositionFacts, TeachingFactBundleV1 } from '../teaching/types';
+import type { AttributedFactBranch } from './branch';
 import { type ArtifactState, idle } from './artifact';
 import {
   ANALYSIS_FRAME_BUILDER_VERSION,
@@ -35,6 +36,14 @@ export interface MoveReviewV2 {
 export interface FactFrameV2 {
   rawV1: TeachingFactBundleV1;
   before: PositionFacts;
+  // Branch attribution (PR-09): each counterfactual branch carries the engine that
+  // produced it, so the same UCI move from two engines is never conflated. Absent
+  // until the orchestrator requests/attributes that branch.
+  played?: AttributedFactBranch;
+  stockfishBest?: AttributedFactBranch;
+  cvsBest?: AttributedFactBranch;
+  stockfishRefutation?: AttributedFactBranch;
+  cvsRefutation?: AttributedFactBranch;
 }
 
 /** PR-08 expands this into the canonical committed teaching claim set. */

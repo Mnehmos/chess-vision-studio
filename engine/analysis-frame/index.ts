@@ -13,3 +13,4 @@ export * from './history';
 export * from './facts-selector';
 export * from './telemetry';
 export * from './inspection';
+export * from './branch';
