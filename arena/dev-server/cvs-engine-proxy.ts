@@ -4,6 +4,7 @@ import { cpus } from 'node:os';
 import { createInterface, type Interface } from 'node:readline';
 import type { Plugin } from 'vite';
 import type { TeachingFactsRequestV1 } from '../../engine/teaching/types';
+import { buildFeatureInspection } from '../../engine/analysis-frame';
 import { readJsonBody, sendJson as json } from './http';
 
 interface CvsEngineAnalyzeRequest {
@@ -372,6 +373,56 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
             if (typeof parsed === 'object' && parsed && 'error' in parsed)
               return json(res, 422, parsed);
             return json(res, 200, parsed);
+          })
+          .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
+      });
+
+      // Developer feature inspection (PR-12): combine the engine's existing `cvs`
+      // (feature registry) and `eval` (classical + optional NNUE) serve commands
+      // into one CvsFeatureInspectionV1. No rust change required.
+      server.middlewares.use('/api/cvs-engine/inspect', (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+        readJsonBody<{ fen?: string }>(req)
+          .then(async (body) => {
+            const fen = body.fen?.trim();
+            if (!fen) return json(res, 400, { error: 'fen is required' });
+            const cfg = configFor();
+            if (!existsSync(cfg.exe))
+              return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
+            if (cfg.missing.length)
+              return json(res, 503, {
+                error: `Configured CVS Engine files are missing: ${cfg.missing.join(', ')}`,
+              });
+            const proc = acquireEngine(cfg);
+            const cvsOut = await requestEngine(proc, `cvs ${fen}`);
+            const evalOut = await requestEngine(proc, `eval ${fen}`);
+            let cvsParsed: Record<string, unknown>;
+            let evalParsed: Record<string, unknown>;
+            try {
+              cvsParsed = JSON.parse(cvsOut) as Record<string, unknown>;
+              evalParsed = JSON.parse(evalOut) as Record<string, unknown>;
+            } catch {
+              return json(res, 502, {
+                error: 'CVS Engine returned non-JSON output',
+                cvsOut,
+                evalOut,
+              });
+            }
+            if ('error' in cvsParsed) return json(res, 422, cvsParsed);
+            if ('error' in evalParsed) return json(res, 422, evalParsed);
+            const inspection = buildFeatureInspection({
+              fen,
+              evalWhiteCp: Number(evalParsed.evalWhiteCp),
+              nnueStmCp: typeof evalParsed.nnueStmCp === 'number' ? evalParsed.nnueStmCp : null,
+              registryVersion: Number(cvsParsed.registryVersion),
+              registryHash: String(cvsParsed.registryHash),
+              inputDim: Number(cvsParsed.inputDim),
+              activeIds: Array.isArray(cvsParsed.activeIds) ? (cvsParsed.activeIds as number[]) : [],
+              activeNames: Array.isArray(cvsParsed.activeNames)
+                ? (cvsParsed.activeNames as string[])
+                : [],
+            });
+            return json(res, 200, inspection);
           })
           .catch((e) => json(res, 502, { error: String((e as Error)?.message ?? e) }));
       });
