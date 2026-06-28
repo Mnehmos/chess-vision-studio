@@ -9,3 +9,4 @@ export * from './match';
 export * from './frame';
 export * from './budget';
 export * from './score';
+export * from './history';

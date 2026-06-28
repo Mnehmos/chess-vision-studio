@@ -103,6 +103,7 @@ import {
   DEFAULT_ENGINE_COMPARISON_BUDGET,
   matchPositionFacts,
   normalizedScoreFromSideToMove,
+  replayReachesFen,
 } from '../engine/analysis-frame';
 import {
   legalMovesFrom,
@@ -494,22 +495,40 @@ export function App() {
   const cvsEngineFen = view > 0 ? (plies[plyIndex]?.fenBefore ?? fen) : fen;
   const cvsPlayedUci = view > 0 ? safePlyUci(plies[plyIndex]) : undefined;
 
-  // Exact root identity for the disagreement comparison. History is threaded in
-  // PR-04; for now the gate uses gameKey + ply + fenBefore (+ empty-history hash).
-  const comparisonRootIdentity = useMemo<AnalysisIdentityV2>(
-    () => ({
+  // UCI history up to the reviewed ply (PR-04). Derived from the imported game and
+  // VALIDATED by replay: only used when replaying the line from initialFen reaches
+  // cvsEngineFen, otherwise we fall back to bare-FEN analysis (fail closed).
+  const comparisonHistory = useMemo(() => {
+    const initialFen = currentGame?.initialFen ?? START_FEN;
+    if (plyIndex <= 0) {
+      return { initialFen, moves: [] as string[], valid: true };
+    }
+    const moves: string[] = [];
+    for (let i = 0; i < plyIndex; i += 1) {
+      const uci = safePlyUci(plies[i]);
+      if (!uci) return { initialFen, moves: [] as string[], valid: false };
+      moves.push(uci);
+    }
+    return { initialFen, moves, valid: replayReachesFen(initialFen, moves, cvsEngineFen) };
+  }, [currentGame, plyIndex, plies, cvsEngineFen]);
+
+  // Exact root identity for the disagreement comparison: gameKey + ply + fenBefore
+  // + the validated repetition history (so the same FEN reached by a different line
+  // is a different identity, and a late reply for another position fails closed).
+  const comparisonRootIdentity = useMemo<AnalysisIdentityV2>(() => {
+    const historyUci = comparisonHistory.valid ? comparisonHistory.moves : [];
+    return {
       schemaVersion: 2,
       gameKey: currentGameKey,
       ply: plyIndex >= 0 ? plyIndex : 0,
       initialFen: currentGame?.initialFen ?? cvsEngineFen,
-      historyUci: [],
-      historyHash: buildHistoryHash([]),
+      historyUci,
+      historyHash: buildHistoryHash(historyUci),
       fenBefore: cvsEngineFen,
       playedMoveUci: cvsPlayedUci,
       branch: { role: 'root', source: 'game' },
-    }),
-    [currentGameKey, plyIndex, currentGame, cvsEngineFen, cvsPlayedUci],
-  );
+    };
+  }, [currentGameKey, plyIndex, currentGame, cvsEngineFen, cvsPlayedUci, comparisonHistory]);
 
   // One comparison: both engines on the SAME fenBefore at the SAME budget
   // (DEFAULT_ENGINE_COMPARISON_BUDGET). Race-guarded so a late reply can't render.
@@ -522,8 +541,12 @@ export function App() {
     setSfRootError('');
     const timer = window.setTimeout(() => {
       const budget = DEFAULT_ENGINE_COMPARISON_BUDGET;
+      const history =
+        comparisonHistory.valid && comparisonHistory.moves.length
+          ? { initialFen: comparisonHistory.initialFen, moves: comparisonHistory.moves }
+          : {};
       if (cvsEngineHealth.available) {
-        analyzeWithCvsEngineRequest({ fen: cvsEngineFen, budget })
+        analyzeWithCvsEngineRequest({ fen: cvsEngineFen, budget, ...history })
           .then((r) => {
             if (cvsEngineRunRef.current === run) setCvsEngineAnalysis(r);
           })
@@ -545,7 +568,7 @@ export function App() {
       window.clearTimeout(timer);
       if (cvsEngineRunRef.current === run) cvsEngineRunRef.current += 1;
     };
-  }, [cvsEngineFen, tab, cvsEngineHealth.available, engineState]);
+  }, [cvsEngineFen, tab, cvsEngineHealth.available, engineState, comparisonHistory]);
 
   const disagreementView = useMemo<EngineDisagreementView>(() => {
     const root = comparisonRootIdentity;

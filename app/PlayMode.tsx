@@ -21,9 +21,11 @@ import {
   buildHistoryHash,
   DEFAULT_ENGINE_COMPARISON_BUDGET,
   normalizedScoreFromSideToMove,
+  replayReachesFen,
 } from '../engine/analysis-frame';
 import {
   analyzeWithCvsEngine,
+  analyzeWithCvsEngineRequest,
   getTeachingFacts,
   type CvsEngineAnalysis,
   type CvsEngineHealth,
@@ -417,14 +419,22 @@ export function PlayMode({
     if (!cvsHealth?.available) return;
     let cancelled = false;
     setCvsBusy(true);
+    // History-aware: replay the played moves from the start so CVS sees
+    // repetitions. Validated by replay (fail closed → bare FEN) per PR-04.
+    const moves = history.map((h) => h.uci);
+    const historyOk = moves.length > 0 && replayReachesFen(START_FEN, moves, fen);
     const t = setTimeout(() => {
-      analyzeWithCvsEngine(fen, cvsHealth.depth)
+      analyzeWithCvsEngineRequest({
+        fen,
+        depth: cvsHealth.depth,
+        ...(historyOk ? { initialFen: START_FEN, moves } : {}),
+      })
         .then((r) => { if (!cancelled) { setCvsAnalysis(r); setCvsError(undefined); } })
         .catch((e) => { if (!cancelled) setCvsError(e instanceof Error ? e.message : String(e)); })
         .finally(() => { if (!cancelled) setCvsBusy(false); });
     }, 60);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [fen, cvsHealth?.available, cvsHealth?.depth]);
+  }, [fen, cvsHealth?.available, cvsHealth?.depth, history]);
 
   // The board overlay: the SAME mode-scoped lenses as the analysis view, applied
   // live to the current position. 'legal' doubles as the move-target hint; the
@@ -458,12 +468,15 @@ export function PlayMode({
   // CVS is shown with explicit identity/provenance. (Play parity arrives with the
   // PR-04/05 history + frame work.)
   const playRootIdentity = useMemo<AnalysisIdentityV2>(() => {
-    const historyUci = history.map((h) => h.uci);
+    const moves = history.map((h) => h.uci);
+    // Only claim the repetition history in the identity when it actually replays
+    // to the current board (fail closed); otherwise the board stands alone.
+    const historyUci = replayReachesFen(START_FEN, moves, fen) ? moves : [];
     return {
       schemaVersion: 2,
       gameKey: 'play',
       ply: history.length,
-      initialFen: fen,
+      initialFen: START_FEN,
       historyUci,
       historyHash: buildHistoryHash(historyUci),
       fenBefore: fen,

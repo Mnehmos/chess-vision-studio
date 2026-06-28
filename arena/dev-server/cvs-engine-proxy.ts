@@ -11,6 +11,10 @@ interface CvsEngineAnalyzeRequest {
   depth?: number;
   movetimeMs?: number;
   forcedMove?: string;
+  // History-aware search (PR-04): repetition root + UCI line. Forwarded to the
+  // engine's JSON request so the search root sees repetitions.
+  initialFen?: string;
+  moves?: string[];
 }
 
 interface CvsEnginePending {
@@ -299,11 +303,15 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
               });
             const proc = acquireEngine(cfg);
             const forcedMove = body.forcedMove?.trim();
+            const hasHistory = Array.isArray(body.moves) && body.moves.length > 0;
             let line = '';
-            if (forcedMove) {
+            if (forcedMove || hasHistory) {
+              // JSON request carries repetition history and/or a forced root move.
               const reqObj = {
                 cmd: body.movetimeMs ? 'go' : 'analyze',
                 fen: fen,
+                initialFen: hasHistory ? (body.initialFen ?? 'startpos') : undefined,
+                moves: hasHistory ? body.moves : undefined,
                 budgetMs: body.movetimeMs ? Math.max(50, Math.round(body.movetimeMs)) : undefined,
                 forcedMoveUci: forcedMove,
               };

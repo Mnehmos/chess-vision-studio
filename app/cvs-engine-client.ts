@@ -52,16 +52,24 @@ export interface CvsEngineAnalyzeRequest {
   /** Legacy depth fallback when no budget is supplied. */
   depth?: number;
   forcedMove?: string;
+  /** History root for repetition-aware search (PR-04). Wire name: `initialFen`. */
+  initialFen?: string;
+  /** UCI moves replayed from `initialFen` (PR-04). Wire name: `moves`. */
+  moves?: string[];
 }
 
-// Request-object form (plan §6 PR-02). Serializes the budget to the proxy's
-// `movetimeMs`/`depth` fields. History fields (initialFen/moves) arrive in PR-04.
+// Request-object form (plan §6 PR-02/PR-04). Serializes the budget to the proxy's
+// `movetimeMs`/`depth` fields and forwards repetition history (`initialFen`+`moves`)
+// when present. The CALLER is responsible for validating that the history actually
+// replays to `fen` (see replayReachesFen) and omitting it otherwise — fail closed.
 export async function analyzeWithCvsEngineRequest(
   request: CvsEngineAnalyzeRequest,
 ): Promise<CvsEngineAnalysis> {
+  const hasHistory = Array.isArray(request.moves) && request.moves.length > 0;
   const body = {
     fen: request.fen,
     forcedMove: request.forcedMove,
+    ...(hasHistory ? { initialFen: request.initialFen ?? 'startpos', moves: request.moves } : {}),
     ...searchBudgetToRequestFields(request.budget, request.depth),
   };
   const response = await fetch('/api/cvs-engine/analyze', {
