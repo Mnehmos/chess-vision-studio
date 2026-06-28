@@ -18,10 +18,12 @@ import {
 } from './engine-disagreement';
 import {
   type AnalysisIdentityV2,
+  type FactsArtifactStatus,
   buildHistoryHash,
   DEFAULT_ENGINE_COMPARISON_BUDGET,
   normalizedScoreFromSideToMove,
   replayReachesFen,
+  selectPositionFacts,
 } from '../engine/analysis-frame';
 import {
   analyzeWithCvsEngine,
@@ -415,6 +417,11 @@ export function PlayMode({
   const [cvsAnalysis, setCvsAnalysis] = useState<CvsEngineAnalysis | null>(null);
   const [, setCvsBusy] = useState(false);
   const [cvsError, setCvsError] = useState<string | undefined>(undefined);
+  // The FULL Rust fact bundle for the latest played position (PR-05), retained so
+  // FactsPanel reads Rust-backed occupied-square facts. Tied to the board by the
+  // shared matcher; cleared on undo/new-game; replaced per move (race-guarded).
+  const [playFacts, setPlayFacts] = useState<TeachingFactBundleV1 | null>(null);
+  const [playFactsBusy, setPlayFactsBusy] = useState(false);
   useEffect(() => {
     if (!cvsHealth?.available) return;
     let cancelled = false;
@@ -516,6 +523,20 @@ export function PlayMode({
       cvs: cvsSlot,
     });
   }, [playRootIdentity, cvsHealth, cvsError, cvsAnalysis]);
+
+  // Occupied-square facts for FactsPanel, via the SAME selector Analyze uses
+  // (plan §6 PR-05): Rust facts when the bundle matches the board, a loading state
+  // while pending, TS fallback otherwise.
+  const playFactsSelection = useMemo(() => {
+    const status: FactsArtifactStatus = !cvsHealth?.available
+      ? 'unavailable'
+      : playFactsBusy
+        ? 'pending'
+        : playFacts
+          ? 'computed'
+          : 'idle';
+    return selectPositionFacts(status, playFacts, fen);
+  }, [cvsHealth, playFactsBusy, playFacts, fen]);
 
   // The full annotation suite, live: focus mode spotlights one tactic; otherwise
   // the played-move arrow (follow move) + the selected piece's attack/defend/
@@ -649,6 +670,8 @@ export function PlayMode({
     // Kick a live analysis of the move (free, local). Latest-wins via the seq ref
     // for the live board; the log entry settles per-ply regardless.
     const id = ++analyzeIdRef.current;
+    setPlayFacts(null);
+    setPlayFactsBusy(!!(engine && engineReady && cvsHealth?.available));
     if (engine && engineReady) {
       setLastAnalysis(null);
       analyzeMoveLive(engine, before, san)
@@ -664,6 +687,7 @@ export function PlayMode({
             if (request) {
               try {
                 const facts = await loadTeachingFacts(request);
+                if (analyzeIdRef.current === id) setPlayFacts(facts);
 
                 // Unified teaching nodes
                 const nodeReq = {
@@ -693,10 +717,14 @@ export function PlayMode({
           }
           if (analyzeIdRef.current === id) {
             setTeachingNodes(nodes);
+            setPlayFactsBusy(false);
           }
           settleTurn(a, teaching, nodes, idea, hazardNote);
         })
-        .catch(() => settleTurn(null, null, [], null, undefined));
+        .catch(() => {
+          setPlayFactsBusy(false);
+          settleTurn(null, null, [], null, undefined);
+        });
     } else {
       setLastAnalysis(null);
       settleTurn(null, null, [], null, undefined);
@@ -785,6 +813,8 @@ export function PlayMode({
     setTeachingNodes([]);
     setTeachingFocus(null);
     setPreviewLine(null);
+    setPlayFacts(null);
+    setPlayFactsBusy(false);
   }
 
   function undo() {
@@ -1004,6 +1034,8 @@ export function PlayMode({
           move={liveAnalysis?.move}
           focused={focused}
           onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
+          enginePosition={playFactsSelection.position}
+          enginePending={playFactsSelection.source === 'pending'}
         />
 
         <MoveReviewCard

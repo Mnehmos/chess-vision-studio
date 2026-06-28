@@ -57,7 +57,6 @@ import { LedPreview } from './LedPreview';
 import { buildBoardExport, boardExportFilename, downloadJson } from './exportState';
 import { plyRecordToUci, sanLineToUci } from '../engine/adapters/uci-line';
 import type {
-  PositionFacts,
   TeachingFactBundleV1,
   TeachingFactsRequestV1,
 } from '../engine/teaching/types';
@@ -101,9 +100,10 @@ import {
   type AnalysisIdentityV2,
   buildHistoryHash,
   DEFAULT_ENGINE_COMPARISON_BUDGET,
-  matchPositionFacts,
   normalizedScoreFromSideToMove,
   replayReachesFen,
+  selectPositionFacts,
+  type FactsArtifactStatus,
 } from '../engine/analysis-frame';
 import {
   legalMovesFrom,
@@ -954,16 +954,20 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plies, analyses, view, teachingNodes, teachingIdea, cacheVersion]);
 
-  // The engine PositionFacts matching the board right now — Square facts reads the
-  // inspected piece's attackers/defenders/SEE from here (matched by piece placement).
-  const engineSquareFacts = useMemo<PositionFacts | null>(() => {
-    if (!teachingFacts) return null;
-    // Fail closed on the full legal-position key (placement + side-to-move +
-    // castling + en-passant), not piece placement alone (AnalysisFrameV2 §3.1):
-    // a stale bundle, or one for a position that shares placement but differs in
-    // side-to-move/castling/en-passant, yields no facts rather than the wrong ones.
-    return matchPositionFacts(teachingFacts, fen)?.position ?? null;
-  }, [teachingFacts, fen]);
+  // The engine PositionFacts matching the board right now, via the SHARED selector
+  // used by both Analyze and Play (plan §6 PR-05). Fails closed on the full
+  // legal-position key (§3.1); pending is distinct from fallback.
+  const engineFactsSelection = useMemo(() => {
+    const status: FactsArtifactStatus = teachingFactsError
+      ? 'error'
+      : teachingFactsBusy
+        ? 'pending'
+        : teachingFacts
+          ? 'computed'
+          : 'idle';
+    return selectPositionFacts(status, teachingFacts, fen);
+  }, [teachingFacts, teachingFactsBusy, teachingFactsError, fen]);
+  const engineSquareFacts = engineFactsSelection.position;
 
   const bestMovePuzzle = useMemo(
     () =>
@@ -1883,6 +1887,7 @@ export function App() {
                   focused={focused}
                   onFocus={(ins) => setFocused((cur) => (cur === ins ? null : ins))}
                   enginePosition={engineSquareFacts}
+                  enginePending={engineFactsSelection.source === 'pending'}
                 />
                 <MoveReviewCard
                   stockfishState={engineState}

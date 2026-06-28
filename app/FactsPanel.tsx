@@ -15,6 +15,7 @@ export function FactsPanel({
   focused,
   onFocus,
   enginePosition,
+  enginePending,
 }: {
   fen: string;
   selected?: Square;
@@ -25,6 +26,10 @@ export function FactsPanel({
   // The Rust position facts matching the board, when available - the source of
   // truth for the inspected piece's attackers/defenders/SEE.
   enginePosition?: PositionFacts | null;
+  // True while a matching Rust facts request is in flight: an occupied square shows
+  // a loading state instead of immediately falling back to the chess.js report
+  // (plan §6 PR-05 — pending is not fallback).
+  enginePending?: boolean;
 }) {
   const report = selected ? squareReport(fen, selected) : undefined;
   // Prefer engine-surfaced facts for the inspected piece; fall back to the legacy
@@ -85,10 +90,19 @@ export function FactsPanel({
           <StatusLine status={engineStatus(enginePiece)} />
           <DependentTactics insights={dependentTactics} onFocus={onFocus} />
         </div>
+      ) : enginePending && report && report.occupied ? (
+        <div className="facts-panel__card facts-panel__card--piece">
+          <div className="facts-panel__card-title">
+            {report.square} - {report.color} {report.pieceName?.toLowerCase()}{' '}
+            <span className="facts-panel__source-pill">loading…</span>
+          </div>
+          <div className="facts-panel__label">Loading engine facts…</div>
+        </div>
       ) : report && report.occupied ? (
         <div className="facts-panel__card facts-panel__card--piece">
           <div className="facts-panel__card-title">
-            {report.square} - {report.color} {report.pieceName?.toLowerCase()}
+            {report.square} - {report.color} {report.pieceName?.toLowerCase()}{' '}
+            <span className="facts-panel__source-pill">fallback</span>
           </div>
           <Row label="Attacked by" items={report.attackedBy.map((a) => a.label)} tone="danger" />
           <Row label="Defended by" items={report.defendedBy.map((d) => d.label)} tone="good" />
