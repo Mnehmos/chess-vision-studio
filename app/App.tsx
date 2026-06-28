@@ -88,6 +88,7 @@ import { exportElementGif } from './gif-export';
 import { PreviewTeachingCard } from './PreviewTeachingCard';
 import { buildVariationPreviewArrows, buildVariationPreviewPositions } from './variation-preview';
 import { factsRequestForPly } from './teaching-facts-request';
+import { matchPositionFacts } from '../engine/analysis-frame';
 import {
   legalMovesFrom,
   teachingLedMap as teachingNodeLedMap,
@@ -826,17 +827,11 @@ export function App() {
   // inspected piece's attackers/defenders/SEE from here (matched by piece placement).
   const engineSquareFacts = useMemo<PositionFacts | null>(() => {
     if (!teachingFacts) return null;
-    const place = (f: string) => f.split(' ')[0];
-    const cur = place(fen);
-    if (place(teachingFacts.played.fenAfter) === cur) return teachingFacts.played.position;
-    if (place(teachingFacts.fenBefore) === cur) return teachingFacts.before;
-    if (teachingFacts.best && place(teachingFacts.best.fenAfter) === cur) {
-      return teachingFacts.best.position;
-    }
-    if (teachingFacts.refutation && place(teachingFacts.refutation.fenAfter) === cur) {
-      return teachingFacts.refutation.position;
-    }
-    return null;
+    // Fail closed on the full legal-position key (placement + side-to-move +
+    // castling + en-passant), not piece placement alone (AnalysisFrameV2 §3.1):
+    // a stale bundle, or one for a position that shares placement but differs in
+    // side-to-move/castling/en-passant, yields no facts rather than the wrong ones.
+    return matchPositionFacts(teachingFacts, fen)?.position ?? null;
   }, [teachingFacts, fen]);
 
   const bestMovePuzzle = useMemo(
