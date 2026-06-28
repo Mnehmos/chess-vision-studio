@@ -11,3 +11,7 @@ fixtures/llm-eval-output.json
 engine/__throwaway_*
 tsconfig.tsbuildinfo
 arena/out/
+
+# RSI experiment outputs (regenerable)
+arena/gauntlet/runs/
+arena/models/cvs-value-mixed/

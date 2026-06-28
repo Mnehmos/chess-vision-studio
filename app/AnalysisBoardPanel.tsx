@@ -4,6 +4,7 @@ import { controlShare, type PlyFeatures } from '../engine/features';
 import type { LedMap, Square } from '../engine/types';
 import type { PlyRecord } from '../engine/position';
 import { Board2D } from './Board2D';
+import { pieceSvg, pieceLabel } from './piece-set';
 import type { Arrow } from './BoardArrows';
 import { AlternativeLinesPanel } from './AlternativeLinesPanel';
 import { AnnotationLegend } from './AnnotationLegend';
@@ -22,6 +23,8 @@ export interface AnalysisBoardPanelProps {
   engineReady: boolean;
   hideOverlays: boolean;
   onHideOverlaysChange: (value: boolean) => void;
+  seeFocused?: boolean;
+  onSeeFocusedChange?: (value: boolean) => void;
   legalDots?: Square[];
   activeFen: string;
   ledMap: LedMap;
@@ -55,10 +58,13 @@ export interface AnalysisBoardPanelProps {
   onHoverAlternative: (alt: AlternativeLine | null) => void;
   onToggleReveal: (id: string) => void;
   onGenerateBestLine: (plies: number) => void;
+  onGenerateNextBestLine?: (plies: number) => void;
   generatingBestLine: boolean;
   onRefuteLine: (id: string) => void;
+  onSolidify?: (alt: AlternativeLine) => void;
   exporting: boolean;
   onExportAnalysis: () => void;
+  onExportGameGif?: () => void;
   features?: PlyFeatures;
   plies: PlyRecord[];
   showThreats: boolean;
@@ -79,6 +85,8 @@ export function AnalysisBoardPanel({
   engineReady,
   hideOverlays,
   onHideOverlaysChange,
+  seeFocused,
+  onSeeFocusedChange,
   legalDots,
   activeFen,
   ledMap,
@@ -112,10 +120,13 @@ export function AnalysisBoardPanel({
   onHoverAlternative,
   onToggleReveal,
   onGenerateBestLine,
+  onGenerateNextBestLine,
   generatingBestLine,
   onRefuteLine,
+  onSolidify,
   exporting,
   onExportAnalysis,
+  onExportGameGif,
   features,
   plies,
   showThreats,
@@ -138,10 +149,13 @@ export function AnalysisBoardPanel({
           engineReady={engineReady}
           hideOverlays={hideOverlays}
           onHideOverlaysChange={onHideOverlaysChange}
+          seeFocused={seeFocused}
+          onSeeFocusedChange={onSeeFocusedChange}
         />
 
         <div className="analysis-board-stage">
           <Board2D
+            squareSizeCss="min(64px, 12.5cqw)"
             legalDots={legalDots}
             fen={activeFen}
             ledMap={ledMap}
@@ -193,6 +207,8 @@ export function AnalysisBoardPanel({
           onGenerateBestLine={onGenerateBestLine}
           generatingBestLine={generatingBestLine}
           onRefuteLine={onRefuteLine}
+          onGenerateNextBestLine={onGenerateNextBestLine}
+          onSolidify={onSolidify}
         />
         <button
           className="analysis-export-button"
@@ -202,6 +218,18 @@ export function AnalysisBoardPanel({
         >
           {exporting ? 'Building teaching records...' : 'Export JSON + teaching corpus'}
         </button>
+        {onExportGameGif && (
+          <button
+            className="analysis-export-button"
+            onClick={onExportGameGif}
+            disabled={gifJob.running}
+            title="Render the whole game as an animated GIF — one frame per ply, with the active overlay (Threat / SEE / …) drawn on each frame."
+          >
+            {gifJob.running
+              ? `Rendering GIF ${gifJob.done}/${gifJob.total}...`
+              : 'Export GIF (game + overlays)'}
+          </button>
+        )}
         <MiniBadges features={features} />
         <ControlBar features={features} />
         <MoveStrip plies={plies} view={view} onViewChange={onViewChange} />
@@ -232,6 +260,8 @@ export function AnalysisModeBar({
   hideOverlays,
   onHideOverlaysChange,
   setHideOverlays,
+  seeFocused,
+  onSeeFocusedChange,
 }: {
   modeId: ModeId;
   onPick: (id: ModeId) => void;
@@ -239,6 +269,8 @@ export function AnalysisModeBar({
   hideOverlays: boolean;
   onHideOverlaysChange?: (value: boolean) => void;
   setHideOverlays?: (value: boolean) => void;
+  seeFocused?: boolean;
+  onSeeFocusedChange?: (value: boolean) => void;
 }) {
   const setHidden = onHideOverlaysChange ?? setHideOverlays;
   return (
@@ -258,6 +290,21 @@ export function AnalysisModeBar({
           </button>
         );
       })}
+      {modeId === 'hanging' && onSeeFocusedChange && (
+        <button
+          className={`analysis-mode-bar__button analysis-mode-bar__overlay${
+            seeFocused ? ' is-active' : ''
+          }`}
+          onClick={() => onSeeFocusedChange(!seeFocused)}
+          title={
+            seeFocused
+              ? 'Focused: pieces only (their full SEE picture)'
+              : 'Full: pieces + empty-square contested analysis'
+          }
+        >
+          {seeFocused ? 'SEE: Focused' : 'SEE: Full'}
+        </button>
+      )}
       <button
         className={`analysis-mode-bar__button analysis-mode-bar__overlay${
           hideOverlays ? ' is-active' : ''
@@ -283,15 +330,18 @@ function AnalysisPromotionOverlay({
     <div className="analysis-promotion-overlay">
       <div className="analysis-promotion-overlay__panel">
         <span className="analysis-promotion-overlay__label">Promote to</span>
-        {PROMOTION_PIECES.map((piece) => (
-          <button
-            key={piece}
-            className="analysis-promotion-overlay__piece"
-            onClick={() => onPromote(promotion.from, promotion.to, piece)}
-          >
-            {piece}
-          </button>
-        ))}
+        {PROMOTION_PIECES.map((piece) => {
+          const color = promotion.to.endsWith('1') ? 'b' : 'w';
+          return (
+            <button
+              key={piece}
+              className="analysis-promotion-overlay__piece"
+              onClick={() => onPromote(promotion.from, promotion.to, piece)}
+            >
+              <img src={pieceSvg(color, piece)} alt={pieceLabel(color, piece)} />
+            </button>
+          );
+        })}
         <button className="analysis-promotion-overlay__cancel" onClick={onCancel}>
           Cancel
         </button>

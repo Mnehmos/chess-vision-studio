@@ -3,9 +3,9 @@
 // to a 64-square LedMap. The React board and the LED twin render the SAME map.
 import { Chess } from 'chess.js';
 import { buildRelationMap } from './relations';
-import { seeOnSquare } from './see';
+import { seeOnSquare, occupationLoss } from './see';
 import { detectAvailableMotifs } from './motif';
-import { parseFen, allPieces, fileOf } from './board';
+import { parseFen, allPieces, fileOf, attackersOf } from './board';
 import type { LedColor, LedMap, MoveAnalysis, Square } from './types';
 
 export type ModeId =
@@ -21,6 +21,10 @@ export interface LedContext {
   fen: string;
   selectedSquare?: Square;
   analysis?: MoveAnalysis; // required for 'what_changed'
+  // Hanging (SEE) detail level: 'full' (default) shows every contested square
+  // including standoffs and merely-pressured pieces; 'focused' shows only squares
+  // where material is actually at stake (a side wins points).
+  seeDetail?: 'full' | 'focused';
 }
 
 const FILES = 'abcdefgh';
@@ -101,29 +105,28 @@ function legalMode(ctx: LedContext): LedMap {
   return map;
 }
 
-// ── Threat Map — BOTH sides at once. White's control = blue, Black's = orange,
-//    contested (both) = purple; squares around either king held by the enemy =
-//    dark_red (king danger).
+// ── Threat Map — BOTH sides at once. White's control = blue, Black's = red,
+//    contested (both) = purple. Opacity graduates by how many pieces hold the
+//    square (intensity), so a single-controlled square reads faint and a hotly
+//    contested one reads strong — no flat wall of colour. King-zone squares are
+//    NOT singled out: the control heat already shows where pressure converges.
 function threatMode(ctx: LedContext): LedMap {
   const map = blankMap('threat');
-  const rel = buildRelationMap(ctx.fen);
-  const w = new Set(rel.controlledByWhite);
-  const b = new Set(rel.controlledByBlack);
-  for (const sq of allSquares()) {
-    const byW = w.has(sq);
-    const byB = b.has(sq);
-    if (byW && byB) map.squares[sq] = 'purple';
-    else if (byW) map.squares[sq] = 'blue'; // White's base color
-    else if (byB) map.squares[sq] = 'red'; // Black's base color
-  }
-  // King safety — a DARKER shade of each team's OWN base color marks the squares
-  // around its king that the enemy holds: White king zone = dark_blue, Black = dark_red.
+  map.intensity = {};
   const board = parseFen(ctx.fen);
-  for (const king of allPieces(board).filter((p) => p.type === 'k')) {
-    const enemy = king.color === 'w' ? b : w;
-    const zoneColor: LedColor = king.color === 'w' ? 'dark_blue' : 'dark_red';
-    if (enemy.has(king.square)) map.squares[king.square] = zoneColor; // in check
-    for (const sq of adjacent(king.square)) if (enemy.has(sq)) map.squares[sq] = zoneColor;
+  for (const sq of allSquares()) {
+    const wn = attackersOf(board, sq, 'w').length;
+    const bn = attackersOf(board, sq, 'b').length;
+    if (wn && bn) {
+      map.squares[sq] = 'purple';
+      map.intensity[sq] = Math.max(wn, bn);
+    } else if (wn) {
+      map.squares[sq] = 'blue'; // White's base colour
+      map.intensity[sq] = wn;
+    } else if (bn) {
+      map.squares[sq] = 'red'; // Black's base colour
+      map.intensity[sq] = bn;
+    }
   }
   return map;
 }
@@ -142,20 +145,89 @@ function defenseMode(ctx: LedContext): LedMap {
   return map;
 }
 
-// ── Hanging (SEE) — yellow=loose, orange=fragile, red=SEE-losing, red_blink=Q/mate
+// ── Hanging (SEE) — rendered as RINGS + badges (not fills), so it reads at a
+//    glance and several can coexist without a wall of colour. Colour follows WHO
+//    BENEFITS, using the side language (blue = White advantage, red = Black).
+//    For an OCCUPIED piece the badge is the MATERIAL outcome in points from a
+//    full SEE (e.g. "+6" for winning a queen for a knight) — NOT a piece count,
+//    because a "1 vs 1" capture can be wildly unequal in value. A piece that is
+//    attacked but holds materially gets a soft pressure ring with no number
+//    (orange = more attackers than defenders, yellow = adequately defended).
+//    EMPTY squares one side floods are ringed by the controlling side with a
+//    control COUNT badge ("3v1") — there's no material there, only control.
 function hangingMode(ctx: LedContext): LedMap {
   const map = blankMap('hanging');
+  map.badges = {};
   const rel = buildRelationMap(ctx.fen);
   const board = parseFen(ctx.fen);
   for (const p of allPieces(board)) {
     const r = rel.bySquare[p.square];
     const swing = seeOnSquare(ctx.fen, p.square).swing;
-    const attacked = (r?.attackedBy.length ?? 0) > 0;
-    const defenders = r?.defendedBy.length ?? 0;
     const attackers = r?.attackedBy.length ?? 0;
-    if (swing >= 9) map.squares[p.square] = 'red_blink'; // queen-level loss
-    else if (swing > 0) map.squares[p.square] = 'red'; // SEE-losing
-    else if (attacked) map.squares[p.square] = defenders <= attackers ? 'orange' : 'yellow';
+    const defenders = r?.defendedBy.length ?? 0;
+    if (attackers === 0) continue; // a safe piece gets no ring
+    if (swing > 0) {
+      // Capturing wins material — colour by the WINNER (the capturer = enemy of
+      // this piece) and badge the POINTS won, so a queen taken for a knight reads
+      // "+6 (White)" rather than a meaningless "1v1".
+      const winner = other(p.color);
+      map.squares[p.square] = winner === 'w' ? 'blue' : 'red';
+      map.badges[p.square] = '+' + swing;
+    } else if (attackers > defenders) {
+      map.squares[p.square] = 'orange'; // more attackers than defenders, but SEE-safe
+      map.badges[p.square] = '0'; // neutral material — nothing won by capturing
+    } else {
+      map.squares[p.square] = 'yellow'; // attacked but adequately defended
+      map.badges[p.square] = '0'; // neutral material
+    }
+  }
+  // Empty squares that BOTH sides fight over — valued by a full Static Exchange
+  // Evaluation, no heuristics. For each side, occupationLoss() runs the entire
+  // capture stack and returns what that side LOSES by occupying the square (0 =
+  // can occupy safely). The side that can occupy safely while the other cannot
+  // controls it; the badge is the POINTS THE LOSER FORFEITS if it contests. If
+  // both can occupy safely (shared) or neither can (no-man's-land) it is a true
+  // contested standoff. Only squares both sides attack are shown — one-sided
+  // control is the Threat Map's job, not a material question.
+  const cap = (n: number) => Math.min(n, 9); // king (≈1000) reads as mate-level
+  for (const sq of allSquares()) {
+    const [f, r] = [sq.charCodeAt(0) - 97, sq.charCodeAt(1) - 49];
+    if (board.grid[f][r]) continue; // occupied squares handled above
+    const wn = attackersOf(board, sq, 'w').length;
+    const bn = attackersOf(board, sq, 'b').length;
+    if (wn === 0 || bn === 0) continue; // need a real two-sided contest
+
+    // occupationLoss: 0 = can hold the square safely, >0 = loses that much by
+    // contesting, null = no real (non-king) support at all → cannot hold it.
+    const lossW = occupationLoss(board, sq, 'w');
+    const lossB = occupationLoss(board, sq, 'b');
+    const wSafe = lossW === 0;
+    const bSafe = lossB === 0;
+    if (wSafe && !bSafe) {
+      map.squares[sq] = 'blue'; // only White can hold the square
+      map.badges[sq] = '+' + cap(lossB ?? 9); // Black forfeits this if it contests (null = mate-level)
+    } else if (bSafe && !wSafe) {
+      map.squares[sq] = 'red'; // only Black can hold the square
+      map.badges[sq] = '+' + cap(lossW ?? 9);
+    } else {
+      map.squares[sq] = 'purple'; // shared (both safe) or no-man's-land (neither holds)
+      map.badges[sq] = '0'; // neutral — no material swings on this square
+    }
+  }
+
+  // Focused view — PIECE analysis only: keep every ring on an occupied square
+  // (its full SEE picture, pressure rings included — a hanging/under-defended
+  // piece matters more than empty-square control) and drop the empty-square
+  // contested analysis. Full view keeps both.
+  if (ctx.seeDetail === 'focused') {
+    for (const sq of allSquares()) {
+      if (map.squares[sq] === 'off') continue;
+      const [f, r] = [sq.charCodeAt(0) - 97, sq.charCodeAt(1) - 49];
+      if (!board.grid[f][r]) {
+        map.squares[sq] = 'off'; // empty square — hidden in the focused (pieces) view
+        if (map.badges) delete map.badges[sq];
+      }
+    }
   }
   return map;
 }
@@ -234,18 +306,3 @@ function tacticsMode(ctx: LedContext): LedMap {
   return map;
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-function adjacent(square: Square): Square[] {
-  const f = fileOf(square);
-  const r = square.charCodeAt(1) - 49;
-  const out: Square[] = [];
-  for (let df = -1; df <= 1; df++)
-    for (let dr = -1; dr <= 1; dr++) {
-      if (df === 0 && dr === 0) continue;
-      const nf = f + df;
-      const nr = r + dr;
-      if (nf >= 0 && nf < 8 && nr >= 0 && nr < 8)
-        out.push(String.fromCharCode(97 + nf) + String.fromCharCode(49 + nr));
-    }
-  return out;
-}

@@ -173,8 +173,10 @@ interface AlternativeLinesPanelProps {
   onToggleReveal?: (id: string) => void;
   onDeleteMove?: (altId: string, moveIdx: number) => void;
   onGenerateBestLine?: (plies: number) => void;
+  onGenerateNextBestLine?: (plies: number) => void;
   generatingBestLine?: boolean;
   onRefuteLine?: (id: string) => void;
+  onSolidify?: (alt: AlternativeLine) => void;
 }
 
 export function AlternativeLinesPanel({
@@ -188,8 +190,10 @@ export function AlternativeLinesPanel({
   onToggleReveal,
   onDeleteMove,
   onGenerateBestLine,
+  onGenerateNextBestLine,
   generatingBestLine,
   onRefuteLine,
+  onSolidify,
 }: AlternativeLinesPanelProps) {
   const [bestLinePlies, setBestLinePlies] = useState(4);
   const hasBestLine = alternatives.some((alt) => alt.source === 'best-line');
@@ -243,8 +247,17 @@ export function AlternativeLinesPanel({
         <div className="alternative-lines__generator">
           <button
             className="alternative-lines__primary-action"
-            onClick={() => onGenerateBestLine(bestLinePlies)}
+            onClick={() =>
+              hasBestLine && onGenerateNextBestLine
+                ? onGenerateNextBestLine(bestLinePlies)
+                : onGenerateBestLine(bestLinePlies)
+            }
             disabled={generatingBestLine}
+            title={
+              hasBestLine
+                ? 'Add a new line for the next-best move from this position (not a deeper version of the current line).'
+                : 'Generate the engine best line from this position.'
+            }
           >
             {generatingBestLine
               ? 'Generating...'
@@ -362,6 +375,17 @@ export function AlternativeLinesPanel({
                         }
                       >
                         Refute line
+                      </button>
+                    )}
+
+                    {onSolidify && (
+                      <button
+                        className="alternative-lines__button alternative-lines__button--solidify"
+                        onClick={() => onSolidify(alt)}
+                        disabled={alt.isAnalyzing || alt.moves.length === 0}
+                        title="Commit this line as a branch of the game so it can be reviewed and exported."
+                      >
+                        Solidify
                       </button>
                     )}
 

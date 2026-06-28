@@ -122,6 +122,8 @@ function parseArgs(argv: string[]): MixedConfig {
     else if (a === '--margin') cfg.marginScale = Number(next());
     else if (a === '--margin-cap') cfg.marginCapCp = Number(next());
     else if (a === '--topk') cfg.topK = Number(next()) || cfg.topK;
+    else if (a === '--base-out') cfg.baseOut = next();
+    else if (a === '--rung2-out') cfg.rung2Out = next();
   }
   return cfg;
 }

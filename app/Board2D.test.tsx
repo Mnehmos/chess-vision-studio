@@ -20,13 +20,13 @@ describe('Board2D', () => {
     expect(cells).toHaveLength(64);
   });
 
-  it('paints the loose g4 knight red in Hanging mode (UI reflects the engine)', () => {
+  it('rings the loose g4 knight blue in Hanging mode — White wins the exchange (UI reflects the engine)', () => {
     const ledMap = computeLedMap('hanging', { fen: G4_FEN });
     const { container } = render(
       <Board2D fen={G4_FEN} ledMap={ledMap} onSelect={() => {}} />,
     );
     const g4 = container.querySelector('[data-square="g4"]')!;
-    expect(g4.getAttribute('data-led')).toBe('red');
+    expect(g4.getAttribute('data-led')).toBe('blue'); // White is winning the exchange → blue
     expect(g4.getAttribute('data-piece')).toBe('bN'); // the black knight is rendered there
   });
 

@@ -145,6 +145,7 @@ export function App() {
   const [cascade, setCascade] = useState(true);
   const [followMove, setFollowMove] = useState(true);
   const [hideOverlays, setHideOverlays] = useState(false);
+  const [seeFocused, setSeeFocused] = useState(false);
   const [focused, setFocused] = useState<InsightCandidate | null>(null);
   const [analyses, setAnalyses] = useState<Map<number, MoveAnalysis>>(new Map());
   const [engineState, setEngineState] = useState<'loading' | 'ready' | 'off'>('loading');
@@ -344,6 +345,7 @@ export function App() {
     deleteMove,
     deepenAlternative,
     generateBestLine,
+    generateNextBestLine,
     generatingBestLine,
     refuteLine,
     toggleReveal,
@@ -391,11 +393,12 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewLine, previewPositions]);
 
-  const saveVariation = () => {
-    if (!currentGame || !previewLine) return;
+  const saveVariation = (target?: AlternativeLine) => {
+    const alt = target ?? previewLine?.alt;
+    if (!currentGame || !alt) return;
     const prefix = plies.slice(0, view);
-    let currChess = new Chess(previewLine.alt.rootFen);
-    const moves = [...previewLine.alt.moves.map(m => m.uci), ...previewLine.alt.pv];
+    let currChess = new Chess(alt.rootFen);
+    const moves = [...alt.moves.map(m => m.uci), ...alt.pv];
     const nextPlies = [...prefix];
     for (const moveUci of moves) {
       const before = currChess.fen();
@@ -450,8 +453,9 @@ export function App() {
     setView(nextPlies.length);
     setPreviewLine(null);
   };
-  // Always-on legal-move hints: whatever lens is active, clicking a piece
-  // shows where it can go (chess.js from the current FEN).
+  // Legal-move hints (chess.js from the current FEN): clicking a piece shows where
+  // it can go. Only surfaced in the Legal Move lens — other overlays gate it out at
+  // the render site so move dots don't bleed through the Threat / SEE / … maps.
   const legalDots = useMemo(() => {
     if (!selected) return undefined;
     try {
@@ -1065,8 +1069,13 @@ export function App() {
     if (hideOverlays) return { mode: 'off' as any, squares: {} };
     if (teachingFocus) return teachingNodeLedMap(teachingFocus, 'focus');
     if (focused) return focusLedMap(focused);
-    return computeLedMap(modeId, { fen, selectedSquare: selected, analysis });
-  }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays]);
+    return computeLedMap(modeId, {
+      fen,
+      selectedSquare: selected,
+      analysis,
+      seeDetail: seeFocused ? 'focused' : 'full',
+    });
+  }, [modeId, fen, selected, analysis, focused, teachingFocus, hideOverlays, seeFocused]);
 
   // Annotation arrows:
   //   • selected piece — DEFENDERS (green in), ATTACKERS (red in), and the piece's
@@ -1218,6 +1227,49 @@ export function App() {
             }
           : current,
       );
+      setGifJob({ running: false, done: 0, total: 0 });
+    }
+  };
+
+  // Export the whole evaluated game as an animated GIF, one frame per ply, with
+  // the active overlay mode (Threat / SEE / …) rendered on every frame. Selection
+  // is cleared so only the mode overlay shows — a clean board animation.
+  const exportGameGif = async () => {
+    if (!gifCaptureRef.current || gifJob.running || plies.length === 0 || previewLine) return;
+    const originalView = view;
+    const originalSelected = selected;
+    setSelected(undefined);
+    const frames = plies.length + 1; // ply 0 (start) … ply N (after last move)
+    setGifJob({ running: true, done: 0, total: frames });
+    try {
+      await exportElementGif({
+        element: gifCaptureRef.current,
+        frameCount: frames,
+        filename: `cvs-game-${Date.now()}.gif`,
+        delayMs: 900,
+        setFrame: (index) => setView(index),
+        // html-to-image snapshots scroll containers unreliably (it clones them from
+        // the top), so `scrollTop` alone is flaky. Instead shift the content up with
+        // a negative margin — which html-to-image renders deterministically — so the
+        // newest move is always what's captured, matching the live "stick to bottom".
+        beforeCapture: () => {
+          const list = gifCaptureRef.current?.querySelector<HTMLElement>('.teaching-log__list');
+          const first = list?.firstElementChild as HTMLElement | null;
+          if (!list || !first) return;
+          first.style.marginTop = '0';
+          const shift = Math.max(0, list.scrollHeight - list.clientHeight);
+          list.scrollTop = 0;
+          first.style.marginTop = shift ? `-${shift}px` : '';
+        },
+        onProgress: (done, total) => setGifJob({ running: true, done, total }),
+      });
+    } finally {
+      // Undo the capture-time content shift so the live log scrolls normally again.
+      const list = gifCaptureRef.current?.querySelector<HTMLElement>('.teaching-log__list');
+      const first = list?.firstElementChild as HTMLElement | null;
+      if (first) first.style.marginTop = '';
+      setView(originalView);
+      setSelected(originalSelected);
       setGifJob({ running: false, done: 0, total: 0 });
     }
   };
@@ -1662,7 +1714,13 @@ export function App() {
                 engineReady={engineState === 'ready'}
                 hideOverlays={hideOverlays}
                 onHideOverlaysChange={setHideOverlays}
-                legalDots={previewLine || hideOverlays ? undefined : legalDots}
+                seeFocused={seeFocused}
+                onSeeFocusedChange={setSeeFocused}
+                legalDots={
+                  previewLine || hideOverlays || modeId !== 'legal' || gifJob.running
+                    ? undefined
+                    : legalDots
+                }
                 activeFen={activeFen}
                 ledMap={previewLine || hideOverlays ? ({ mode: 'off', squares: {} } as LedMap) : ledMap}
                 selected={previewLine || hideOverlays ? undefined : selected}
@@ -1701,10 +1759,13 @@ export function App() {
                 onHoverAlternative={(alt) => setHoveredAltId(alt?.id ?? null)}
                 onToggleReveal={toggleReveal}
                 onGenerateBestLine={generateBestLine}
+                onGenerateNextBestLine={generateNextBestLine}
                 generatingBestLine={generatingBestLine}
                 onRefuteLine={refuteLine}
+                onSolidify={saveVariation}
                 exporting={exporting}
                 onExportAnalysis={exportAnalysis}
+                onExportGameGif={exportGameGif}
                 features={currentFeatures}
                 plies={plies}
                 showThreats={showThreats}

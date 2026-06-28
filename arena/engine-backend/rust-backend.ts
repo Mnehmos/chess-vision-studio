@@ -35,6 +35,15 @@ export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): stri
   if (env.CVS_RUST_QTT === '1') extra.push('--qtt');
   if (env.CVS_RUST_HISTMALUS === '1') extra.push('--histmalus');
   if (env.CVS_RUST_HISTLMR === '1') extra.push('--histlmr');
+  // Move-ordering / pruning experiments promoted after cutechess-gated wins
+  // (2026-06-27). Each only activates when its env flag is set to '1'.
+  if (env.CVS_RUST_LMP === '1') extra.push('--lmp');
+  if (env.CVS_RUST_IMPROVING === '1') extra.push('--improving');
+  if (env.CVS_RUST_TT2 === '1') extra.push('--tt2');
+  if (env.CVS_RUST_CONTHIST === '1') extra.push('--conthist');
+  if (env.CVS_RUST_COUNTERMOVE === '1') extra.push('--countermove');
+  if (env.CVS_RUST_SINGULAR === '1') extra.push('--singular');
+  if (env.CVS_RUST_SMARTTIME === '1') extra.push('--smarttime');
   return extra;
 }
 

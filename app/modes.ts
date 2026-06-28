@@ -28,8 +28,6 @@ export const MODES: ModeDef[] = [
       { color: 'blue', meaning: 'White controls' },
       { color: 'red', meaning: 'Black controls' },
       { color: 'purple', meaning: 'contested' },
-      { color: 'dark_blue', meaning: 'White king zone' },
-      { color: 'dark_red', meaning: 'Black king zone' },
     ],
   },
   {
@@ -46,10 +44,11 @@ export const MODES: ModeDef[] = [
     id: 'hanging',
     label: 'Hanging (SEE)',
     legend: [
-      { color: 'yellow', meaning: 'loose but SEE ≥ 0' },
-      { color: 'orange', meaning: 'attacked & fragile' },
-      { color: 'red', meaning: 'SEE-losing' },
-      { color: 'red_blink', meaning: 'queen / mate-level loss' },
+      { color: 'yellow', meaning: 'attacked, adequately defended' },
+      { color: 'orange', meaning: 'pressured — more attackers than defenders' },
+      { color: 'blue', meaning: 'White advantage — +pts won (piece taken, or square if Black contests)' },
+      { color: 'red', meaning: 'Black advantage — +pts won (piece taken, or square if White contests)' },
+      { color: 'purple', meaning: 'contested empty sq — standoff (shared, or neither can hold it)' },
     ],
   },
   {
@@ -85,16 +84,19 @@ export const MODES: ModeDef[] = [
   },
 ];
 
+// Warm, slightly desaturated palette tuned to sit on the stone board without the
+// neon glare the old saturated colours had. Hues track the Mnehmos status colours
+// (success / danger / info) plus copper/slate/contested for the control maps.
 export const LED_CSS: Record<LedColor, string> = {
-  green: '#3fbf5f',
-  red: '#e23b3b',
-  blue: '#3b7fe2',
-  yellow: '#e8d23b',
-  orange: '#e8923b',
-  purple: '#a14fe0',
+  green: '#5fa05f',
+  red: '#cc5a4d',
+  blue: '#5b8fc7',
+  yellow: '#e3b341',
+  orange: '#d98a3d',
+  purple: '#9662a8',
   dark_red: '#7a1010',
   dark_blue: '#16306b',
-  gray: '#8a8a8a',
-  red_blink: '#ff2a2a',
+  gray: '#8a817a',
+  red_blink: '#e2483b',
   off: 'transparent',
 };
