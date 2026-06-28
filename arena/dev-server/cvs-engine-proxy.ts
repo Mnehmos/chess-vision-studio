@@ -295,7 +295,11 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
           .then(async (body) => {
             const fen = body.fen?.trim();
             if (!fen) return json(res, 400, { error: 'fen is required' });
-            const cfg = configFor(body.depth);
+            // A movetime (timed) search must not be capped by the default --depth, or
+            // the engine returns early at that shallow depth instead of spending its
+            // time budget. Start it at the max depth ceiling so TIME is the binding
+            // constraint (this is what makes the "equal 1000ms" comparison real).
+            const cfg = configFor(body.movetimeMs ? 30 : body.depth);
             if (!existsSync(cfg.exe))
               return json(res, 503, { error: 'CVS Engine binary not found', exe: cfg.exe });
             if (cfg.missing.length)
