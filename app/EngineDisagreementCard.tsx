@@ -16,7 +16,7 @@ export function EngineDisagreementCard({ view }: { view: EngineDisagreementView 
     <section className="engine-disagreement">
       <div className="engine-disagreement__header">
         <h2 className="engine-disagreement__title">Engine Disagreement</h2>
-        <span className="engine-disagreement__tag">equal {budgetLabel(view.budget)}</span>
+        <span className="engine-disagreement__tag">{budgetTag(view)}</span>
       </div>
       <p className="engine-disagreement__root" title={view.rootFen}>
         root {shortFen(view.rootFen)}
@@ -68,6 +68,22 @@ function EngineColumn({ label, slot }: { label: string; slot: EngineSlot }) {
       )}
     </div>
   );
+}
+
+// The header budget tag, derived from what each engine ACTUALLY searched. Both
+// engines run depth-limited (often at DIFFERENT depths — SF deeper than CVS), so the
+// configured movetime budget is never what runs. Only claim "equal" when both engines
+// computed at the SAME depth; when only one ran (e.g. Stockfish is off in Play) name
+// that engine's depth so the tag matches the per-engine `d6 · …` provenance below.
+function budgetTag(view: EngineDisagreementView): string {
+  const sfDepth = view.stockfish.status === 'computed' ? view.stockfish.result.depth : undefined;
+  const cvsDepth = view.cvs.status === 'computed' ? view.cvs.result.depth : undefined;
+  if (typeof sfDepth === 'number' && typeof cvsDepth === 'number') {
+    return sfDepth === cvsDepth ? `equal depth ${sfDepth}` : `SF d${sfDepth} · CVS d${cvsDepth}`;
+  }
+  if (typeof cvsDepth === 'number') return `CVS depth ${cvsDepth}`;
+  if (typeof sfDepth === 'number') return `SF depth ${sfDepth}`;
+  return budgetLabel(view.budget);
 }
 
 function provenanceLine(slot: Extract<EngineSlot, { status: 'computed' }>): string {
