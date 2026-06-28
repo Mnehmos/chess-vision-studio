@@ -14,6 +14,9 @@ import { EngineDisagreementCard } from './EngineDisagreementCard';
 import { PositionHazardsPanel } from './PositionHazardsPanel';
 import { HazardDeltaPanel } from './HazardDeltaPanel';
 import { positionHazardsView, hazardDeltaView } from '../engine/hazard-view';
+import { NnueInspectorPanel } from './NnueInspectorPanel';
+import { getCvsFeatureInspection } from './cvs-feature-client';
+import type { CvsFeatureInspectionV1 } from '../engine/analysis-frame';
 import {
   buildEngineDisagreement,
   type EngineDisagreementView,
@@ -135,6 +138,10 @@ export function PlayMode({
   const [coachText, setCoachText] = useState('');
   const [explaining, setExplaining] = useState(false);
   const [debug, setDebug] = useState(false); // dev overlay: artifact identity + eval status
+  // NNUE / feature inspection (PR-16, dev-only): before/after the last move,
+  // fetched lazily only while the debug overlay is on.
+  const [nnueBefore, setNnueBefore] = useState<CvsFeatureInspectionV1 | null>(null);
+  const [nnueAfter, setNnueAfter] = useState<CvsFeatureInspectionV1 | null>(null);
   const [teachingNodes, setTeachingNodes] = useState<import('../engine/teaching/node').TeachingNode[]>([]);
   const [teachingFocus, setTeachingFocus] = useState<import('../engine/teaching/node').TeachingNode | null>(null);
   const analyzeIdRef = useRef(0); // cancels stale analyses when you move/undo fast
@@ -474,6 +481,31 @@ export function PlayMode({
         : null,
     [liveAnalysis],
   );
+
+  // Dev-only NNUE/feature inspection of the last move (PR-16). Fetched lazily and
+  // only while the debug overlay is on; a cancel flag drops stale responses so a
+  // fast move/undo can never render the wrong position.
+  useEffect(() => {
+    if (!debug || !liveAnalysis) {
+      setNnueBefore(null);
+      setNnueAfter(null);
+      return;
+    }
+    let cancelled = false;
+    const { positionBefore, positionAfter } = liveAnalysis;
+    void Promise.all([
+      getCvsFeatureInspection(positionBefore).catch(() => null),
+      getCvsFeatureInspection(positionAfter).catch(() => null),
+    ]).then(([before, after]) => {
+      if (cancelled) return;
+      setNnueBefore(before);
+      setNnueAfter(after);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [debug, liveAnalysis]);
+
   const last = history[history.length - 1];
 
   // Engine disagreement on the current board (PR-03). Play does not yet run an
@@ -1078,6 +1110,7 @@ export function PlayMode({
             teachingNodes={teachingNodes}
           />
         )}
+        {debug && <NnueInspectorPanel enabled={debug} before={nnueBefore} after={nnueAfter} />}
         </div>
       </div>
     </div>
