@@ -1,0 +1,404 @@
+{
+  "attemptedDepth": 12,
+  "cutoffs": 126039,
+  "depth": 12,
+  "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+  "historyCutoffs": 1982,
+  "iterations": [
+    {
+      "depth": 1,
+      "nodes": 108,
+      "pv": [
+        "b1c3"
+      ],
+      "scoreCp": 40,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 2,
+      "nodes": 334,
+      "pv": [
+        "b1c3",
+        "g8f6"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 3,
+      "nodes": 1899,
+      "pv": [
+        "b1c3",
+        "g8f6",
+        "d2d4"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 4,
+      "nodes": 2513,
+      "pv": [
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "f8d6"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 5,
+      "nodes": 15220,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8c5",
+        "c1e3"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 6,
+      "nodes": 31784,
+      "pv": [
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "d7d5"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 7,
+      "nodes": 62603,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "g8f6",
+        "d4c6",
+        "d7c6",
+        "d1d8"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 8,
+      "nodes": 116591,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "g8f6",
+        "b1c3",
+        "f8c5",
+        "c1e3",
+        "c6d4"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 9,
+      "nodes": 197121,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "g8f6",
+        "b1c3",
+        "f8c5",
+        "c1e3",
+        "c6d4",
+        "e3d4"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 10,
+      "nodes": 417584,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8c5",
+        "d4c6",
+        "d7c6",
+        "d1d8",
+        "e8d8",
+        "b1c3",
+        "g8f6"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 11,
+      "nodes": 635594,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8c5",
+        "d4c6",
+        "d7c6",
+        "d1d8",
+        "e8d8",
+        "b1c3",
+        "g8f6",
+        "c1f4"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "d2d4"
+    },
+    {
+      "depth": 12,
+      "nodes": 1195056,
+      "pv": [
+        "d2d4",
+        "e5d4",
+        "f3d4",
+        "f8c5",
+        "d4c6",
+        "d8f6",
+        "d1e2",
+        "f6c6",
+        "b1c3",
+        "g8e7",
+        "c1e3",
+        "e8g8"
+      ],
+      "scoreCp": 25,
+      "timeMs": 0,
+      "uci": "d2d4"
+    }
+  ],
+  "killerCutoffs": 17707,
+  "mate": null,
+  "nodes": 1195056,
+  "nullCutoffs": 10580,
+  "partialIteration": null,
+  "pv": [
+    "d2d4",
+    "e5d4",
+    "f3d4",
+    "f8c5",
+    "d4c6",
+    "d8f6",
+    "d1e2",
+    "f6c6",
+    "b1c3",
+    "g8e7",
+    "c1e3",
+    "e8g8"
+  ],
+  "qCaptures": 121832,
+  "qNodes": 559009,
+  "quietExt": 12695,
+  "resultSource": "completed-iteration",
+  "rootOrder": [
+    "d2d4",
+    "b1c3",
+    "f1d3",
+    "d1e2",
+    "d2d3",
+    "c2c3",
+    "b2b4",
+    "b1a3",
+    "e1e2",
+    "c2c4",
+    "g2g3",
+    "f1e2",
+    "h2h3",
+    "a2a3",
+    "a2a4",
+    "b2b3",
+    "f1b5",
+    "f3g1",
+    "f3h4",
+    "f3g5",
+    "f3d4",
+    "f1c4",
+    "g2g4",
+    "h2h4",
+    "f1a6",
+    "h1g1",
+    "f3e5"
+  ],
+  "scoreCp": 25,
+  "telemetry": {
+    "aspirationResearches": 0,
+    "avgCutoffMoveIndex": 1.2172341110688252,
+    "avgLegalMoves": 34.339508857666466,
+    "branchingByPly": [
+      {
+        "childSearches": 324,
+        "effectiveBranching": 27,
+        "nodes": 12,
+        "ply": 0
+      },
+      {
+        "childSearches": 646,
+        "effectiveBranching": 1.9575757575757575,
+        "nodes": 330,
+        "ply": 1
+      },
+      {
+        "childSearches": 6852,
+        "effectiveBranching": 7.894009216589862,
+        "nodes": 868,
+        "ply": 2
+      },
+      {
+        "childSearches": 12544,
+        "effectiveBranching": 1.761055734943142,
+        "nodes": 7123,
+        "ply": 3
+      },
+      {
+        "childSearches": 64307,
+        "effectiveBranching": 4.300033433634236,
+        "nodes": 14955,
+        "ply": 4
+      },
+      {
+        "childSearches": 77296,
+        "effectiveBranching": 1.1720749681567295,
+        "nodes": 65948,
+        "ply": 5
+      },
+      {
+        "childSearches": 157305,
+        "effectiveBranching": 1.931260128664735,
+        "nodes": 81452,
+        "ply": 6
+      },
+      {
+        "childSearches": 104215,
+        "effectiveBranching": 0.6511972306231097,
+        "nodes": 160036,
+        "ply": 7
+      },
+      {
+        "childSearches": 101133,
+        "effectiveBranching": 0.9528354327815411,
+        "nodes": 106139,
+        "ply": 8
+      },
+      {
+        "childSearches": 54916,
+        "effectiveBranching": 0.5394181089523211,
+        "nodes": 101806,
+        "ply": 9
+      },
+      {
+        "childSearches": 27635,
+        "effectiveBranching": 0.5011606398026912,
+        "nodes": 55142,
+        "ply": 10
+      },
+      {
+        "childSearches": 14603,
+        "effectiveBranching": 0.528290282902829,
+        "nodes": 27642,
+        "ply": 11
+      },
+      {
+        "childSearches": 0,
+        "effectiveBranching": 0,
+        "nodes": 14606,
+        "ply": 12
+      }
+    ],
+    "cutoffMoveIndexCount": 68318,
+    "cutoffMoveIndexSum": 83159,
+    "cutoffs": 126039,
+    "dangerExtensionPlies": 0,
+    "deltaAttempts": 0,
+    "deltaSkipPct": 0,
+    "deltaSkips": 0,
+    "firstMoveCutoffPct": 51.17622323249153,
+    "firstMoveCutoffs": 64502,
+    "foreignCutoffs": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "foreignHints": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "futilityAttempts": 176214,
+    "futilitySkipPct": 98.99213456365555,
+    "futilitySkips": 174438,
+    "hashMoveCutoffPct": 13.059449852823333,
+    "hashMoveCutoffs": 16460,
+    "historyCutoffs": 1982,
+    "killerCutoffs": 17707,
+    "legalMoveNodes": 204625,
+    "legalMoveSum": 7026722,
+    "lmpAttempts": 0,
+    "lmpSkipPct": 0,
+    "lmpSkips": 0,
+    "lmrReductions": 91205,
+    "lmrResearchPct": 0.13376459623924128,
+    "lmrResearches": 122,
+    "mainNodes": 636059,
+    "maxQDepth": 18,
+    "nodes": 1195056,
+    "nullAttempts": 14090,
+    "nullCutoffPct": 75.0887154009936,
+    "nullCutoffs": 10580,
+    "prunedMoves": 174438,
+    "pvsResearches": 59,
+    "qCaptures": 121832,
+    "qNodePct": 46.776803764844495,
+    "qNodes": 559009,
+    "qSeeSkips": 132935,
+    "quietExt": 12695,
+    "rfpAttempts": 192969,
+    "rfpCutoffPct": 53.388886297799125,
+    "rfpCutoffs": 103024,
+    "searchedEffectiveBranching": 3.0386120952962736,
+    "searchedMoves": 621776,
+    "seePruneAttempts": 0,
+    "seePruneSkipPct": 0,
+    "seePruneSkips": 0,
+    "timeMs": 0,
+    "ttCutoffPct": 15.179649875844337,
+    "ttCutoffs": 117128,
+    "ttEntries": 275516,
+    "ttEntryPct": 35.70654681368356,
+    "ttHitPct": 7.57194030160236,
+    "ttHits": 58426,
+    "ttMissCold": 72073,
+    "ttMissContended": 16436,
+    "ttProbes": 771612
+  },
+  "termination": "depth-limit",
+  "timeMs": 0,
+  "ttHits": 58426,
+  "uci": "d2d4"
+}

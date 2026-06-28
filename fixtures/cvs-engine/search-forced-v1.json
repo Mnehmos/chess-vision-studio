@@ -1,0 +1,384 @@
+{
+  "attemptedDepth": 12,
+  "depth": 12,
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "foreignCutoffs": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "foreignHints": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "iterations": [
+    {
+      "depth": 1,
+      "nodes": 2,
+      "pv": [
+        "e2e4"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 2,
+      "nodes": 69,
+      "pv": [
+        "e2e4",
+        "b8c6"
+      ],
+      "scoreCp": 0,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 3,
+      "nodes": 235,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "b1c3"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 4,
+      "nodes": 561,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "b1c3",
+        "g8f6"
+      ],
+      "scoreCp": 0,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 5,
+      "nodes": 2358,
+      "pv": [
+        "e2e4",
+        "g8f6",
+        "b1c3",
+        "d7d5",
+        "f1d3"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 6,
+      "nodes": 5867,
+      "pv": [
+        "e2e4",
+        "g8f6",
+        "e4e5",
+        "f6e4",
+        "d2d3",
+        "e4c5"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 7,
+      "nodes": 33730,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "d2d4",
+        "g8f6",
+        "e4e5",
+        "f6e4",
+        "g1f3"
+      ],
+      "scoreCp": 15,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 8,
+      "nodes": 56972,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "g1f3",
+        "d7d5",
+        "e4e5",
+        "f6e4"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 9,
+      "nodes": 92338,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "d2d4",
+        "d7d5",
+        "e4d5",
+        "d8d5",
+        "g1f3",
+        "g8f6",
+        "b1c3"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 10,
+      "nodes": 280148,
+      "pv": [
+        "e2e4",
+        "e7e5",
+        "g1f3",
+        "b8c6",
+        "f1b5",
+        "g8f6",
+        "b1c3",
+        "c6d4",
+        "f3d4",
+        "e5d4"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 11,
+      "nodes": 689342,
+      "pv": [
+        "e2e4",
+        "g8f6",
+        "b1c3",
+        "d7d5",
+        "e4e5",
+        "f6e4",
+        "c3e4",
+        "d5e4",
+        "g1e2",
+        "b8c6",
+        "d2d4"
+      ],
+      "scoreCp": 25,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 12,
+      "nodes": 859950,
+      "pv": [
+        "e2e4",
+        "g8f6",
+        "b1c3",
+        "d7d5",
+        "e4e5",
+        "f6e4",
+        "c3e4",
+        "d5e4",
+        "d2d4",
+        "b8c6",
+        "g1e2",
+        "c8e6"
+      ],
+      "scoreCp": 25,
+      "timeMs": 0,
+      "uci": "e2e4"
+    }
+  ],
+  "mate": null,
+  "nodes": 859950,
+  "partialIteration": null,
+  "pv": [
+    "e2e4",
+    "g8f6",
+    "b1c3",
+    "d7d5",
+    "e4e5",
+    "f6e4",
+    "c3e4",
+    "d5e4",
+    "d2d4",
+    "b8c6",
+    "g1e2",
+    "c8e6"
+  ],
+  "qNodes": 396289,
+  "resultSource": "completed-iteration",
+  "rootOrder": [
+    "e2e4"
+  ],
+  "scoreCp": 25,
+  "telemetry": {
+    "aspirationResearches": 0,
+    "avgCutoffMoveIndex": 1.1102690614794832,
+    "avgLegalMoves": 31.147305155524332,
+    "branchingByPly": [
+      {
+        "childSearches": 12,
+        "effectiveBranching": 1,
+        "nodes": 12,
+        "ply": 0
+      },
+      {
+        "childSearches": 220,
+        "effectiveBranching": 18.333333333333332,
+        "nodes": 12,
+        "ply": 1
+      },
+      {
+        "childSearches": 890,
+        "effectiveBranching": 3.836206896551724,
+        "nodes": 232,
+        "ply": 2
+      },
+      {
+        "childSearches": 3687,
+        "effectiveBranching": 3.6504950495049506,
+        "nodes": 1010,
+        "ply": 3
+      },
+      {
+        "childSearches": 15344,
+        "effectiveBranching": 3.672570607946386,
+        "nodes": 4178,
+        "ply": 4
+      },
+      {
+        "childSearches": 35095,
+        "effectiveBranching": 2.144122678396872,
+        "nodes": 16368,
+        "ply": 5
+      },
+      {
+        "childSearches": 77880,
+        "effectiveBranching": 2.094167630213235,
+        "nodes": 37189,
+        "ply": 6
+      },
+      {
+        "childSearches": 102992,
+        "effectiveBranching": 1.2742434365179522,
+        "nodes": 80826,
+        "ply": 7
+      },
+      {
+        "childSearches": 111708,
+        "effectiveBranching": 1.0691397725967613,
+        "nodes": 104484,
+        "ply": 8
+      },
+      {
+        "childSearches": 75289,
+        "effectiveBranching": 0.6686115181386262,
+        "nodes": 112605,
+        "ply": 9
+      },
+      {
+        "childSearches": 25841,
+        "effectiveBranching": 0.3426052369903878,
+        "nodes": 75425,
+        "ply": 10
+      },
+      {
+        "childSearches": 5481,
+        "effectiveBranching": 0.21202274573517466,
+        "nodes": 25851,
+        "ply": 11
+      },
+      {
+        "childSearches": 0,
+        "effectiveBranching": 0,
+        "nodes": 5481,
+        "ply": 12
+      }
+    ],
+    "cutoffMoveIndexCount": 56344,
+    "cutoffMoveIndexSum": 62557,
+    "cutoffs": 87369,
+    "dangerExtensionPlies": 0,
+    "deltaAttempts": 0,
+    "deltaSkipPct": 0,
+    "deltaSkips": 0,
+    "firstMoveCutoffPct": 61.835433620620584,
+    "firstMoveCutoffs": 54025,
+    "foreignCutoffs": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "foreignHints": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "futilityAttempts": 88573,
+    "futilitySkipPct": 99.16791798855182,
+    "futilitySkips": 87836,
+    "hashMoveCutoffPct": 19.904084972930903,
+    "hashMoveCutoffs": 17390,
+    "historyCutoffs": 1662,
+    "killerCutoffs": 23290,
+    "legalMoveNodes": 128115,
+    "legalMoveSum": 3990437,
+    "lmpAttempts": 0,
+    "lmpSkipPct": 0,
+    "lmpSkips": 0,
+    "lmrReductions": 54127,
+    "lmrResearchPct": 0.17366563822122047,
+    "lmrResearches": 94,
+    "mainNodes": 463673,
+    "maxQDepth": 14,
+    "nodes": 859950,
+    "nullAttempts": 9045,
+    "nullCutoffPct": 69.92813709231619,
+    "nullCutoffs": 6325,
+    "prunedMoves": 87836,
+    "pvsResearches": 83,
+    "qCaptures": 57502,
+    "qNodePct": 46.08279551136694,
+    "qNodes": 396289,
+    "qSeeSkips": 67722,
+    "quietExt": 8027,
+    "rfpAttempts": 121476,
+    "rfpCutoffPct": 40.617899832065596,
+    "rfpCutoffs": 49341,
+    "searchedEffectiveBranching": 3.5471178238301526,
+    "searchedMoves": 454439,
+    "seePruneAttempts": 0,
+    "seePruneSkipPct": 0,
+    "seePruneSkips": 0,
+    "timeMs": 0,
+    "ttCutoffPct": 13.847808143453205,
+    "ttCutoffs": 73148,
+    "ttEntries": 216700,
+    "ttEntryPct": 41.023951778398725,
+    "ttHitPct": 8.48061821789076,
+    "ttHits": 44797,
+    "ttMissCold": 46933,
+    "ttMissContended": 5625,
+    "ttProbes": 528228
+  },
+  "termination": "depth-limit",
+  "timeMs": 0,
+  "ttHits": 44797,
+  "uci": "e2e4"
+}

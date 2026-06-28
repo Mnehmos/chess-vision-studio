@@ -1,0 +1,22 @@
+{
+  "activeIds": [
+    9,
+    30,
+    66,
+    81,
+    93,
+    97
+  ],
+  "activeNames": [
+    "WHITE_KING_ZONE_PRESSURE_BUCKET_1",
+    "BLACK_KING_SHIELD_BUCKET_2",
+    "WHITE_HANGING_MATERIAL_BUCKET_2",
+    "WHITE_MOBILITY_BISHOP_BUCKET_1",
+    "BLACK_MOBILITY_ROOK_BUCKET_1",
+    "WHITE_MOBILITY_QUEEN_BUCKET_1"
+  ],
+  "fen": "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+  "inputDim": 168,
+  "registryHash": "25c15688f9f4ebba",
+  "registryVersion": 1
+}

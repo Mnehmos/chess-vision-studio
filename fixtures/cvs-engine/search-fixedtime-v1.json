@@ -1,0 +1,328 @@
+{
+  "attemptedDepth": 10,
+  "depth": 9,
+  "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "foreignCutoffs": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "foreignHints": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "iterations": [
+    {
+      "depth": 1,
+      "nodes": 46,
+      "pv": [
+        "b1c3"
+      ],
+      "scoreCp": 40,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 2,
+      "nodes": 200,
+      "pv": [
+        "b1c3",
+        "b8c6"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 3,
+      "nodes": 1224,
+      "pv": [
+        "b1c3",
+        "b8c6",
+        "g1f3"
+      ],
+      "scoreCp": 40,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 4,
+      "nodes": 2300,
+      "pv": [
+        "b1c3",
+        "b8c6",
+        "g1f3",
+        "g8f6"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 5,
+      "nodes": 6696,
+      "pv": [
+        "b1c3",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "d2d4"
+      ],
+      "scoreCp": 30,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 6,
+      "nodes": 19653,
+      "pv": [
+        "b1c3",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "d2d4",
+        "d7d5"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 7,
+      "nodes": 31419,
+      "pv": [
+        "b1c3",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "d2d4",
+        "d7d5",
+        "c1e3"
+      ],
+      "scoreCp": 10,
+      "timeMs": 0,
+      "uci": "b1c3"
+    },
+    {
+      "depth": 8,
+      "nodes": 112565,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "g1f3",
+        "g8f6",
+        "e4e5",
+        "f6d5",
+        "b1c3",
+        "e7e6"
+      ],
+      "scoreCp": 25,
+      "timeMs": 0,
+      "uci": "e2e4"
+    },
+    {
+      "depth": 9,
+      "nodes": 176623,
+      "pv": [
+        "e2e4",
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "d2d4",
+        "d7d5",
+        "e4e5",
+        "f6e4",
+        "g1e2"
+      ],
+      "scoreCp": 20,
+      "timeMs": 0,
+      "uci": "e2e4"
+    }
+  ],
+  "mate": null,
+  "nodes": 249856,
+  "partialIteration": null,
+  "pv": [
+    "e2e4",
+    "b8c6",
+    "b1c3",
+    "g8f6",
+    "d2d4",
+    "d7d5",
+    "e4e5",
+    "f6e4",
+    "g1e2"
+  ],
+  "qNodes": 114807,
+  "resultSource": "completed-iteration",
+  "rootOrder": [
+    "e2e4",
+    "b1c3",
+    "g1f3",
+    "d2d4",
+    "e2e3",
+    "d2d3",
+    "a2a3",
+    "a2a4",
+    "b2b3",
+    "b2b4",
+    "f2f3",
+    "g2g3",
+    "g2g4",
+    "h2h3",
+    "h2h4",
+    "c2c3",
+    "b1a3",
+    "g1h3",
+    "f2f4",
+    "c2c4"
+  ],
+  "scoreCp": 20,
+  "telemetry": {
+    "aspirationResearches": 0,
+    "avgCutoffMoveIndex": 1.1016386182462357,
+    "avgLegalMoves": 29.01675476830814,
+    "branchingByPly": [
+      {
+        "childSearches": 181,
+        "effectiveBranching": 18.1,
+        "nodes": 10,
+        "ply": 0
+      },
+      {
+        "childSearches": 318,
+        "effectiveBranching": 1.718918918918919,
+        "nodes": 185,
+        "ply": 1
+      },
+      {
+        "childSearches": 2823,
+        "effectiveBranching": 6.7214285714285715,
+        "nodes": 420,
+        "ply": 2
+      },
+      {
+        "childSearches": 4462,
+        "effectiveBranching": 1.5207907293796865,
+        "nodes": 2934,
+        "ply": 3
+      },
+      {
+        "childSearches": 23263,
+        "effectiveBranching": 4.55690499510284,
+        "nodes": 5105,
+        "ply": 4
+      },
+      {
+        "childSearches": 21500,
+        "effectiveBranching": 0.9058352643775016,
+        "nodes": 23735,
+        "ply": 5
+      },
+      {
+        "childSearches": 34204,
+        "effectiveBranching": 1.553526820184403,
+        "nodes": 22017,
+        "ply": 6
+      },
+      {
+        "childSearches": 27042,
+        "effectiveBranching": 0.7830997335804472,
+        "nodes": 34532,
+        "ply": 7
+      },
+      {
+        "childSearches": 13446,
+        "effectiveBranching": 0.4962539213877099,
+        "nodes": 27095,
+        "ply": 8
+      },
+      {
+        "childSearches": 5567,
+        "effectiveBranching": 0.4138110458633762,
+        "nodes": 13453,
+        "ply": 9
+      },
+      {
+        "childSearches": 0,
+        "effectiveBranching": 0,
+        "nodes": 5573,
+        "ply": 10
+      }
+    ],
+    "cutoffMoveIndexCount": 18064,
+    "cutoffMoveIndexSum": 19900,
+    "cutoffs": 25528,
+    "dangerExtensionPlies": 0,
+    "deltaAttempts": 0,
+    "deltaSkipPct": 0,
+    "deltaSkips": 0,
+    "firstMoveCutoffPct": 68.06251958633658,
+    "firstMoveCutoffs": 17375,
+    "foreignCutoffs": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "foreignHints": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "futilityAttempts": 17647,
+    "futilitySkipPct": 99.55799852666176,
+    "futilitySkips": 17569,
+    "hashMoveCutoffPct": 17.08712002507051,
+    "hashMoveCutoffs": 4362,
+    "historyCutoffs": 415,
+    "killerCutoffs": 10590,
+    "legalMoveNodes": 32349,
+    "legalMoveSum": 938663,
+    "lmpAttempts": 0,
+    "lmpSkipPct": 0,
+    "lmpSkips": 0,
+    "lmrReductions": 14797,
+    "lmrResearchPct": 0.16895316618233425,
+    "lmrResearches": 25,
+    "mainNodes": 135059,
+    "maxQDepth": 12,
+    "nodes": 249856,
+    "nullAttempts": 2180,
+    "nullCutoffPct": 66.65137614678899,
+    "nullCutoffs": 1453,
+    "prunedMoves": 17569,
+    "pvsResearches": 39,
+    "qCaptures": 13068,
+    "qNodePct": 45.94926677766394,
+    "qNodes": 114807,
+    "qSeeSkips": 17020,
+    "quietExt": 1582,
+    "rfpAttempts": 31215,
+    "rfpCutoffPct": 25.779272785519783,
+    "rfpCutoffs": 8047,
+    "searchedEffectiveBranching": 4.105412841200655,
+    "searchedMoves": 132806,
+    "seePruneAttempts": 0,
+    "seePruneSkipPct": 0,
+    "seePruneSkips": 0,
+    "timeMs": 0,
+    "ttCutoffPct": 14.705686020586626,
+    "ttCutoffs": 22030,
+    "ttEntries": 56641,
+    "ttEntryPct": 37.80956704003845,
+    "ttHitPct": 6.98169632724991,
+    "ttHits": 10459,
+    "ttMissCold": 11788,
+    "ttMissContended": 402,
+    "ttProbes": 149806
+  },
+  "termination": "hard-time",
+  "timeMs": 0,
+  "ttHits": 10459,
+  "uci": "e2e4"
+}
