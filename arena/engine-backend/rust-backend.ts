@@ -59,6 +59,9 @@ export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): stri
   if (env.CVS_RUST_COUNTERMOVE === '1') extra.push('--countermove');
   if (env.CVS_RUST_SINGULAR === '1') extra.push('--singular');
   if (env.CVS_RUST_SMARTTIME === '1') extra.push('--smarttime');
+  // Root safe-quiet ordering (gating 2026-06-29): boosts quiet moves to opponent-
+  // uncontrolled squares at the root — targets the measured missed-safe-quiet weakness.
+  if (env.CVS_RUST_ROOTSAFEQUIET === '1') extra.push('--rootsafequiet');
   const explicitThreads = intEnv(env, 'CVS_RUST_THREADS', 1, 32);
   const requestedHelpers = intEnv(env, 'CVS_RUST_CVS_HELPERS', 0, 31) ?? 0;
   const threads = explicitThreads ?? (requestedHelpers > 0 ? requestedHelpers + 1 : 1);
