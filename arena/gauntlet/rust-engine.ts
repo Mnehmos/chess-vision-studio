@@ -33,6 +33,18 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * A response line is the JSON object the serve protocol emits per request
+ * (`analyze`/`go` -> RustPick, `eval` -> {evalWhiteCp}). Any other stdout line —
+ * a startup banner, a stray `info`, a warning — must be IGNORED, not matched to a
+ * pending request: the queue is FIFO by line, so one unexpected line would shift
+ * every future response by one and desync the engine permanently (observed as the
+ * bot resigning live games when the engine printed an extra line).
+ */
+export function isEngineResponseLine(line: string): boolean {
+  return line.trimStart().startsWith('{');
+}
+
 export class RustEngine {
   private proc: ChildProcessWithoutNullStreams;
   private rl: Interface;
@@ -53,6 +65,7 @@ export class RustEngine {
     this.proc = spawn(exe, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     this.rl = createInterface({ input: this.proc.stdout });
     this.rl.on('line', (line) => {
+      if (!isEngineResponseLine(line)) return; // skip banners/info — never desync the FIFO
       const next = this.queue.shift();
       if (next) {
         clearTimeout(next.timer);
@@ -86,7 +99,13 @@ export class RustEngine {
     const command = context
       ? JSON.stringify({ cmd: 'go', budgetMs: cappedBudgetMs, fen, initialFen: context.initialFen, moves: context.moves })
       : `go ${cappedBudgetMs} ${fen}`;
-    return JSON.parse(await this.request(command, Math.max(5_000, cappedBudgetMs + 5_000))) as RustPick;
+    // The engine's --smarttime go-path may EXTEND a budget to a hard cap of ~4.8x
+    // (soft=1.2x, hard=min(soft*4, ms*5)) on unstable positions. The request timeout
+    // must clear that hard cap or the bridge kills a legitimately-thinking engine
+    // mid-search (the live bug: every game aborted). 6x + 2s clears hard with margin;
+    // a true hang is still bounded by the per-game watchdog upstream.
+    const timeoutMs = Math.max(8_000, cappedBudgetMs * 6 + 2_000);
+    return JSON.parse(await this.request(command, timeoutMs)) as RustPick;
   }
 
   /** Static eval (White-POV rounded cp; exact TS-eval parity) via `eval <fen>`. */

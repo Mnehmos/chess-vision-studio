@@ -3,7 +3,7 @@ import { parseNdjson } from '../ndjson';
 import { shouldAccept } from '../policy';
 import { LichessClient, type GameStreamEvent, type LichessEvent } from '../client';
 import { playSession, type MovePicker } from '../session';
-import { runBot } from '../run';
+import { runBot, lichessRustExtraArgs } from '../run';
 import type { LichessConfig } from '../env';
 import type { ChallengeEvent } from '../client';
 import { DEFAULT_STOCKFISH_REVIEW_DEPTH } from '../../review-config';
@@ -52,6 +52,19 @@ describe('parseNdjson', () => {
     const out: unknown[] = [];
     for await (const v of parseNdjson(bytes('{"x":1}'))) out.push(v);
     expect(out).toEqual([{ x: 1 }]);
+  });
+});
+
+describe('lichessRustExtraArgs', () => {
+  it('keeps --smarttime so the engine owns adaptive time management (the gauntlet-proven path)', () => {
+    const args = lichessRustExtraArgs({
+      CVS_RUST_NNUE: 'net.json',
+      CVS_RUST_SMARTTIME: '1',
+      CVS_RUST_LMP: '1',
+    } as unknown as NodeJS.ProcessEnv);
+    expect(args).toContain('--smarttime'); // session.ts passes the base budget; engine expands it
+    expect(args).toContain('--lmp');
+    expect(args).toContain('--nnue');
   });
 });
 
@@ -175,6 +188,52 @@ describe('playSession', () => {
     expect(res.record.plies[0]!.san).toBe('e4');
   });
 
+  it('snaps opening-book moves instantly and only consults the engine off-book', async () => {
+    const line = ['e2e4', 'e7e5', 'g1f3']; // our (White) book: e4 then Nf3
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: 'startpos',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
+      },
+      { type: 'gameState', moves: 'e2e4 e7e5', wtime: 60000, btime: 60000, status: 'started' },
+      { type: 'gameState', moves: 'e2e4 e7e5 g1f3 a7a6', wtime: 60000, btime: 60000, status: 'started' },
+    ];
+    const calls: { move: [string, string][] } = { move: [] };
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move(id: string, uci: string) {
+        calls.move.push([id, uci]);
+        return true;
+      },
+      async resign() {
+        return true;
+      },
+      async abort() {
+        return true;
+      },
+    } as unknown as LichessClient;
+    const pickerCalls: string[] = [];
+    const picker: MovePicker = {
+      name: 'eng',
+      async pick(fen) {
+        pickerCalls.push(fen);
+        return 'b1c3';
+      },
+    };
+
+    await playSession(fakeClient, 'g1', 'cvsbot', picker, { bookLine: line });
+
+    // e2e4 and g1f3 came from the book (no engine); after a7a6 leaves the line the engine plays b1c3.
+    expect(calls.move.map((m) => m[1])).toEqual(['e2e4', 'g1f3', 'b1c3']);
+    expect(pickerCalls.length).toBe(1); // engine consulted exactly once — only off-book
+  });
+
   it('does not POST an illegal picker move; it resigns instead of hanging', async () => {
     const events: GameStreamEvent[] = [
       {
@@ -207,7 +266,7 @@ describe('playSession', () => {
     expect(calls.resign).toEqual(['g1']);
   });
 
-  it('spends extra clock in forcing positions', async () => {
+  it('passes the base budget (clock/30 + 0.8·inc − overhead); smarttime owns any extension', async () => {
     const events: GameStreamEvent[] = [
       {
         type: 'gameFull',
@@ -244,10 +303,124 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 10000 });
 
-    expect(budgets).toEqual([4000]);
+    // 60s clock, no inc: base = 60000/30 = 2000, minus the default 100ms overhead
+    // reserve = 1900. No TS-side forcing multiplier — even in check we pass the base
+    // budget and let the engine's smarttime extend on its own.
+    expect(budgets).toEqual([1900]);
     expect(calls.move).toEqual([['g1', 'e1e2']]);
     expect(calls.resign).toEqual([]);
   });
+
+  it('bullet: a low clock yields a tiny budget floored at minMoveMs', async () => {
+    // 4s left, no increment. base = 4000/30 = 133, minus 100ms overhead = 33,
+    // floored to minMoveMs (50). smarttime expands this engine-side as needed.
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: 'startpos',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 4000, btime: 60000, status: 'started' },
+      },
+      { type: 'gameState', moves: 'e2e4', wtime: 4000, btime: 58000, status: 'resign', winner: 'white' },
+    ];
+    const budgets: Array<number | undefined> = [];
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move() {
+        return true;
+      },
+      async resign() {
+        return true;
+      },
+    } as unknown as LichessClient;
+    const picker: MovePicker = {
+      name: 'bullet-test',
+      async pick(_fen, budgetMs) {
+        budgets.push(budgetMs);
+        return 'e2e4';
+      },
+    };
+
+    await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 12000 });
+
+    // base = min(12000, 4000/30=133) = 133, minus 100ms overhead = 33, floored to 50.
+    expect(budgets).toEqual([50]);
+  });
+
+  it('aborts (not resigns) when the engine cannot produce a move — a transient failure is not a loss', async () => {
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: 'startpos',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
+      },
+    ];
+    const calls = { move: [] as [string, string][], resign: [] as string[], abort: [] as string[] };
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move(id: string, uci: string) {
+        calls.move.push([id, uci]);
+        return true;
+      },
+      async resign(id: string) {
+        calls.resign.push(id);
+        return true;
+      },
+      async abort(id: string) {
+        calls.abort.push(id);
+        return true;
+      },
+    } as unknown as LichessClient;
+
+    await playSession(fakeClient, 'g1', 'cvsbot', { name: 'dead', async pick() { return null; } }, {});
+
+    expect(calls.abort).toEqual(['g1']); // abortable opening -> abort, costs no rating
+    expect(calls.resign).toEqual([]); // engine hiccups must NOT become resignations
+    expect(calls.move).toEqual([]);
+  }, 10_000);
+
+  it('falls back to resigning when the engine fails and the game is no longer abortable', async () => {
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: 'startpos',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
+      },
+    ];
+    const calls = { resign: [] as string[], abort: [] as string[] };
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move() {
+        return true;
+      },
+      async resign(id: string) {
+        calls.resign.push(id);
+        return true;
+      },
+      async abort() {
+        return false; // Lichess refused the abort (past the opening)
+      },
+    } as unknown as LichessClient;
+
+    await playSession(fakeClient, 'g1', 'cvsbot', { name: 'dead', async pick() { return null; } }, {});
+
+    expect(calls.abort).toEqual([]); // abort was attempted (returned false) and not recorded
+    expect(calls.resign).toEqual(['g1']); // honest resignation when abort is impossible
+  }, 10_000);
 
   it('retries a rejected move POST and exits WITHOUT resigning (rate-limit storms are not losses)', async () => {
     const events: GameStreamEvent[] = [
@@ -327,6 +500,34 @@ describe('runBot protocol resilience', () => {
     expect(streams).toBe(2);
     expect(accepted).toEqual(['c2']);
     expect(logs.some((l) => l.includes('event stream error'))).toBe(true);
+  });
+
+  it('seeds Lichess AI one game at a time within the concurrency cap (no 3-at-once burst)', async () => {
+    const seeded: number[] = [];
+    const fakeClient = {
+      async account() {
+        return { id: 'cvsbot', username: 'cvsbot', title: 'BOT' };
+      },
+      async *streamEvents<T>(): AsyncGenerator<T> {
+        // no events: the stream ends immediately so runBot returns right after startup
+      },
+      async challengeAi(opts: { level: number }) {
+        seeded.push(opts.level);
+        return { id: `seed${opts.level}` };
+      },
+      async onlineBots() {
+        return [];
+      },
+    } as unknown as LichessClient;
+
+    await runBot(
+      { ...CFG, seedAi: true, seedAiLevels: [3, 5, 7], maxConcurrentGames: 1 },
+      () => {},
+      { client: fakeClient, picker: scriptedPicker('unused', []), maxEventStreamRestarts: 0 },
+    );
+    await new Promise((r) => setTimeout(r, 0)); // flush the un-awaited startup fillSlot()
+
+    expect(seeded).toEqual([3]); // ONE seed with cap=1 — the next level waits for a free slot
   });
 
   it('remains busy until post-game review completes', async () => {

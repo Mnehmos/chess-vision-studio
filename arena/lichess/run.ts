@@ -16,6 +16,7 @@ import { LichessClient, type LichessEvent } from './client';
 import { loadLichessConfig, hasToken, type LichessConfig } from './env';
 import { shouldAccept } from './policy';
 import { playSession, cvsPicker, type MovePicker } from './session';
+import { nextBookLine } from './book';
 import { harvestGame } from './harvest';
 
 export interface RunBotOptions {
@@ -31,6 +32,11 @@ export function lichessRustExtraArgs(
   env: NodeJS.ProcessEnv = process.env,
 ): string[] {
   const helper = env.CVS_LICHESS_RUST_HELPER_NNUE?.trim() ?? '';
+  // --smarttime stays ENABLED (CVS_RUST_SMARTTIME=1 in .env): session.ts passes the
+  // non-smart base budget (clock/30 + 0.8·inc) and the engine's smarttime go-path
+  // owns adaptivity (soft ~clock/25, hard ~clock/6). This is the gauntlet-proven
+  // path (~+60 Elo). The bridge request timeout (rust-engine.ts) is sized to clear
+  // smarttime's hard cap so a legitimately-thinking engine is never killed.
   return rustBackendExtraArgs({
     ...env,
     CVS_RUST_HELPER_NNUE: helper,
@@ -79,21 +85,30 @@ export async function runBot(
   log(`engine backend: ${backendKind} (picker ${picker.name})`);
   const active = new Set<string>();
 
-  if (cfg.seedAi) {
-    for (const level of cfg.seedAiLevels) {
-      try {
-        const g = await client.challengeAi({
-          level,
-          color: 'random',
-          clockLimitSec: cfg.seedAiClockLimitSec,
-          clockIncrementSec: cfg.seedAiClockIncrementSec,
-        });
-        log(`seeded vs Lichess AI L${level} -> ${g.id ?? '(pending gameStart)'}`);
-      } catch (e) {
-        log(`seed L${level} failed: ${String(e)}`);
-      }
+  // Seed games vs Lichess AI for position diversity — but ONE AT A TIME within the
+  // concurrency cap. Firing every level at once (the old eager loop) put 3 games on
+  // one shared serial engine; their searches queued past the per-request deadline,
+  // the engine got killed, and all in-flight games resigned together. The queue is
+  // drained as slots free (see fillSlot in the game-finished handler).
+  const seedQueue: number[] = cfg.seedAi ? cfg.seedAiLevels.slice() : [];
+  const maybeSeed = async (): Promise<boolean> => {
+    if (!seedQueue.length || active.size >= cfg.maxConcurrentGames) return false;
+    const level = seedQueue.shift()!;
+    try {
+      const g = await client.challengeAi({
+        level,
+        color: 'random',
+        clockLimitSec: cfg.seedAiClockLimitSec,
+        clockIncrementSec: cfg.seedAiClockIncrementSec,
+      });
+      log(`seeded vs Lichess AI L${level} -> ${g.id ?? '(pending gameStart)'}`);
+      return true;
+    } catch (e) {
+      log(`seed L${level} failed: ${String(e)}`);
+      seedQueue.unshift(level); // retry on the next free slot
+      return false;
     }
-  }
+  };
 
   // Bot-ladder mode: when idle, challenge an online bot for a RATED game — this
   // is what builds the public Lichess rating. Paced (cooldown + only-when-idle)
@@ -163,11 +178,17 @@ export async function runBot(
       log(`bot-ladder challenge failed: ${String(e)}`);
     }
   };
-  void maybeChallengeBot();
+  // Fill an idle slot: prefer a fresh seed level (diversity) over a ladder bot, and
+  // let seeding take the slot so we never stack a seed game AND a ladder game on the
+  // same shared engine.
+  const fillSlot = async (): Promise<void> => {
+    if (!(await maybeSeed())) await maybeChallengeBot();
+  };
+  void fillSlot();
   // Retry tick: a never-accepted challenge used to strand the ladder (it only
   // re-fired on game end). Tick once a minute; the caps above make it a no-op
   // unless we are genuinely idle with nothing pending.
-  const ladderTick = setInterval(() => void maybeChallengeBot(), 60_000);
+  const ladderTick = setInterval(() => void fillSlot(), 60_000);
   ladderTick.unref?.();
 
   log('listening on /api/stream/event …');
@@ -228,7 +249,14 @@ export async function runBot(
             wd = setTimeout(() => reject(new Error(`watchdog ${watchdogMs}ms — game stream orphaned`)), watchdogMs);
             wd.unref?.();
           });
-          void Promise.race([playSession(client, gameId, botId, picker, { maxMoveMs: 12_000 }), watchdog])
+          // Rotate the opening book per game: snap-play our in-book moves (diversity
+          // + banked clock + keeps smarttime off known openings).
+          const book = nextBookLine();
+          log(`game ${gameId} opening: ${book.name}`);
+          // maxMoveMs 12s caps the base budget for slow games (smarttime expands it);
+          // moveOverheadMs 150 reserves a real network round-trip + engine IPC so
+          // accumulated lag stays under the clock.
+          void Promise.race([playSession(client, gameId, botId, picker, { maxMoveMs: 12_000, moveOverheadMs: 150, bookLine: book.moves }), watchdog])
             .then(async (res) => {
               try {
                 log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
@@ -241,13 +269,13 @@ export async function runBot(
                 }
               } finally {
                 active.delete(gameId);
-                void maybeChallengeBot(); // back on the ladder once idle
+                void fillSlot(); // seed the next level or hit the ladder once idle
               }
             })
             .catch((e) => {
               active.delete(gameId);
               log(`game ${gameId} error: ${String(e)}`);
-              void maybeChallengeBot(); // re-kick the ladder after a watchdog/abort too
+              void fillSlot(); // re-seed / re-kick the ladder after a watchdog/abort too
             })
             .finally(() => clearTimeout(wd));
         }

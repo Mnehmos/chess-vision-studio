@@ -7,6 +7,7 @@ import type { CvsEngine } from '@cvs/engine';
 import { uciToMove } from '../players';
 import type { PlayedPly, GameRecord } from '../match';
 import type { LichessClient, GameStreamEvent, GameState } from './client';
+import { bookMove } from './book';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -34,12 +35,28 @@ export function cvsPicker(engine: CvsEngine, opts: { depth?: number; maxTimeMs?:
 }
 
 export interface SessionOptions {
-  /** Fraction of our remaining clock to spend on a move. Default 1/30. */
+  /**
+   * Fraction of our remaining clock that forms the per-move base budget. Default
+   * 1/30. This is the "non-smart" base the engine's --smarttime path expects
+   * (ms ≈ clock/30 + 0.8·inc); the ENGINE then owns adaptivity — spending ~clock/25
+   * soft and extending toward ~clock/6 hard on unstable positions. We pass the base
+   * only; pre-extending here (a forcing multiplier) would double-count with smarttime.
+   */
   clockFraction?: number;
-  /** Multiplier for forcing/check positions. Default 2x, capped by maxMoveMs. */
-  pressureClockMultiplier?: number;
   minMoveMs?: number;
   maxMoveMs?: number;
+  /**
+   * Wall-clock reserved per move for network round-trip + engine IPC + clock lag.
+   * Subtracted from the budget so the time we actually burn stays under the clock.
+   * Default 100ms.
+   */
+  moveOverheadMs?: number;
+  /**
+   * Opening line (UCI moves from the start) assigned to this game. While the played
+   * moves still match its prefix, our moves are played INSTANTLY from it (no engine
+   * search). Omit to always use the engine.
+   */
+  bookLine?: string[];
 }
 
 export interface SessionResult {
@@ -56,9 +73,10 @@ export async function playSession(
   opts: SessionOptions = {},
 ): Promise<SessionResult> {
   const clockFraction = opts.clockFraction ?? 1 / 30;
-  const pressureClockMultiplier = opts.pressureClockMultiplier ?? 2;
   const minMoveMs = opts.minMoveMs ?? 50;
   const maxMoveMs = opts.maxMoveMs ?? 4000;
+  const moveOverheadMs = opts.moveOverheadMs ?? 100;
+  const bookLine = opts.bookLine;
 
   let initialFen = START_FEN;
   let cvsColor: 'white' | 'black' = 'white';
@@ -113,26 +131,54 @@ export async function playSession(
     const turn = chess.turn() === 'w' ? 'white' : 'black';
     if (turn !== cvsColor) continue; // opponent to move
 
-    const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
-    const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
-    const baseBudget = Number.isFinite(myTimeMs)
-      ? Math.max(minMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8))
-      : undefined;
-    const budget =
-      baseBudget === undefined
-        ? undefined
-        : Math.min(maxMoveMs, Math.floor(baseBudget * (clockPressure(chess) ? pressureClockMultiplier : 1)));
-
-    // Engine failure is usually transient (process hiccup, transport blip) —
-    // retry before giving up. Resigning is the LAST resort: it turned every
-    // rate-limit storm into an instant loss.
+    // Opening book: while we're still in our assigned line, play the next book move
+    // INSTANTLY — no engine search. Banks clock for the middlegame and keeps
+    // --smarttime from spending ~clock/6 on a known opening move. We leave book the
+    // moment the move list diverges from the line (opponent off book / line ends).
     let uci: string | null = null;
-    for (let tryN = 0; tryN < 3 && !uci; tryN++) {
-      if (tryN > 0) await sleepMs(1000 * tryN);
-      uci = await picker.pick(chess.fen(), budget, { initialFen, moves: ucis });
+    if (bookLine) {
+      const bm = bookMove(bookLine, ucis);
+      if (bm) {
+        try {
+          if (new Chess(chess.fen()).move(uciToMove(bm))) uci = bm; // trust the book, verify legal
+        } catch {
+          /* malformed book move: ignore and let the engine decide */
+        }
+      }
     }
+
     if (!uci) {
-      await client.resign(gameId); // engine truly dead — don't ghost the opponent
+      const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
+      const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
+      // Per-move base budget = clock/30 + 0.8·inc, clamped to [minMoveMs, maxMoveMs]
+      // and minus a small overhead reserve for network/IPC lag. This is the input the
+      // engine's --smarttime path expects; the engine then decides how long to actually
+      // think (soft ~clock/25, extend toward ~clock/6 hard on unstable positions). We
+      // deliberately do NOT pre-extend on forcing moves or cap by clock-share here —
+      // that is smarttime's job, and doing it twice would over- or under-spend.
+      const budget = Number.isFinite(myTimeMs)
+        ? Math.max(
+            minMoveMs,
+            Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8)) - moveOverheadMs,
+          )
+        : undefined; // correspondence / no clock — picker uses its own fallback
+
+      // Engine failure is usually transient (process hiccup, transport blip) — retry
+      // before giving up. Resigning is the LAST resort: it turned every rate-limit
+      // storm into an instant loss.
+      for (let tryN = 0; tryN < 3 && !uci; tryN++) {
+        if (tryN > 0) await sleepMs(1000 * tryN);
+        uci = await picker.pick(chess.fen(), budget, { initialFen, moves: ucis });
+      }
+    }
+
+    if (!uci) {
+      // Engine couldn't produce a move (transport blip / cold-start race / overload).
+      // Try to ABORT first — Lichess allows it in the opening, so a transient failure
+      // costs nothing; only a non-abortable (mid-game) failure falls back to resigning.
+      // Either way, never ghost the opponent.
+      const aborted = await client.abort(gameId);
+      if (!aborted) await client.resign(gameId);
       break;
     }
 
@@ -213,21 +259,4 @@ function buildRecord(
 
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-type VerboseMove = {
-  san: string;
-  flags: string;
-  captured?: string;
-  promotion?: string;
-};
-
-function clockPressure(chess: Chess): boolean {
-  if (chess.inCheck()) return true;
-  const moves = chess.moves({ verbose: true }) as VerboseMove[];
-  if (moves.length === 0) return false;
-  const forcing = moves.filter(
-    (m) => m.san.includes('+') || m.san.includes('#') || !!m.captured || !!m.promotion || m.flags.includes('c') || m.flags.includes('e'),
-  ).length;
-  return forcing >= 6 || forcing * 2 >= moves.length;
 }
