@@ -30,16 +30,25 @@ export interface RunBotOptions {
 
 export function lichessRustExtraArgs(
   env: NodeJS.ProcessEnv = process.env,
+  overrides: { threads?: number; cvsHelpers?: number } = {},
 ): string[] {
   const helper = env.CVS_LICHESS_RUST_HELPER_NNUE?.trim() ?? '';
-  // --smarttime stays ENABLED (CVS_RUST_SMARTTIME=1 in .env): session.ts passes the
-  // non-smart base budget (clock/30 + 0.8·inc) and the engine's smarttime go-path
-  // owns adaptivity (soft ~clock/25, hard ~clock/6). This is the gauntlet-proven
-  // path (~+60 Elo). The bridge request timeout (rust-engine.ts) is sized to clear
-  // smarttime's hard cap so a legitimately-thinking engine is never killed.
+  // Per-call overrides take precedence over the env knobs so the bot can give its
+  // main engine the cores + specialist lanes while the ponder engine stays light.
+  const threads = overrides.threads !== undefined ? String(overrides.threads) : (env.CVS_LICHESS_RUST_THREADS?.trim() ?? '');
+  const helpers = overrides.cvsHelpers !== undefined ? String(overrides.cvsHelpers) : (env.CVS_LICHESS_RUST_CVS_HELPERS?.trim() ?? '');
+  const smarttime = env.CVS_LICHESS_RUST_SMARTTIME?.trim() ?? '';
+  // --smarttime is live-bot opt-in through CVS_LICHESS_RUST_SMARTTIME=1:
+  // session.ts passes the non-smart base budget (clock/30 + 0.8·inc) and the
+  // engine's smarttime go-path owns adaptivity (soft ~clock/25, hard ~clock/6).
+  // The bridge request timeout (rust-engine.ts) is sized to clear smarttime's
+  // hard cap so a legitimately-thinking engine is never killed.
   return rustBackendExtraArgs({
     ...env,
     CVS_RUST_HELPER_NNUE: helper,
+    CVS_RUST_THREADS: threads,
+    CVS_RUST_CVS_HELPERS: helpers,
+    CVS_RUST_SMARTTIME: smarttime,
   });
 }
 
@@ -53,8 +62,12 @@ export async function runBot(
   const botId = me.id.toLowerCase();
   log(`Connected as ${me.username}${me.title ? ` (${me.title})` : ''} [id=${botId}]`);
   if (me.title !== 'BOT') {
-    log('WARNING: this account is NOT a BOT yet — moves will be rejected. Run the one-off upgrade:');
-    log('  curl -d "" https://lichess.org/api/bot/account/upgrade -H "Authorization: Bearer <TOKEN>"');
+    log(
+      'WARNING: this account is NOT a BOT yet — moves will be rejected. Run the one-off upgrade:',
+    );
+    log(
+      '  curl -d "" https://lichess.org/api/bot/account/upgrade -H "Authorization: Bearer <TOKEN>"',
+    );
   }
 
   // Engine backend: Rust is the active default (R5); CVS_ENGINE_BACKEND=ts
@@ -64,20 +77,22 @@ export async function runBot(
   if (opts.picker) {
     picker = opts.picker;
   } else if (backendKind === 'rust') {
-    const extraArgs = lichessRustExtraArgs();
     const helper = process.env.CVS_LICHESS_RUST_HELPER_NNUE?.trim();
-    const backend = () => new RustBackend({ extraArgs });
-    const base = rustPicker({ backend: backend() });
+    // Multithreaded specialist search, CPU-budgeted. The MAIN engine gets the cores
+    // + the KingSafety/See/Tactics specialist lanes; the opponent-clock PONDER engine
+    // stays light (it speculates during the opponent's turn — it shouldn't claim the
+    // box). Env overrides: CVS_LICHESS_THREADS / _PONDER_THREADS / _CVS_HELPERS.
+    const mainThreads = Number(process.env.CVS_LICHESS_THREADS ?? process.env.CVS_LICHESS_RUST_THREADS ?? 4);
+    const ponderThreads = Number(process.env.CVS_LICHESS_PONDER_THREADS ?? 2);
+    const cvsHelpers = Number(process.env.CVS_LICHESS_CVS_HELPERS ?? process.env.CVS_LICHESS_RUST_CVS_HELPERS ?? 2);
+    const mainArgs = lichessRustExtraArgs(process.env, { threads: mainThreads, cvsHelpers });
+    const ponderArgs = lichessRustExtraArgs(process.env, { threads: ponderThreads, cvsHelpers: 0 });
+    const base = rustPicker({ backend: new RustBackend({ extraArgs: mainArgs }) });
     // Opponent-clock ponder cache (gated 2026-06-11): ~89% hit rate, banks
     // ~3/4 of the clock on agreed hits. CVS_PONDER=0 reverts to plain picks.
-    picker = process.env.CVS_PONDER !== '0'
-      ? ponderPicker(base, { backend: backend() })
-      : base;
-    log(
-      helper
-        ? `live Rust helper: ${helper}`
-        : 'live Rust helper: disabled (raw play policy)',
-    );
+    picker = process.env.CVS_PONDER !== '0' ? ponderPicker(base, { backend: new RustBackend({ extraArgs: ponderArgs }) }) : base;
+    log(helper ? `live Rust helper: ${helper}` : 'live Rust helper: disabled (raw play policy)');
+    log(`SMP: main ${mainThreads}t (${cvsHelpers} specialists) + ponder ${ponderThreads}t`);
   } else {
     const weights = loadWeights(cfg.weightsPath, log);
     picker = cvsPicker(new CvsEngine(weights ? { weights } : undefined), { depth: cfg.depth });
@@ -161,9 +176,15 @@ export async function runBot(
       const rated = ladder.tcIndex % 2 === 0;
       ladder.tcIndex += 1;
       try {
-        const res = await client.challengeUser(pick.b.username, { rated, clockLimitSec: limit, clockIncrementSec: inc });
+        const res = await client.challengeUser(pick.b.username, {
+          rated,
+          clockLimitSec: limit,
+          clockIncrementSec: inc,
+        });
         if (res.id) pendingOutbound.set(res.id, pick.b.username);
-        log(`bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) ${rated ? 'rated' : 'casual'} ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`);
+        log(
+          `bot-ladder: challenged ${pick.b.username} (blitz ${pick.rating}) ${rated ? 'rated' : 'casual'} ${limit / 60}+${inc} -> ${res.id ?? res.status ?? 'sent'}`,
+        );
       } catch (e) {
         // 400 = their challenge prefs reject us — same as a decline, remember it.
         if (String(e).includes('400')) declinedRecently.set(pick.b.username, Date.now());
@@ -208,7 +229,9 @@ export async function runBot(
           const verdict = shouldAccept(ch, cfg);
           if (verdict.accept && active.size < cfg.maxConcurrentGames) {
             const ok = await client.acceptChallenge(ch.id);
-            log(`${ok ? 'accepted' : 'accept-failed'} ${ch.id} (${ch.speed ?? '?'}, ${ch.rated ? 'rated' : 'casual'})`);
+            log(
+              `${ok ? 'accepted' : 'accept-failed'} ${ch.id} (${ch.speed ?? '?'}, ${ch.rated ? 'rated' : 'casual'})`,
+            );
           } else {
             const reason = verdict.accept ? 'later' : verdict.reason;
             await client.declineChallenge(ch.id, reason);
@@ -220,7 +243,9 @@ export async function runBot(
             const who = pendingOutbound.get(chId)!;
             pendingOutbound.delete(chId);
             if (ev.type === 'challengeDeclined') declinedRecently.set(who, Date.now());
-            log(`outbound challenge ${chId} (${who}) ${ev.type === 'challengeDeclined' ? 'declined — skipping them for 1h' : 'canceled'}`);
+            log(
+              `outbound challenge ${chId} (${who}) ${ev.type === 'challengeDeclined' ? 'declined — skipping them for 1h' : 'canceled'}`,
+            );
           }
         } else if (ev.type === 'gameStart' && ev.game) {
           const gameId = ev.game.gameId ?? ev.game.id ?? ev.game.fullId;
@@ -229,7 +254,9 @@ export async function runBot(
           for (const [challengeId, username] of pendingOutbound) {
             const canceled = await client.cancelChallenge(challengeId);
             if (canceled) pendingOutbound.delete(challengeId);
-            log(`${canceled ? 'canceled' : 'cancel-failed'} surplus outbound challenge ${challengeId} (${username})`);
+            log(
+              `${canceled ? 'canceled' : 'cancel-failed'} surplus outbound challenge ${challengeId} (${username})`,
+            );
           }
           active.add(gameId);
           log(`game start ${gameId}`);
@@ -246,7 +273,10 @@ export async function runBot(
           const watchdogMs = Number(process.env.CVS_GAME_WATCHDOG_MS ?? 5_400_000);
           let wd: ReturnType<typeof setTimeout> | undefined;
           const watchdog = new Promise<never>((_, reject) => {
-            wd = setTimeout(() => reject(new Error(`watchdog ${watchdogMs}ms — game stream orphaned`)), watchdogMs);
+            wd = setTimeout(
+              () => reject(new Error(`watchdog ${watchdogMs}ms — game stream orphaned`)),
+              watchdogMs,
+            );
             wd.unref?.();
           });
           // Rotate the opening book per game: snap-play our in-book moves (diversity
@@ -256,10 +286,19 @@ export async function runBot(
           // maxMoveMs 12s caps the base budget for slow games (smarttime expands it);
           // moveOverheadMs 150 reserves a real network round-trip + engine IPC so
           // accumulated lag stays under the clock.
-          void Promise.race([playSession(client, gameId, botId, picker, { maxMoveMs: 12_000, moveOverheadMs: 150, bookLine: book.moves }), watchdog])
+          void Promise.race([
+            playSession(client, gameId, botId, picker, {
+              maxMoveMs: 12_000,
+              moveOverheadMs: 150,
+              bookLine: book.moves,
+            }),
+            watchdog,
+          ])
             .then(async (res) => {
               try {
-                log(`game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`);
+                log(
+                  `game ${gameId} done: ${res.record.result} (${res.record.termination}, ${res.record.plies.length} plies, CVS=${res.cvsColor})`,
+                );
                 if (cfg.review) {
                   try {
                     await (opts.harvest ?? harvestGame)(res, cfg, log);
@@ -289,7 +328,8 @@ export async function runBot(
       }
       log(`event stream error: ${String(e)}; reconnecting`);
     }
-    if (opts.maxEventStreamRestarts !== undefined && restarts >= opts.maxEventStreamRestarts) return;
+    if (opts.maxEventStreamRestarts !== undefined && restarts >= opts.maxEventStreamRestarts)
+      return;
     restarts += 1;
     // Healthy = the stream LIVED a while, not "delivered one event" — the old
     // per-event reset kept backoff at 1-2s forever during 429 storms.
@@ -327,7 +367,9 @@ function loadWeights(path: string, log: (m: string) => void): PolicyWeights | un
 if (!process.env.VITEST) {
   const cfg = loadLichessConfig();
   if (!hasToken(cfg)) {
-    console.error('No LICHESS_BOT_TOKEN configured (personal token, scope bot:play). See arena/lichess/README.md.');
+    console.error(
+      'No LICHESS_BOT_TOKEN configured (personal token, scope bot:play). See arena/lichess/README.md.',
+    );
     process.exit(1);
   }
   runBot(cfg).catch((e) => {

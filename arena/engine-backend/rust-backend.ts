@@ -5,7 +5,14 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { RustEngine } from '../gauntlet/rust-engine';
-import type { BackendId, CvsEngineBackend, EvalResult, MoveResult, PositionContext, SearchOpts } from './types';
+import type {
+  BackendId,
+  CvsEngineBackend,
+  EvalResult,
+  MoveResult,
+  PositionContext,
+  SearchOpts,
+} from './types';
 
 // CVS_RUST_EXE overrides the binary path (e.g. a target-next build while the
 // default exe is locked by running gauntlets).
@@ -22,6 +29,14 @@ export interface RustBackendOptions {
   rung2Weights?: string;
   defaultDepth?: number;
   extraArgs?: string[];
+}
+
+function intEnv(env: NodeJS.ProcessEnv, key: string, min: number, max: number): number | undefined {
+  const raw = env[key]?.trim();
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  return Math.max(min, Math.min(max, Math.round(value)));
 }
 
 export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): string[] {
@@ -44,6 +59,12 @@ export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): stri
   if (env.CVS_RUST_COUNTERMOVE === '1') extra.push('--countermove');
   if (env.CVS_RUST_SINGULAR === '1') extra.push('--singular');
   if (env.CVS_RUST_SMARTTIME === '1') extra.push('--smarttime');
+  const explicitThreads = intEnv(env, 'CVS_RUST_THREADS', 1, 32);
+  const requestedHelpers = intEnv(env, 'CVS_RUST_CVS_HELPERS', 0, 31) ?? 0;
+  const threads = explicitThreads ?? (requestedHelpers > 0 ? requestedHelpers + 1 : 1);
+  const helpers = Math.min(requestedHelpers, Math.max(0, threads - 1));
+  if (threads > 1) extra.push('--threads', String(threads));
+  if (helpers > 0) extra.push('--cvs-helpers', String(helpers));
   return extra;
 }
 
@@ -61,11 +82,16 @@ export class RustBackend implements CvsEngineBackend {
       extraArgs: options.extraArgs ?? rustBackendExtraArgs(),
     };
     if (!existsSync(this.opts.exe)) {
-      throw new Error(`Rust engine binary not found at ${this.opts.exe} — run 'cargo build --release' in chess-vision-studio-rust-engine`);
+      throw new Error(
+        `Rust engine binary not found at ${this.opts.exe} — run 'cargo build --release' in chess-vision-studio-rust-engine`,
+      );
     }
     let version = 'unknown';
     try {
-      version = execSync('git rev-parse --short HEAD', { cwd: '../chess-vision-studio-rust-engine', encoding: 'utf8' }).trim();
+      version = execSync('git rev-parse --short HEAD', {
+        cwd: '../chess-vision-studio-rust-engine',
+        encoding: 'utf8',
+      }).trim();
     } catch {
       /* best effort */
     }
@@ -85,7 +111,13 @@ export class RustBackend implements CvsEngineBackend {
       // confirmation 56.0% over 100 games, no interaction).
       // 2026-06-12 history rework (accepted with note, fixed-N 53.2%/400):
       // maluses+gravity substrate + history-informed LMR. -23% nodes, +3 depth.
-      e = new RustEngine(this.opts.exe, depth, this.opts.baseWeights, this.opts.rung2Weights, extra);
+      e = new RustEngine(
+        this.opts.exe,
+        depth,
+        this.opts.baseWeights,
+        this.opts.rung2Weights,
+        extra,
+      );
       this.engines.set(depth, e);
     }
     return e;
@@ -110,11 +142,19 @@ export class RustBackend implements CvsEngineBackend {
     return { backend: 'rust', engine: `cvs-bitboard-core@${this.engineVersion}`, weightsId: w };
   }
 
-  async bestMove(fen: string, options: SearchOpts = {}, context?: PositionContext): Promise<MoveResult> {
+  async bestMove(
+    fen: string,
+    options: SearchOpts = {},
+    context?: PositionContext,
+  ): Promise<MoveResult> {
     return this.analyze(fen, options, context);
   }
 
-  async analyze(fen: string, options: SearchOpts = {}, context?: PositionContext): Promise<MoveResult> {
+  async analyze(
+    fen: string,
+    options: SearchOpts = {},
+    context?: PositionContext,
+  ): Promise<MoveResult> {
     const depth = options.depth ?? this.opts.defaultDepth;
     const p = await this.withEngine(depth, (engine) => engine.analyze(fen, context));
     if (p.error) throw new Error(`rust analyze failed: ${p.error}`);
@@ -134,13 +174,19 @@ export class RustBackend implements CvsEngineBackend {
 
   async evaluate(fen: string): Promise<EvalResult> {
     // Any serve process answers `eval`; reuse (or create) the default-depth one.
-    const evalWhiteCp = await this.withEngine(this.opts.defaultDepth, (engine) => engine.evalStatic(fen));
+    const evalWhiteCp = await this.withEngine(this.opts.defaultDepth, (engine) =>
+      engine.evalStatic(fen),
+    );
     return { evalWhiteCp };
   }
 
   /** Clock-budgeted best move (`go <ms>`): depth 30 cap, wall clock drives the
    * search — the Lichess-bot / equal-clock mode. */
-  async bestMoveTimed(fen: string, budgetMs: number, context?: PositionContext): Promise<MoveResult> {
+  async bestMoveTimed(
+    fen: string,
+    budgetMs: number,
+    context?: PositionContext,
+  ): Promise<MoveResult> {
     const p = await this.withEngine(30, (engine) => engine.analyzeTimed(fen, budgetMs, context));
     if (p.error) throw new Error(`rust timed analyze failed: ${p.error}`);
     return {
