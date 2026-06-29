@@ -38,7 +38,12 @@ const CFG: LichessConfig = {
 
 function scriptedPicker(name: string, ucis: string[]): MovePicker {
   let i = 0;
-  return { name, async pick() { return ucis[i++] ?? null; } };
+  return {
+    name,
+    async pick() {
+      return ucis[i++] ?? null;
+    },
+  };
 }
 
 describe('parseNdjson', () => {
@@ -56,15 +61,21 @@ describe('parseNdjson', () => {
 });
 
 describe('lichessRustExtraArgs', () => {
-  it('keeps --smarttime so the engine owns adaptive time management (the gauntlet-proven path)', () => {
+  it('uses Lichess-specific smarttime so live play is isolated from analysis experiments', () => {
     const args = lichessRustExtraArgs({
       CVS_RUST_NNUE: 'net.json',
       CVS_RUST_SMARTTIME: '1',
       CVS_RUST_LMP: '1',
     } as unknown as NodeJS.ProcessEnv);
-    expect(args).toContain('--smarttime'); // session.ts passes the base budget; engine expands it
+    expect(args).not.toContain('--smarttime');
     expect(args).toContain('--lmp');
     expect(args).toContain('--nnue');
+
+    const liveArgs = lichessRustExtraArgs({
+      CVS_RUST_NNUE: 'net.json',
+      CVS_LICHESS_RUST_SMARTTIME: '1',
+    } as unknown as NodeJS.ProcessEnv);
+    expect(liveArgs).toContain('--smarttime'); // session.ts passes the base budget; engine expands it
   });
 });
 
@@ -72,7 +83,10 @@ describe('shouldAccept policy', () => {
   const ch = (o: Partial<ChallengeEvent>): ChallengeEvent => ({ id: 'c1', ...o });
 
   it('declines non-standard variants', () => {
-    expect(shouldAccept(ch({ variant: { key: 'chess960' } }), CFG)).toMatchObject({ accept: false, reason: 'variant' });
+    expect(shouldAccept(ch({ variant: { key: 'chess960' } }), CFG)).toMatchObject({
+      accept: false,
+      reason: 'variant',
+    });
   });
 
   it('declines too-fast real-time games', () => {
@@ -81,24 +95,54 @@ describe('shouldAccept policy', () => {
   });
 
   it('accepts a casual rapid game', () => {
-    const rapid = ch({ rated: false, speed: 'rapid', timeControl: { type: 'clock', limit: 600, increment: 0 } });
+    const rapid = ch({
+      rated: false,
+      speed: 'rapid',
+      timeControl: { type: 'clock', limit: 600, increment: 0 },
+    });
     expect(shouldAccept(rapid, CFG)).toEqual({ accept: true });
   });
 
   it('accepts a rated game, but declines it when acceptRated is off', () => {
-    const rated = ch({ rated: true, speed: 'rapid', timeControl: { type: 'clock', limit: 600, increment: 0 } });
+    const rated = ch({
+      rated: true,
+      speed: 'rapid',
+      timeControl: { type: 'clock', limit: 600, increment: 0 },
+    });
     expect(shouldAccept(rated, CFG)).toEqual({ accept: true });
-    expect(shouldAccept(rated, { ...CFG, acceptRated: false })).toMatchObject({ accept: false, reason: 'rated' });
+    expect(shouldAccept(rated, { ...CFG, acceptRated: false })).toMatchObject({
+      accept: false,
+      reason: 'rated',
+    });
   });
 
   it('honors correspondence and bot-only postures', () => {
-    const corr = ch({ speed: 'correspondence', timeControl: { type: 'correspondence', daysPerTurn: 1 } });
+    const corr = ch({
+      speed: 'correspondence',
+      timeControl: { type: 'correspondence', daysPerTurn: 1 },
+    });
     expect(shouldAccept(corr, CFG)).toEqual({ accept: true });
-    expect(shouldAccept(corr, { ...CFG, allowCorrespondence: false })).toMatchObject({ accept: false, reason: 'tooSlow' });
+    expect(shouldAccept(corr, { ...CFG, allowCorrespondence: false })).toMatchObject({
+      accept: false,
+      reason: 'tooSlow',
+    });
 
-    const human = ch({ rated: false, speed: 'rapid', timeControl: { type: 'clock', limit: 600 }, challenger: { id: 'joe' } });
-    expect(shouldAccept(human, { ...CFG, botsOnly: true })).toMatchObject({ accept: false, reason: 'onlyBot' });
-    const bot = ch({ rated: false, speed: 'rapid', timeControl: { type: 'clock', limit: 600 }, challenger: { id: 'b', title: 'BOT' } });
+    const human = ch({
+      rated: false,
+      speed: 'rapid',
+      timeControl: { type: 'clock', limit: 600 },
+      challenger: { id: 'joe' },
+    });
+    expect(shouldAccept(human, { ...CFG, botsOnly: true })).toMatchObject({
+      accept: false,
+      reason: 'onlyBot',
+    });
+    const bot = ch({
+      rated: false,
+      speed: 'rapid',
+      timeControl: { type: 'clock', limit: 600 },
+      challenger: { id: 'b', title: 'BOT' },
+    });
     expect(shouldAccept(bot, { ...CFG, botsOnly: true })).toEqual({ accept: true });
   });
 });
@@ -108,7 +152,17 @@ describe('LichessClient (mock transport)', () => {
     let captured: { url: string; method?: string } | undefined;
     const fetchLike = async (url: string, init?: RequestInit) => {
       captured = { url, method: init?.method };
-      return { ok: true, status: 200, body: null, async json() { return {}; }, async text() { return ''; } };
+      return {
+        ok: true,
+        status: 200,
+        body: null,
+        async json() {
+          return {};
+        },
+        async text() {
+          return '';
+        },
+      };
     };
     const c = new LichessClient({ token: 'tok', fetchLike });
     expect(await c.move('abc', 'e7e8q')).toBe(true);
@@ -117,8 +171,19 @@ describe('LichessClient (mock transport)', () => {
   });
 
   it('streamEvents() parses the ndjson event feed', async () => {
-    const feed = '{"type":"challenge","challenge":{"id":"c1"}}\n\n{"type":"gameStart","game":{"gameId":"g1"}}\n';
-    const fetchLike = async () => ({ ok: true, status: 200, body: bytes(feed), async json() { return {}; }, async text() { return ''; } });
+    const feed =
+      '{"type":"challenge","challenge":{"id":"c1"}}\n\n{"type":"gameStart","game":{"gameId":"g1"}}\n';
+    const fetchLike = async () => ({
+      ok: true,
+      status: 200,
+      body: bytes(feed),
+      async json() {
+        return {};
+      },
+      async text() {
+        return '';
+      },
+    });
     const c = new LichessClient({ token: 't', fetchLike });
     const types: string[] = [];
     for await (const ev of c.streamEvents()) types.push((ev as { type: string }).type);
@@ -129,7 +194,17 @@ describe('LichessClient (mock transport)', () => {
     let captured = '';
     const fetchLike = async (url: string) => {
       captured = url;
-      return { ok: true, status: 200, body: null, async json() { return {}; }, async text() { return ''; } };
+      return {
+        ok: true,
+        status: 200,
+        body: null,
+        async json() {
+          return {};
+        },
+        async text() {
+          return '';
+        },
+      };
     };
     const c = new LichessClient({ token: 't', fetchLike });
 
@@ -150,7 +225,14 @@ describe('playSession', () => {
         state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
       },
       { type: 'gameState', moves: 'e2e4 e7e5', wtime: 60000, btime: 60000, status: 'started' },
-      { type: 'gameState', moves: 'e2e4 e7e5 g1f3', wtime: 60000, btime: 60000, status: 'resign', winner: 'white' },
+      {
+        type: 'gameState',
+        moves: 'e2e4 e7e5 g1f3',
+        wtime: 60000,
+        btime: 60000,
+        status: 'resign',
+        winner: 'white',
+      },
     ];
     const calls: { move: [string, string][]; resign: string[] } = { move: [], resign: [] };
     const fakeClient = {
@@ -177,7 +259,10 @@ describe('playSession', () => {
 
     const res = await playSession(fakeClient, 'g1', 'cvsbot', picker, {});
 
-    expect(calls.move).toEqual([['g1', 'e2e4'], ['g1', 'g1f3']]);
+    expect(calls.move).toEqual([
+      ['g1', 'e2e4'],
+      ['g1', 'g1f3'],
+    ]);
     expect(seen.map((s) => s.moves)).toEqual([[], ['e2e4', 'e7e5']]);
     expect(seen[0]!.fen).toContain(' w KQkq - 0 1');
     expect(res.cvsColor).toBe('white');
@@ -200,7 +285,13 @@ describe('playSession', () => {
         state: { type: 'gameState', moves: '', wtime: 60000, btime: 60000, status: 'started' },
       },
       { type: 'gameState', moves: 'e2e4 e7e5', wtime: 60000, btime: 60000, status: 'started' },
-      { type: 'gameState', moves: 'e2e4 e7e5 g1f3 a7a6', wtime: 60000, btime: 60000, status: 'started' },
+      {
+        type: 'gameState',
+        moves: 'e2e4 e7e5 g1f3 a7a6',
+        wtime: 60000,
+        btime: 60000,
+        status: 'started',
+      },
     ];
     const calls: { move: [string, string][] } = { move: [] };
     const fakeClient = {
@@ -303,10 +394,11 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 10000 });
 
-    // 60s clock, no inc: base = 60000/30 = 2000, minus the default 100ms overhead
-    // reserve = 1900. No TS-side forcing multiplier — even in check we pass the base
-    // budget and let the engine's smarttime extend on its own.
-    expect(budgets).toEqual([1900]);
+    // 60s clock, no inc. base = min(clock/30 = 2000, maxMoveMs = 10000, hardSafe = 625)
+    // where hardSafe = 60000·0.05/4.8 — the clock-relative ceiling binds — minus the
+    // default 100ms overhead = 525. The ceiling keeps the engine's worst-case ~4.8× hard
+    // move (≈2.5s) under 5% of the clock so it can't flag.
+    expect(budgets).toEqual([525]);
     expect(calls.move).toEqual([['g1', 'e1e2']]);
     expect(calls.resign).toEqual([]);
   });
@@ -323,7 +415,14 @@ describe('playSession', () => {
         black: { id: 'human', name: 'human' },
         state: { type: 'gameState', moves: '', wtime: 4000, btime: 60000, status: 'started' },
       },
-      { type: 'gameState', moves: 'e2e4', wtime: 4000, btime: 58000, status: 'resign', winner: 'white' },
+      {
+        type: 'gameState',
+        moves: 'e2e4',
+        wtime: 4000,
+        btime: 58000,
+        status: 'resign',
+        winner: 'white',
+      },
     ];
     const budgets: Array<number | undefined> = [];
     const fakeClient = {
@@ -347,8 +446,54 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 12000 });
 
-    // base = min(12000, 4000/30=133) = 133, minus 100ms overhead = 33, floored to 50.
+    // 4s left: hardSafe = 4000·0.05/4.8 = 41 binds, then floored to minMoveMs (50).
+    // smarttime expands engine-side; the emergency backstop ((4000-100)/4.8 = 812) is
+    // well above 50, so it doesn't trigger here.
     expect(budgets).toEqual([50]);
+  });
+
+  it('rapid 10+5: the clock-relative ceiling bounds the worst-case hard move (flag guard)', async () => {
+    // The TC that flagged in production. With maxMoveMs=12000 the old base was 12s, so
+    // smarttime's ~4.8× hard extension could burn ~57s on one move and forfeit. The
+    // ceiling caps the base at 600000·0.05/4.8 = 6250 so the worst case stays < 5% of clock.
+    const events: GameStreamEvent[] = [
+      {
+        type: 'gameFull',
+        id: 'g1',
+        initialFen: 'startpos',
+        white: { id: 'cvsbot', name: 'cvsbot' },
+        black: { id: 'human', name: 'human' },
+        state: { type: 'gameState', moves: '', wtime: 600000, btime: 600000, winc: 5000, binc: 5000, status: 'started' },
+      },
+      { type: 'gameState', moves: 'e2e4', wtime: 600000, btime: 595000, winc: 5000, binc: 5000, status: 'resign', winner: 'white' },
+    ];
+    const budgets: Array<number | undefined> = [];
+    const fakeClient = {
+      async *streamGame() {
+        for (const e of events) yield e;
+      },
+      async move() {
+        return true;
+      },
+      async resign() {
+        return true;
+      },
+    } as unknown as LichessClient;
+    const picker: MovePicker = {
+      name: 'rapid-test',
+      async pick(_fen, budgetMs) {
+        budgets.push(budgetMs);
+        return 'e2e4';
+      },
+    };
+
+    await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 12000, moveOverheadMs: 150 });
+
+    // base = min(clock/30 + 0.8·inc = 24000, maxMoveMs = 12000, hardSafe = 6250) = 6250,
+    // minus 150 overhead = 6100. The worst-case ~4.8× hard move (≈29.3s) stays under 5%
+    // of the 600s clock (30s) — the bound the old 12s base (12000·4.8 ≈ 57s) violated.
+    expect(budgets).toEqual([6100]);
+    expect((budgets[0] as number) * 4.8).toBeLessThanOrEqual(600000 * 0.05);
   });
 
   it('aborts (not resigns) when the engine cannot produce a move — a transient failure is not a loss', async () => {
@@ -381,7 +526,18 @@ describe('playSession', () => {
       },
     } as unknown as LichessClient;
 
-    await playSession(fakeClient, 'g1', 'cvsbot', { name: 'dead', async pick() { return null; } }, {});
+    await playSession(
+      fakeClient,
+      'g1',
+      'cvsbot',
+      {
+        name: 'dead',
+        async pick() {
+          return null;
+        },
+      },
+      {},
+    );
 
     expect(calls.abort).toEqual(['g1']); // abortable opening -> abort, costs no rating
     expect(calls.resign).toEqual([]); // engine hiccups must NOT become resignations
@@ -416,7 +572,18 @@ describe('playSession', () => {
       },
     } as unknown as LichessClient;
 
-    await playSession(fakeClient, 'g1', 'cvsbot', { name: 'dead', async pick() { return null; } }, {});
+    await playSession(
+      fakeClient,
+      'g1',
+      'cvsbot',
+      {
+        name: 'dead',
+        async pick() {
+          return null;
+        },
+      },
+      {},
+    );
 
     expect(calls.abort).toEqual([]); // abort was attempted (returned false) and not recorded
     expect(calls.resign).toEqual(['g1']); // honest resignation when abort is impossible
@@ -532,11 +699,17 @@ describe('runBot protocol resilience', () => {
 
   it('remains busy until post-game review completes', async () => {
     let startHarvest!: () => void;
-    const harvestStarted = new Promise<void>((resolve) => { startHarvest = resolve; });
+    const harvestStarted = new Promise<void>((resolve) => {
+      startHarvest = resolve;
+    });
     let releaseHarvest!: () => void;
-    const harvestRelease = new Promise<void>((resolve) => { releaseHarvest = resolve; });
+    const harvestRelease = new Promise<void>((resolve) => {
+      releaseHarvest = resolve;
+    });
     let finishHarvest!: () => void;
-    const harvestFinished = new Promise<void>((resolve) => { finishHarvest = resolve; });
+    const harvestFinished = new Promise<void>((resolve) => {
+      finishHarvest = resolve;
+    });
     const accepted: string[] = [];
     const declined: string[] = [];
     const challenge: LichessEvent = {

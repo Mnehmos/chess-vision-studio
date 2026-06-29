@@ -52,6 +52,21 @@ export interface SessionOptions {
    */
   moveOverheadMs?: number;
   /**
+   * The engine's `--smarttime` path may extend the base budget we pass by up to this
+   * multiple on unstable positions (serve `go <ms>` hard cap ≈ 4.8×). Used to bound the
+   * base so a single hard-extended move can never flag. Default 4.8; keep in sync with
+   * the engine, or raise for extra safety margin.
+   */
+  smarttimeHardMult?: number;
+  /**
+   * Hard safety ceiling: the worst-case (hard-extended) single move must not exceed this
+   * fraction of the REMAINING clock. The base budget is capped at
+   * remaining·safeHardFraction / smarttimeHardMult so the engine cannot over-spend into a
+   * time forfeit — deep thinking when the clock is large, automatically conservative as it
+   * drains. Default 0.05 (≈20 worst-case moves of headroom before any flag).
+   */
+  safeHardFraction?: number;
+  /**
    * Opening line (UCI moves from the start) assigned to this game. While the played
    * moves still match its prefix, our moves are played INSTANTLY from it (no engine
    * search). Omit to always use the engine.
@@ -76,6 +91,8 @@ export async function playSession(
   const minMoveMs = opts.minMoveMs ?? 50;
   const maxMoveMs = opts.maxMoveMs ?? 4000;
   const moveOverheadMs = opts.moveOverheadMs ?? 100;
+  const smarttimeHardMult = opts.smarttimeHardMult ?? 4.8;
+  const safeHardFraction = opts.safeHardFraction ?? 0.05;
   const bookLine = opts.bookLine;
 
   let initialFen = START_FEN;
@@ -150,18 +167,25 @@ export async function playSession(
     if (!uci) {
       const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
       const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
-      // Per-move base budget = clock/30 + 0.8·inc, clamped to [minMoveMs, maxMoveMs]
-      // and minus a small overhead reserve for network/IPC lag. This is the input the
-      // engine's --smarttime path expects; the engine then decides how long to actually
-      // think (soft ~clock/25, extend toward ~clock/6 hard on unstable positions). We
-      // deliberately do NOT pre-extend on forcing moves or cap by clock-share here —
-      // that is smarttime's job, and doing it twice would over- or under-spend.
-      const budget = Number.isFinite(myTimeMs)
-        ? Math.max(
-            minMoveMs,
-            Math.min(maxMoveMs, Math.floor((myTimeMs as number) * clockFraction) + Math.floor(incMs * 0.8)) - moveOverheadMs,
-          )
-        : undefined; // correspondence / no clock — picker uses its own fallback
+      // Per-move budget. Base = clock·clockFraction + 0.8·inc (the input --smarttime
+      // expects), but CAPPED so the engine's worst-case hard extension (~smarttimeHardMult×)
+      // can never exceed safeHardFraction of the REMAINING clock. Without this cap a 12s
+      // base became a ~57s hard move and flagged every TC below 30+0; with it, slow games
+      // still think deeply while fast games stay automatically flag-safe as the clock
+      // drains. A final emergency backstop keeps even the minMove floor from over-running a
+      // nearly-exhausted clock. (Pre-extending on forcing moves is still left to smarttime.)
+      let budget: number | undefined;
+      if (Number.isFinite(myTimeMs)) {
+        const remaining = myTimeMs as number;
+        const formulaBase = Math.floor(remaining * clockFraction) + Math.floor(incMs * 0.8);
+        const hardSafeBase = Math.floor((remaining * safeHardFraction) / smarttimeHardMult);
+        const target = Math.min(formulaBase, maxMoveMs, hardSafeBase);
+        budget = Math.max(minMoveMs, target - moveOverheadMs);
+        const emergency = Math.floor((remaining - moveOverheadMs) / smarttimeHardMult);
+        if (emergency < budget) budget = Math.max(20, emergency);
+      } else {
+        budget = undefined; // correspondence / no clock — picker uses its own fallback
+      }
 
       // Engine failure is usually transient (process hiccup, transport blip) — retry
       // before giving up. Resigning is the LAST resort: it turned every rate-limit

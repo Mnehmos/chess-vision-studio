@@ -100,27 +100,35 @@ export async function runBot(
   log(`engine backend: ${backendKind} (picker ${picker.name})`);
   const active = new Set<string>();
 
-  // Seed games vs Lichess AI for position diversity — but ONE AT A TIME within the
-  // concurrency cap. Firing every level at once (the old eager loop) put 3 games on
-  // one shared serial engine; their searches queued past the per-request deadline,
-  // the engine got killed, and all in-flight games resigned together. The queue is
-  // drained as slots free (see fillSlot in the game-finished handler).
-  const seedQueue: number[] = cfg.seedAi ? cfg.seedAiLevels.slice() : [];
+  // CONSTANT harvest seeding: whenever idle, seed a fresh AI game, ROTATING the time
+  // control (bullet -> classical) and the AI level so we cover ALL speeds and a range
+  // of opposition. Gentle by construction — ONE game at a time, re-seeded only when a
+  // slot frees (~1 challenge per game), so it never trips the challenge rate limit the
+  // way the bot-ladder did. A 429 just backs the seeder off briefly; it self-recovers.
+  // This is the PRIMARY harvest source: steady, not aggressive (the ladder is the
+  // aggressive path and is off by default below).
+  // Classical/rapid by default — competitive games the engine plays well and that the
+  // clock-relative time guard keeps flag-safe. Override with CVS_SEED_TCS for other speeds.
+  const SEED_TCS: Array<[number, number]> = (process.env.CVS_SEED_TCS
+    ?? '1800+0,1500+10,1800+30,1200+10,900+10')
+    .split(',')
+    .map((s) => s.trim().split('+').map(Number) as [number, number])
+    .filter(([l, i]) => Number.isFinite(l) && l >= 15 && Number.isFinite(i) && i >= 0);
+  const SEED_LEVELS = cfg.seedAiLevels.length ? cfg.seedAiLevels : [4, 5, 6, 7, 8];
+  let seedRot = 0;
+  let seedPausedUntil = 0;
   const maybeSeed = async (): Promise<boolean> => {
-    if (!seedQueue.length || active.size >= cfg.maxConcurrentGames) return false;
-    const level = seedQueue.shift()!;
+    if (!cfg.seedAi || active.size >= cfg.maxConcurrentGames || Date.now() < seedPausedUntil) return false;
+    const [limit, inc] = SEED_TCS[seedRot % SEED_TCS.length] ?? [300, 3];
+    const level = SEED_LEVELS[seedRot % SEED_LEVELS.length] ?? 6;
+    seedRot += 1;
     try {
-      const g = await client.challengeAi({
-        level,
-        color: 'random',
-        clockLimitSec: cfg.seedAiClockLimitSec,
-        clockIncrementSec: cfg.seedAiClockIncrementSec,
-      });
-      log(`seeded vs Lichess AI L${level} -> ${g.id ?? '(pending gameStart)'}`);
+      const g = await client.challengeAi({ level, color: 'random', clockLimitSec: limit, clockIncrementSec: inc });
+      log(`seeded vs Lichess AI L${level} ${limit}+${inc} -> ${g.id ?? '(pending gameStart)'}`);
       return true;
     } catch (e) {
-      log(`seed L${level} failed: ${String(e)}`);
-      seedQueue.unshift(level); // retry on the next free slot
+      if (String(e).includes('429')) seedPausedUntil = Date.now() + 300_000; // brief back-off; do not hammer a throttle
+      log(`seed L${level} ${limit}+${inc} failed: ${String(e)}`);
       return false;
     }
   };
@@ -288,8 +296,11 @@ export async function runBot(
           // accumulated lag stays under the clock.
           void Promise.race([
             playSession(client, gameId, botId, picker, {
-              maxMoveMs: 12_000,
-              moveOverheadMs: 150,
+              maxMoveMs: Number(process.env.CVS_LICHESS_MAX_MOVE_MS ?? 12_000),
+              moveOverheadMs: Number(process.env.CVS_LICHESS_MOVE_OVERHEAD_MS ?? 150),
+              // Worst-case hard move ≤ this fraction of the remaining clock (flag guard).
+              safeHardFraction: Number(process.env.CVS_LICHESS_SAFE_HARD_FRACTION ?? 0.05),
+              smarttimeHardMult: Number(process.env.CVS_LICHESS_SMARTTIME_HARD ?? 4.8),
               bookLine: book.moves,
             }),
             watchdog,
