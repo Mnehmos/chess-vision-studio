@@ -20,7 +20,10 @@ The current refactor and audit set is split across:
 
 | Document | Responsibility |
 |---|---|
+| `docs/DOCUMENTATION_INDEX.md` | Canonical map of primary app docs, native engine docs, and documentation standards. |
 | `docs/BLUE_PHASE_REFACTOR_PLAN.md` | Validated implementation order, boundaries, and test gates. |
+| `docs/ENGINE_OPTIMIZATION_REVIEW.md` | Current engine/runtime review, concurrency budget rules, specialist SMP contract, and verification commands. |
+| `docs/ELO_PROBE_BACKLOG.md` | Research-backed engine-strength probe queue and same-budget promotion template. |
 | `docs/MODERN_ENGINE_CHECKLIST.md` | Current Rust engine capability checklist and deferred modernization gates. |
 | `docs/RSI_OODA_PIPELINE.md` | OODA/self-improvement pipeline, relabeling, forensic loop, and registry contract. |
 | `docs/UI_AESTHETICS_AUDIT.md` | Styling architecture findings, current CSS baseline, and UI extraction direction. |
@@ -133,6 +136,14 @@ Current screen state + all ply analyses + features + teaching records
   false data.
 - Browser secrets never ship. `OPENAI_API_KEY` is read server-side by the Vite
   proxy; browser-side key entry is development-only.
+- Native CVS runtime budgets are explicit. Bulk app/dataset analysis should
+  prefer pooled single-threaded Rust processes. `CVS_RUST_THREADS > 1` and
+  `CVS_RUST_CVS_HELPERS > 0` are benchmark knobs, not free throughput knobs.
+- Lichess live-play Rust knobs are isolated under `CVS_LICHESS_RUST_*`; app
+  analysis experiments must not silently change live bot behavior.
+- Specialist SMP follows Channel-A authority unless a benchmarked Channel-B
+  design is deliberately promoted: foreign-lane TT moves may improve ordering,
+  but foreign-lane scores/bounds must not prune another lane's tree.
 
 ## UI/UX Responsibilities
 
@@ -373,7 +384,7 @@ Important environment variables:
 |---|---|
 | `arena/dev-server/http.ts` | Shared JSON/body/error response helpers for local API plugins. |
 | `arena/dev-server/openai-proxy.ts` | Server-side OpenAI health and completion proxy. |
-| `arena/dev-server/cvs-engine-proxy.ts` | Rust line-protocol process lifecycle, request queue, timeout, and late-output isolation. |
+| `arena/dev-server/cvs-engine-proxy.ts` | Rust line-protocol process lifecycle, request queue, runtime flag mapping, thread-aware process-pool sizing, timeout, and late-output isolation. |
 | `arena/dev-server/stockfish-uci.ts` | Native Stockfish UCI session lifecycle and command parsing. |
 | `arena/dev-server/stockfish-proxy.ts` | Stockfish process pool, request queue, stop/timeout cleanup, and HTTP endpoints. |
 | `arena/dev-server/training-state.ts` | Pure training configuration and public status mapping. |
@@ -390,8 +401,8 @@ These files live in `../chess-vision-studio-rust-engine`.
 | `src/search/time_control.rs` | External-stop and deadline polling. |
 | `src/search/eval_adapter.rs` | NNUE accumulator updates, classical/NNUE evaluation, rule-50 scaling, and TT key adjustment. |
 | `src/search/ordering.rs` | Killer/history/counter/continuation/capture history, move ordering, and specialist-lane bonuses. |
-| `src/search/qsearch.rs` | Quiescence search and noisy/check-evasion move selection. |
-| `src/search/root.rs` | Root search, negamax, pruning/reductions, singular extension, tablebase probe, and terminal handling. |
+| `src/search/qsearch.rs` | Quiescence search, noisy/check-evasion move selection, and lane-local qTT bound usage. |
+| `src/search/root.rs` | Root search, negamax, pruning/reductions, singular extension, tablebase probe, terminal handling, and Channel-A foreign TT isolation. |
 | `src/search/smp.rs` | Lazy/heterogeneous SMP helper orchestration and shared-TT aggregation. |
 | `src/book.rs` | Optional Polyglot opening-book loading and legal move matching. |
 | `src/syzygy.rs` | Optional Syzygy tablebase loading and WDL probing. |

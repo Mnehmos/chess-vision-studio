@@ -11,8 +11,8 @@ some are gated or still need strength/safety validation.
 | Principal Variation Search | Present | Implemented behind search options. |
 | Aspiration windows | Present | Part of PVS/root search flow. |
 | Lock-free transposition table | Present | TT alignment/cache friendliness remains a follow-up. |
-| Lazy SMP | Present | `threads > 1` runs shared-TT helper search. |
-| Heterogeneous CVS SMP | Present | `cvs_helpers` and specialist lanes exist. |
+| Lazy SMP | Present | `threads > 1` runs shared-TT helper search; app bridge scales process pool by per-process search threads. |
+| Heterogeneous CVS SMP | Present, gated | `cvs_helpers` and specialist lanes exist. Foreign TT move hints are allowed; foreign TT scores/bounds are lane-local under Channel-A. |
 | NNUE | Present | Loader enforces CVS registry hash compatibility. |
 | Multi-network/helper NNUE | Present | Main/helper NNUE paths exist. |
 | Killer heuristic | Present | Two killer slots per ply. |
@@ -37,7 +37,10 @@ the existing search stack first.
 
 - Validate gated ordering flags independently: countermove, continuation
   history, capture history, history malus, history-informed LMR, and TT2.
-- Add Channel-A/foreign TT safety tests before changing specialist-lane bound
-  usage.
+- Keep Channel-A/foreign TT isolation covered in root, qsearch, and singular
+  probes. Channel-B bound sharing requires eval-family provenance, explicit
+  authority rules, and a same-budget benchmark promotion.
 - Benchmark promotion or tuning of singular extensions, tablebases, books, PGO,
   and TT alignment in separate strength branches.
+- Use `docs/ENGINE_OPTIMIZATION_REVIEW.md` for current runtime risks and
+  `docs/ELO_PROBE_BACKLOG.md` for new strength probes.
