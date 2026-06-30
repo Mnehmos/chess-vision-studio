@@ -18,5 +18,23 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["engine", "app", "src", "llm", "arena"]
+  "include": ["engine", "app", "src", "llm", "arena"],
+  // Legacy value-eval/training scripts for the DEPRECATED @cvs/engine package. Everything we still
+  // need moved to the Rust engine; the old tunable value/rung2 weight API these scripts trained
+  // against was removed. They are kept as frozen legacy reference (not ported) and excluded from the
+  // product build typecheck so they don't break `tsc -b`. They still run on demand via vite-node.
+  "exclude": [
+    "arena/bench-search.ts",
+    "arena/eval-matrix.ts",
+    "arena/eval-r4.ts",
+    "arena/eval-value.ts",
+    "arena/export-eval-fixtures.ts",
+    "arena/forensic-blunder.ts",
+    "arena/gauntlet-analyze.ts",
+    "arena/pv-attribution.ts",
+    "arena/rung2-dump.ts",
+    "arena/train-loop.ts",
+    "arena/train-mixed.ts",
+    "arena/train-ranking.ts"
+  ]
 }

@@ -1,14 +1,17 @@
 // TS legacy backend — wraps the frozen chess.js-based @cvs/engine behind the
 // backend seam. Reference/comparison use only; no engine capability is added.
-import { CvsEngine, DEFAULT_POLICY_WEIGHTS, type Rung2Weights, type ValueWeights } from '@cvs/engine';
+// @cvs/engine is deprecated (everything we need moved to the Rust engine); this stays as a frozen
+// legacy reference. Its value head is now fixed (the old tunable value/rung2 weights were removed),
+// so the only knob is the policy weight vector — we run the default policy weights.
+import { CvsEngine, DEFAULT_POLICY_WEIGHTS, type PolicyWeights } from '@cvs/engine';
 import type { BackendId, CvsEngineBackend, EvalResult, MoveResult, SearchOpts } from './types';
 
 export class TsLegacyBackend implements CvsEngineBackend {
   private engine: CvsEngine;
   private weightsId: string;
 
-  constructor(valueWeights?: ValueWeights, rung2Weights?: Rung2Weights, weightsId = 'default') {
-    this.engine = new CvsEngine({ weights: DEFAULT_POLICY_WEIGHTS, valueWeights, rung2Weights });
+  constructor(weights: PolicyWeights = DEFAULT_POLICY_WEIGHTS, weightsId = 'default') {
+    this.engine = new CvsEngine({ weights });
     this.weightsId = weightsId;
   }
 
