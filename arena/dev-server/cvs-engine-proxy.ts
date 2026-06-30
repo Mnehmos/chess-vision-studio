@@ -40,6 +40,7 @@ export function cvsEngineFeatureFlags(env: Record<string, string>): string[] {
       flags.push(flag);
     }
   };
+  const runtime = cvsEngineRuntime(env);
   add('CVS_RUST_ALLOW_UNVERIFIED', '--allow-unverified-net');
   add('CVS_RUST_FUTILITY', '--futility', true);
   add('CVS_RUST_RFP', '--rfp');
@@ -56,7 +57,42 @@ export function cvsEngineFeatureFlags(env: Record<string, string>): string[] {
   add('CVS_RUST_TT2', '--tt2');
   add('CVS_RUST_IMPROVING', '--improving');
   add('CVS_RUST_RULE50', '--rule50');
+  add('CVS_RUST_SINGULAR', '--singular');
+  add('CVS_RUST_SMARTTIME', '--smarttime');
+  if (runtime.threads > 1) flags.push('--threads', String(runtime.threads));
+  if (runtime.cvsHelpers > 0) flags.push('--cvs-helpers', String(runtime.cvsHelpers));
   return flags;
+}
+
+function intEnv(
+  env: Record<string, string>,
+  key: string,
+  min: number,
+  max: number,
+): number | undefined {
+  const raw = env[key]?.trim();
+  if (!raw) return undefined;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) return undefined;
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+export function cvsEngineRuntime(env: Record<string, string>): {
+  threads: number;
+  cvsHelpers: number;
+} {
+  const explicitThreads = intEnv(env, 'CVS_RUST_THREADS', 1, 32);
+  const requestedHelpers = intEnv(env, 'CVS_RUST_CVS_HELPERS', 0, 31) ?? 0;
+  const threads = explicitThreads ?? (requestedHelpers > 0 ? requestedHelpers + 1 : 1);
+  return {
+    threads,
+    cvsHelpers: Math.min(requestedHelpers, Math.max(0, threads - 1)),
+  };
+}
+
+export function cvsEnginePoolSize(cpuCount: number, engineThreads: number): number {
+  const usableCores = Math.max(1, (cpuCount || 4) - 2);
+  return Math.max(1, Math.min(8, Math.floor(usableCores / Math.max(1, engineThreads))));
 }
 
 export function createCvsLineDispatcher(
@@ -127,7 +163,6 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
   // A least-loaded POOL of them parallelizes bulk analysis across cores while
   // staying 100% rust. Light use stays at one process; bulk fans out.
   const pools = new Map<string, CvsEngineProcess[]>();
-  const POOL_SIZE = Math.max(2, Math.min(8, (cpus().length || 4) - 2));
 
   const dispose = () => {
     const procs = [...pools.values()].flat();
@@ -158,6 +193,7 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
     const args = ['--serve', '--depth', String(depth)];
     const missing: string[] = [];
     const flags: string[] = [];
+    const runtime = options.factsOnly ? { threads: 1, cvsHelpers: 0 } : cvsEngineRuntime(env);
 
     const addFileArg = (
       flag: string,
@@ -201,7 +237,7 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
       args.push(...flags);
     }
 
-    return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags };
+    return { exe, depth, args, argsKey: JSON.stringify(args), missing, flags, runtime };
   };
 
   const createProc = (cfg: ReturnType<typeof configFor>, poolKey: string): CvsEngineProcess => {
@@ -240,7 +276,8 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
   const acquireEngine = (cfg: ReturnType<typeof configFor>): CvsEngineProcess => {
     const key = `${cfg.exe}:${cfg.argsKey}`;
     const pool = (pools.get(key) ?? []).filter((proc) => !proc.child.killed);
-    if (pool.length < POOL_SIZE) pool.push(createProc(cfg, key));
+    const poolSize = cvsEnginePoolSize(cpus().length || 4, cfg.runtime.threads);
+    if (pool.length < poolSize) pool.push(createProc(cfg, key));
     pools.set(key, pool);
     return pool.reduce(
       (best, proc) =>
@@ -421,7 +458,9 @@ export function cvsEngineProxy(env: Record<string, string>): Plugin {
               registryVersion: Number(cvsParsed.registryVersion),
               registryHash: String(cvsParsed.registryHash),
               inputDim: Number(cvsParsed.inputDim),
-              activeIds: Array.isArray(cvsParsed.activeIds) ? (cvsParsed.activeIds as number[]) : [],
+              activeIds: Array.isArray(cvsParsed.activeIds)
+                ? (cvsParsed.activeIds as number[])
+                : [],
               activeNames: Array.isArray(cvsParsed.activeNames)
                 ? (cvsParsed.activeNames as string[])
                 : [],

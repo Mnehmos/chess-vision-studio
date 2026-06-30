@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCvsLineDispatcher, cvsEngineFeatureFlags } from './cvs-engine-proxy';
+import {
+  createCvsLineDispatcher,
+  cvsEngineFeatureFlags,
+  cvsEnginePoolSize,
+  cvsEngineRuntime,
+} from './cvs-engine-proxy';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -7,10 +12,33 @@ afterEach(() => {
 
 describe('CVS engine line dispatcher', () => {
   it('forwards the explicit unverified-network development override', () => {
-    expect(cvsEngineFeatureFlags({
-      CVS_RUST_ALLOW_UNVERIFIED: '1',
-      CVS_RUST_FUTILITY: '0',
-    })).toContain('--allow-unverified-net');
+    expect(
+      cvsEngineFeatureFlags({
+        CVS_RUST_ALLOW_UNVERIFIED: '1',
+        CVS_RUST_FUTILITY: '0',
+      }),
+    ).toContain('--allow-unverified-net');
+  });
+
+  it('maps specialist SMP settings to bounded Rust CLI flags', () => {
+    expect(
+      cvsEngineRuntime({
+        CVS_RUST_CVS_HELPERS: '2',
+      }),
+    ).toEqual({ threads: 3, cvsHelpers: 2 });
+    expect(
+      cvsEngineFeatureFlags({
+        CVS_RUST_FUTILITY: '0',
+        CVS_RUST_THREADS: '4',
+        CVS_RUST_CVS_HELPERS: '9',
+      }),
+    ).toEqual(['--threads', '4', '--cvs-helpers', '3']);
+  });
+
+  it('scales process pool size down when each Rust process owns more threads', () => {
+    expect(cvsEnginePoolSize(16, 1)).toBe(8);
+    expect(cvsEnginePoolSize(16, 4)).toBe(3);
+    expect(cvsEnginePoolSize(4, 8)).toBe(1);
   });
 
   it('preserves response ordering when timed-out stdout arrives late', async () => {
