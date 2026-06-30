@@ -1,0 +1,27 @@
+name: rsi-orchestrator
+
+# The gated RSI loop must keep its invariants: a leaky source-split aborts before training, only an
+# SPRT 'accept' (upper-bound crossing) promotes, the champion is never overwritten otherwise, and the
+# experiment ledger stays hash-chained. Runs the orchestrator's standalone tests (no GPU/games).
+on:
+  push:
+    paths:
+      - "arena/rsi_orchestrator.py"
+      - "arena/test_rsi_orchestrator.py"
+      - "arena/source_split_guard.py"
+  pull_request:
+    paths:
+      - "arena/rsi_orchestrator.py"
+      - "arena/test_rsi_orchestrator.py"
+      - "arena/source_split_guard.py"
+
+jobs:
+  rsi-orchestrator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: RSI orchestrator gate tests
+        run: python arena/test_rsi_orchestrator.py
