@@ -27,9 +27,11 @@ WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sf-relabel-wo
 DEFAULT_STOCKFISH_REVIEW_DEPTH = 24
 
 
-def read_fens(patterns):
-    """Dedup FENs (order-preserving) from FEN-bearing JSONL rows."""
-    seen, fens = set(), []
+def read_rows(patterns):
+    """Dedup rows by FEN (order-preserving) from FEN-bearing JSONL rows, PRESERVING every field
+    so source/finder/split/seed provenance survives into the relabel (#34). Non-object lines
+    (a bare FEN string, etc.) are skipped, as before."""
+    seen, rows = set(), []
     for pat in patterns:
         for path in sorted(glob.glob(pat)):
             with open(path, encoding='utf8') as fh:
@@ -38,26 +40,28 @@ def read_fens(patterns):
                     if not line:
                         continue
                     try:
-                        fen = json.loads(line)['fen']
-                    except Exception:
+                        row = json.loads(line)
+                        fen = row['fen']
+                    except (ValueError, TypeError, KeyError):
                         continue
                     if fen not in seen:
                         seen.add(fen)
-                        fens.append(fen)
-    return fens
+                        rows.append(row)
+    return rows
 
 
-def shard(fens, n, out_dir):
-    """Round-robin into n shard files so each holds a similar position mix."""
+def shard(rows, n, out_dir):
+    """Round-robin into n shard files so each holds a similar position mix. Writes the FULL row
+    (all provenance fields preserved, #34), not just the FEN."""
     buckets = [[] for _ in range(n)]
-    for i, fen in enumerate(fens):
-        buckets[i % n].append(fen)
+    for i, row in enumerate(rows):
+        buckets[i % n].append(row)
     paths = []
     for k, bucket in enumerate(buckets):
         p = os.path.join(out_dir, f'shard{k:02d}.jsonl')
         with open(p, 'w', encoding='utf8') as fh:
-            for fen in bucket:
-                fh.write(json.dumps({'fen': fen}) + '\n')
+            for row in bucket:
+                fh.write(json.dumps(row) + '\n')
         paths.append(p)
     return paths
 
@@ -81,11 +85,11 @@ def main():
         if not shards:
             sys.exit('no existing shards to reuse; drop --no-reshard')
     else:
-        fens = read_fens(args.source)
-        if not fens:
+        rows = read_rows(args.source)
+        if not rows:
             sys.exit('no FENs found in --source')
-        shards = shard(fens, args.workers, args.out_dir)
-        print(f'corpus: {len(fens)} unique FENs -> {len(shards)} shards in {args.out_dir}', flush=True)
+        shards = shard(rows, args.workers, args.out_dir)
+        print(f'corpus: {len(rows)} unique FENs -> {len(shards)} shards in {args.out_dir}', flush=True)
 
     # Detached + BelowNormal so the fleet outlives this shell and yields the box.
     flags = (subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
