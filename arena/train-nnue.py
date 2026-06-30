@@ -13,12 +13,16 @@
 # Output: JSON with float weights + quantization scales for the Rust loader.
 # UNPROMOTED until node-speed + SPRT gates pass.
 import json
+import os
 import sys
 import time
 
 import numpy as np
 import torch
 import torch.nn as nn
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import source_split_guard as ssg  # noqa: E402  (#33 deterministic seeding)
 
 DATA = sys.argv[1] if len(sys.argv) > 1 else 'f:/tools/nnue-data-gen1.jsonl'
 
@@ -34,6 +38,13 @@ K = 256.0
 LAMBDA = arg('--lambda', 0.6)  # 1.0 = pure-eval target (result-less corpora)
 HIDDEN = arg('--hidden', 128)
 BATCH = 16384
+SEED = arg('--seed', 0)                       # #33: deterministic, reproducible artifacts
+DETERMINISTIC = '--deterministic' in sys.argv  # also pin cuDNN determinism
+# #33: this slice has only the single-corpus row-level (% 50) holdout, which LEAKS sources across
+# train/holdout. Refuse it as promotion-eligible — require an explicit ack that the artifact is a
+# NON-PROMOTABLE dev run. (Promotion-eligible training from a verified --train/--validation split is
+# slice 2; pre-flight gate: arena/verify-split.py.)
+ALLOW_UNSAFE = '--allow-unsafe-row-split' in sys.argv
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # ---- FEN -> (feature indices stm-POV, cp_stm, target_result_stm) ----
@@ -112,6 +123,14 @@ class Net(nn.Module):
 
 
 def main():
+    print(f'seed: {ssg.seed_everything(SEED, deterministic=DETERMINISTIC)}', flush=True)
+    if not ALLOW_UNSAFE:
+        raise SystemExit(
+            'REFUSED: this trainer slice uses a single unsplit corpus with a row-level (% 50) holdout '
+            'that LEAKS sibling positions from the same game across train/holdout — its artifact is '
+            'NOT promotion-eligible. Pass --allow-unsafe-row-split to produce a clearly NON-PROMOTABLE '
+            'dev artifact, or wait for slice 2 (train from a verified --train/--validation split; '
+            'pre-flight gate: python arena/verify-split.py).')
     F, cps, ress = load(DATA, MAX_ROWS)
     F[F < 0] = 768
     n = len(F)
@@ -167,7 +186,9 @@ def main():
         'b1': [round(float(v), 6) for v in b1],
         'w2': [round(float(v), 6) for v in w2],
         'b2': b2,
-        'note': 'stm-POV, mirror+colorswap for black; UNPROMOTED',
+        'note': 'stm-POV, mirror+colorswap for black; UNPROMOTED; '
+                '--allow-unsafe-row-split: source-leaking %50 holdout, NON-PROMOTABLE (#33)',
+        'promotable': False,
     }, open(OUT, 'w'))
     print(f'wrote {OUT}')
 
