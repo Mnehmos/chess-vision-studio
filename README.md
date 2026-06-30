@@ -143,10 +143,12 @@ the perception overlays keep working. Build the engine to unlock the CVS-vs-you 
 mode and the side-by-side engine comparison.
 
 Optional configuration lives in `.env` (`cp .env.example .env`). The most useful
-knobs are the engine bridge path and the coach key:
+knobs are the engine bridge path, native runtime budget, and the coach key:
 
 ```text
 CVS_RUST_EXE=../chess-vision-studio-rust-engine/target/release/analyze.exe
+CVS_RUST_THREADS=1        # keep 1 for normal app/dataset analysis
+CVS_RUST_CVS_HELPERS=0    # specialist SMP helpers; benchmark before enabling
 CVS_SF_EXE=                 # native Stockfish; bundled avx2 build is used if unset
 OPENAI_API_KEY=             # optional coach; read server-side, never bundled
 ```
@@ -208,7 +210,10 @@ Selected ply pre-move FEN ─▶ /api/cvs-engine/analyze ─▶ Rust `analyze --
 The Vite dev server is the bridge: it pools `analyze --serve` children for facts and
 search, and pools a native Stockfish UCI subprocess for grading. On Windows the
 running `analyze.exe` is file-locked while served — kill the pool before rebuilding
-the engine; the dev server re-spawns it on the next request.
+the engine; the dev server re-spawns it on the next request. When
+`CVS_RUST_THREADS` is greater than 1, the bridge scales its Rust process pool down
+so process fan-out and per-process SMP do not multiply into accidental CPU
+oversubscription.
 
 ## The two engines
 
@@ -221,7 +226,9 @@ The CVS Engine lives in the sibling repo,
 [`chess-vision-studio-rust-engine`](https://github.com/Mnehmos/chess-vision-studio-rust-engine)
 — bitboard core, SEE, NNUE eval, alpha-beta with a validated pruning stack,
 measured against native Stockfish rungs. Its README is the engine-strength source of
-truth.
+truth. For the current app-side runtime review and probe queue, see
+[docs/ENGINE_OPTIMIZATION_REVIEW.md](docs/ENGINE_OPTIMIZATION_REVIEW.md) and
+[docs/ELO_PROBE_BACKLOG.md](docs/ELO_PROBE_BACKLOG.md).
 
 ## Repo map
 
@@ -234,7 +241,8 @@ chess-vision-studio/
   arena/         Engine harnesses: gauntlets, gates, the Lichess bot, the
                  SF labeling pipeline, dataset + training scripts.
   llm/           Optional narrator client and prompts.
-  docs/          TEACHING_FACTS_PROTOCOL.md and handoff notes.
+  docs/          Documentation index, responsibilities, engine/runtime review,
+                 Elo probe backlog, protocols, and audit notes.
 
 chess-vision-studio-rust-engine/   The native CVS Engine + facts validators.
 ```
@@ -305,7 +313,9 @@ corpus match the engine's own position distribution.
 Strength claims must name the binary type, opponent, time control, game count,
 weights, and search flags. Native Stockfish via cutechess (in the engine repo) is the
 external anchor; the in-app Stockfish is a useful grader, not a transferable Elo
-claim; Lichess bot games are real-world evidence, not controlled ratings.
+claim; Lichess bot games are real-world evidence, not controlled ratings. New
+search ideas start in [docs/ELO_PROBE_BACKLOG.md](docs/ELO_PROBE_BACKLOG.md) and
+become defaults only after a same-budget native-engine benchmark promotes them.
 
 ## License
 
