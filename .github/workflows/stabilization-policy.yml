@@ -1,0 +1,30 @@
+name: stabilization-policy
+
+# Enforces #35: downstream consumers (teaching / puzzles / corpus minting / classification /
+# difficulty) gate confident, truth-asserting actions on the engine StabilizationReport via the one
+# shared policy. Runs the policy + puzzle-gate vitest suite on any change to the policy, its tests,
+# or the gated puzzle builders.
+on:
+  push:
+    paths:
+      - "engine/stabilization-policy.ts"
+      - "engine/teaching/puzzle.ts"
+      - "engine/__tests__/stabilization-policy.test.ts"
+  pull_request:
+    paths:
+      - "engine/stabilization-policy.ts"
+      - "engine/teaching/puzzle.ts"
+      - "engine/__tests__/stabilization-policy.test.ts"
+
+jobs:
+  stabilization-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Stabilization-policy tests
+        run: npx vitest run engine/__tests__/stabilization-policy.test.ts

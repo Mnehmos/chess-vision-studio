@@ -8,6 +8,7 @@ import type {
   TeachingTopicId,
 } from './types';
 import type { TeachingNode } from './node';
+import { canMintPuzzle, type StabilizationStatus } from '../stabilization-policy';
 
 // Deepline-style two-stage lessons built from a committed teaching event:
 //   Stage 1 — find the punishment (from the position after the mistake)
@@ -155,6 +156,28 @@ export function buildBestMovePuzzle(facts: TeachingFactBundleV1): TeachingPuzzle
       },
     ],
   };
+}
+
+// #35 stabilization gate: never mint or publish a puzzle from a quarantined critical node. These
+// are thin, additive wrappers over the builders above — a consumer that knows the node's
+// StabilizationStatus calls the gated form; the ungated builders remain for nodes whose stability
+// was already verified upstream. The single source of truth for "is this confident?" is
+// engine/stabilization-policy.ts.
+export function buildGatedTeachingPuzzle(
+  event: TeachingEvent | TeachingNode,
+  facts: TeachingFactBundleV1,
+  stabilization: StabilizationStatus | string | undefined | null,
+): TeachingPuzzle | null {
+  if (!canMintPuzzle(stabilization)) return null;
+  return buildTeachingPuzzle(event, facts);
+}
+
+export function buildGatedBestMovePuzzle(
+  facts: TeachingFactBundleV1,
+  stabilization: StabilizationStatus | string | undefined | null,
+): TeachingPuzzle | null {
+  if (!canMintPuzzle(stabilization)) return null;
+  return buildBestMovePuzzle(facts);
 }
 
 // Whether a played UCI move solves a stage. Promotion-tolerant: a bare from-to
