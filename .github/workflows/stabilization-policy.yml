@@ -8,13 +8,17 @@ on:
   push:
     paths:
       - "engine/stabilization-policy.ts"
+      - "engine/stabilization-from-engine.ts"
       - "engine/teaching/puzzle.ts"
       - "engine/__tests__/stabilization-policy.test.ts"
+      - "engine/__tests__/stabilization-from-engine.test.ts"
   pull_request:
     paths:
       - "engine/stabilization-policy.ts"
+      - "engine/stabilization-from-engine.ts"
       - "engine/teaching/puzzle.ts"
       - "engine/__tests__/stabilization-policy.test.ts"
+      - "engine/__tests__/stabilization-from-engine.test.ts"
 
 jobs:
   stabilization-policy:
@@ -27,4 +31,4 @@ jobs:
           cache: "npm"
       - run: npm ci
       - name: Stabilization-policy tests
-        run: npx vitest run engine/__tests__/stabilization-policy.test.ts
+        run: npx vitest run engine/__tests__/stabilization-policy.test.ts engine/__tests__/stabilization-from-engine.test.ts
