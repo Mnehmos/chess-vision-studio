@@ -1,0 +1,25 @@
+name: relabel-provenance
+
+# Enforces #34: the Stockfish relabel worker must preserve input provenance and attach an
+# oracle-identified label (rust-engine #9 oracle-label schema). Runs the worker's standalone
+# tests (a fake/mocked SF, so no real Stockfish binary is needed) on any change to the worker.
+on:
+  push:
+    paths:
+      - "arena/sf-relabel-worker.py"
+      - "arena/test_sf_relabel_worker.py"
+  pull_request:
+    paths:
+      - "arena/sf-relabel-worker.py"
+      - "arena/test_sf_relabel_worker.py"
+
+jobs:
+  relabel-provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Relabel-worker provenance tests
+        run: python arena/test_sf_relabel_worker.py

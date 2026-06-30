@@ -1,0 +1,25 @@
+name: oracle-labels
+
+# Enforces #34 slice 2: standalone oracle-label records lifted from the relabel worker's nested
+# blocks must pass the rust-engine #9 oracle-label schema (required fields, additionalProperties,
+# labelStatus enum). Runs the extractor's standalone tests (which embed a #9 validate_label mirror).
+on:
+  push:
+    paths:
+      - "arena/extract-oracle-labels.py"
+      - "arena/test_extract_oracle_labels.py"
+  pull_request:
+    paths:
+      - "arena/extract-oracle-labels.py"
+      - "arena/test_extract_oracle_labels.py"
+
+jobs:
+  oracle-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Oracle-label extractor tests
+        run: python arena/test_extract_oracle_labels.py
