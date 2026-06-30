@@ -1,0 +1,27 @@
+name: source-split
+
+# Enforces #33: promotion-eligible NNUE training must consume a validated source split (no
+# train/holdout source leakage) and deterministic seeds. Runs the standalone guard tests (no torch
+# required) on any change to the guard / gate / their tests.
+on:
+  push:
+    paths:
+      - "arena/source_split_guard.py"
+      - "arena/verify-split.py"
+      - "arena/test_source_split_guard.py"
+  pull_request:
+    paths:
+      - "arena/source_split_guard.py"
+      - "arena/verify-split.py"
+      - "arena/test_source_split_guard.py"
+
+jobs:
+  source-split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Source-split + determinism guard tests
+        run: python arena/test_source_split_guard.py
