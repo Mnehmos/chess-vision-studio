@@ -1,6 +1,6 @@
 # Documentation Index
 
-Last standardized: 2026-06-29.
+Last standardized: 2026-09-08.
 
 This repo is the app, analysis, arena, and local orchestration layer for Chess
 Vision Studio. The native search engine lives in
@@ -14,6 +14,7 @@ should describe how the app calls and validates those capabilities.
 |---|---|
 | `README.md` | Product overview, local install, top-level architecture, and common commands. |
 | `docs/RESPONSIBILITIES.md` | Source-of-truth ownership map for app, engine, arena, LLM, server APIs, schemas, and tests. |
+| `docs/COMMERCIALIZATION_ROADMAP.md` | Commercial product thesis, packaging, launch sequence, validation targets, and paid-product workstreams. |
 | `docs/ENGINE_OPTIMIZATION_REVIEW.md` | Current engine/runtime review: resource budgets, specialist SMP contract, findings, and verification commands. |
 | `docs/ELO_PROBE_BACKLOG.md` | Research-backed ELO probe backlog and promotion gates. |
 | `docs/MODERN_ENGINE_CHECKLIST.md` | Implemented modern search features and gated follow-up work. |
@@ -39,6 +40,7 @@ engine-strength source of truth:
 ## Documentation Standard
 
 - Put stable ownership and schema rules in `docs/RESPONSIBILITIES.md`.
+- Put commercial positioning, packaging, launch sequencing, and paid-product validation in `docs/COMMERCIALIZATION_ROADMAP.md`.
 - Put current review findings, risk, and verification commands in
   `docs/ENGINE_OPTIMIZATION_REVIEW.md`.
 - Put new strength ideas in `docs/ELO_PROBE_BACKLOG.md` until a benchmark report
