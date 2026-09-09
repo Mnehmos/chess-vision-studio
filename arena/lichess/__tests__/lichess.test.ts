@@ -357,7 +357,7 @@ describe('playSession', () => {
     expect(calls.resign).toEqual(['g1']);
   });
 
-  it('passes the base budget (clock/30 + 0.8·inc − overhead); smarttime owns any extension', async () => {
+  it('passes the moves-to-go base budget (remaining/(movesToGo·overrun) + 0.8·inc − overhead)', async () => {
     const events: GameStreamEvent[] = [
       {
         type: 'gameFull',
@@ -394,11 +394,11 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 10000 });
 
-    // 60s clock, no inc. base = min(clock/30 = 2000, maxMoveMs = 10000, hardSafe = 625)
-    // where hardSafe = 60000·0.05/4.8 — the clock-relative ceiling binds — minus the
-    // default 100ms overhead = 525. The ceiling keeps the engine's worst-case ~4.8× hard
-    // move (≈2.5s) under 5% of the clock so it can't flag.
-    expect(budgets).toEqual([525]);
+    // 60s clock, no inc, move 1. movesToGo = 48, overrun 1.5 → base = 60000/72 = 833;
+    // hardSafe = 60000·0.20/4.8 = 2500 does not bind — minus the default 100ms overhead
+    // = 733. The moves-to-go term replaces the old clock/30 term, which front-loaded the
+    // clock and left the endgame at the 50ms floor.
+    expect(budgets).toEqual([733]);
     expect(calls.move).toEqual([['g1', 'e1e2']]);
     expect(calls.resign).toEqual([]);
   });
@@ -489,11 +489,12 @@ describe('playSession', () => {
 
     await playSession(fakeClient, 'g1', 'cvsbot', picker, { maxMoveMs: 12000, moveOverheadMs: 150 });
 
-    // base = min(clock/30 + 0.8·inc = 24000, maxMoveMs = 12000, hardSafe = 6250) = 6250,
-    // minus 150 overhead = 6100. The worst-case ~4.8× hard move (≈29.3s) stays under 5%
-    // of the 600s clock (30s) — the bound the old 12s base (12000·4.8 ≈ 57s) violated.
-    expect(budgets).toEqual([6100]);
-    expect((budgets[0] as number) * 4.8).toBeLessThanOrEqual(600000 * 0.05);
+    // base = min(600000/(48·1.5) + 0.8·5000 = 12333, maxMoveMs = 12000, hardSafe = 25000)
+    // = 12000, minus 150 overhead = 11850. The worst-case ~4.8× hard move (≈57s) stays
+    // under 20% of the 600s clock (120s). Slow games are capped by maxMoveMs, which is
+    // what the 10+0 live game was leaving unspent.
+    expect(budgets).toEqual([11850]);
+    expect((budgets[0] as number) * 4.8).toBeLessThanOrEqual(600000 * 0.20);
   });
 
   it('aborts (not resigns) when the engine cannot produce a move — a transient failure is not a loss', async () => {

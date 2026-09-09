@@ -299,7 +299,11 @@ export async function runBot(
               maxMoveMs: Number(process.env.CVS_LICHESS_MAX_MOVE_MS ?? 12_000),
               moveOverheadMs: Number(process.env.CVS_LICHESS_MOVE_OVERHEAD_MS ?? 150),
               // Worst-case hard move ≤ this fraction of the remaining clock (flag guard).
-              safeHardFraction: Number(process.env.CVS_LICHESS_SAFE_HARD_FRACTION ?? 0.05),
+              // 0.20 (= clock/24 base, engine hard ≈ clock/6) matches the engine's own
+              // UCI-mode smarttime (soft clock/25, hard clock/6). The old 0.05 gave a
+              // clock/96 base — ~80-235ms in a 1+0 game, where the engine blunders at
+              // depth 9-13 while the bot ends with half its clock unused.
+              safeHardFraction: Number(process.env.CVS_LICHESS_SAFE_HARD_FRACTION ?? 0.20),
               smarttimeHardMult: Number(process.env.CVS_LICHESS_SMARTTIME_HARD ?? 4.8),
               bookLine: book.moves,
             }),
