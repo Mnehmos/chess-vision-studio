@@ -36,13 +36,19 @@ export function cvsPicker(engine: CvsEngine, opts: { depth?: number; maxTimeMs?:
 
 export interface SessionOptions {
   /**
-   * Fraction of our remaining clock that forms the per-move base budget. Default
-   * 1/30. This is the "non-smart" base the engine's --smarttime path expects
-   * (ms ≈ clock/30 + 0.8·inc); the ENGINE then owns adaptivity — spending ~clock/25
-   * soft and extending toward ~clock/6 hard on unstable positions. We pass the base
-   * only; pre-extending here (a forcing multiplier) would double-count with smarttime.
+   * Moves-to-go horizon for the per-move base budget: the base aims to spend
+   * remaining/(movesToGo·smarttimeOverrun) + 0.8·inc, so the clock lasts the horizon
+   * instead of front-loading. Default 48 (a typical 1+0/3+2 game length).
    */
-  clockFraction?: number;
+  movesToGo?: number;
+  /** Floor on moves-to-go, so a long game keeps a usable per-move budget. Default 12. */
+  minMovesToGo?: number;
+  /**
+   * Measured typical overrun of the engine's serve-mode smarttime (soft 1.2×, hard 4.8×
+   * of the base we pass; ~1.5× observed). Dividing by it makes the *actual* spend land on
+   * the moves-to-go target rather than over it. Default 1.5.
+   */
+  smarttimeOverrun?: number;
   minMoveMs?: number;
   maxMoveMs?: number;
   /**
@@ -63,7 +69,11 @@ export interface SessionOptions {
    * fraction of the REMAINING clock. The base budget is capped at
    * remaining·safeHardFraction / smarttimeHardMult so the engine cannot over-spend into a
    * time forfeit — deep thinking when the clock is large, automatically conservative as it
-   * drains. Default 0.05 (≈20 worst-case moves of headroom before any flag).
+   * drains. Default 0.20 (≈5 worst-case moves of headroom): the resulting base is
+   * clock/24, so the engine's own soft/hard (1.2×/4.8×) land on clock/20 and clock/5 —
+   * in line with the engine's UCI-mode smarttime (soft clock/25, hard clock/6). The
+   * earlier 0.05 gave a clock/96 base, which starved fast games (80-235ms at 1+0) and
+   * left the bot with half its clock unspent.
    */
   safeHardFraction?: number;
   /**
@@ -87,12 +97,14 @@ export async function playSession(
   picker: MovePicker,
   opts: SessionOptions = {},
 ): Promise<SessionResult> {
-  const clockFraction = opts.clockFraction ?? 1 / 30;
+  const movesToGoHorizon = opts.movesToGo ?? 48;
+  const minMovesToGo = opts.minMovesToGo ?? 12;
+  const smarttimeOverrun = opts.smarttimeOverrun ?? 1.5;
   const minMoveMs = opts.minMoveMs ?? 50;
   const maxMoveMs = opts.maxMoveMs ?? 4000;
   const moveOverheadMs = opts.moveOverheadMs ?? 100;
   const smarttimeHardMult = opts.smarttimeHardMult ?? 4.8;
-  const safeHardFraction = opts.safeHardFraction ?? 0.05;
+  const safeHardFraction = opts.safeHardFraction ?? 0.20;
   const bookLine = opts.bookLine;
 
   let initialFen = START_FEN;
@@ -167,17 +179,22 @@ export async function playSession(
     if (!uci) {
       const myTimeMs = cvsColor === 'white' ? state.wtime : state.btime;
       const incMs = cvsColor === 'white' ? state.winc ?? 0 : state.binc ?? 0;
-      // Per-move budget. Base = clock·clockFraction + 0.8·inc (the input --smarttime
-      // expects), but CAPPED so the engine's worst-case hard extension (~smarttimeHardMult×)
-      // can never exceed safeHardFraction of the REMAINING clock. Without this cap a 12s
-      // base became a ~57s hard move and flagged every TC below 30+0; with it, slow games
-      // still think deeply while fast games stay automatically flag-safe as the clock
-      // drains. A final emergency backstop keeps even the minMove floor from over-running a
-      // nearly-exhausted clock. (Pre-extending on forcing moves is still left to smarttime.)
+      // Per-move budget, moves-to-go allocation: base = remaining/(movesToGo·overrun)
+      // + 0.8·inc, CAPPED so the engine's worst-case hard extension (~smarttimeHardMult×)
+      // cannot exceed safeHardFraction of the REMAINING clock. The clock-relative cap is
+      // what keeps a single hard-extended move from flagging; the moves-to-go term (rather
+      // than a fraction of the clock) is what keeps a late endgame from collapsing to the
+      // 50ms floor — a 1+0 game scored 207→35 avg cpLoss and 3→1 blunders in replay when
+      // the proportional front-loading was removed. A final emergency backstop keeps even
+      // the minMove floor from over-running a nearly-exhausted clock. (Pre-extending on
+      // forcing moves is still left to smarttime.)
       let budget: number | undefined;
       if (Number.isFinite(myTimeMs)) {
         const remaining = myTimeMs as number;
-        const formulaBase = Math.floor(remaining * clockFraction) + Math.floor(incMs * 0.8);
+        const movesMade = Math.floor(ucis.length / 2);
+        const movesToGo = Math.max(minMovesToGo, movesToGoHorizon - movesMade);
+        const formulaBase =
+          Math.floor(remaining / (movesToGo * smarttimeOverrun)) + Math.floor(incMs * 0.8);
         const hardSafeBase = Math.floor((remaining * safeHardFraction) / smarttimeHardMult);
         const target = Math.min(formulaBase, maxMoveMs, hardSafeBase);
         budget = Math.max(minMoveMs, target - moveOverheadMs);
