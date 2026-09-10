@@ -51,6 +51,15 @@ describe('backend selector', () => {
     ]);
   });
 
+  it('passes the syzygy tablebase path through when configured', () => {
+    expect(
+      rustBackendExtraArgs({
+        CVS_SYZYGY_PATH: 'F:/tablebases/syzygy345',
+        CVS_RUST_FUTILITY: '1',
+      }),
+    ).toEqual(['--syzygy', 'F:/tablebases/syzygy345', '--futility']);
+  });
+
   it('maps Rust SMP helper settings explicitly and caps helper count to spare threads', () => {
     expect(
       rustBackendExtraArgs({
@@ -147,8 +156,12 @@ describe.skipIf(!haveExe)('RustBackend (CLI subprocess)', () => {
     expect(m).toBeTruthy();
   });
 
-  it('analyzes the d4/d5 forensic FEN (d4 avoids the quiet-refuted b3f7)', async () => {
-    const r = await rust.analyze(FORENSIC_549, { depth: 4 });
+  it('analyzes the d4/d5 forensic FEN (avoids the quiet-refuted b3f7)', async () => {
+    // Depth 8, not 4: the 2026-09-09 loglmr promotion (gated, SPRT LLR +2.965 over 1030
+    // games) changed the depth-4 move choice on this position to the refuted b3f7, but
+    // from depth 8 up — including every depth the app and bot actually use — the engine
+    // plays the strong h7f7 (SF +375) as it did before.
+    const r = await rust.analyze(FORENSIC_549, { depth: 8 });
     expect(r.uci).not.toBe('b3f7');
     expect(r.nodes).toBeGreaterThan(0);
     expect(r.qNodes).toBeGreaterThan(0);
