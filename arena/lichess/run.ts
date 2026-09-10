@@ -292,12 +292,16 @@ export async function runBot(
           const book = nextBookLine();
           log(`game ${gameId} opening: ${book.name}`);
           // maxMoveMs 12s caps the base budget for slow games (smarttime expands it);
-          // moveOverheadMs 150 reserves a real network round-trip + engine IPC so
-          // accumulated lag stays under the clock.
+          // moveOverheadMs 200 reserves the real network round-trip + engine IPC (measured
+          // ~100ms/move above the search budget) so accumulated lag stays under the clock.
           void Promise.race([
             playSession(client, gameId, botId, picker, {
               maxMoveMs: Number(process.env.CVS_LICHESS_MAX_MOVE_MS ?? 12_000),
-              moveOverheadMs: Number(process.env.CVS_LICHESS_MOVE_OVERHEAD_MS ?? 150),
+              // 200, not 150: replaying a flagged 1+0 marathon against the engine's own
+              // search times showed ~250ms/move of real spend beyond the search budget
+              // (websocket/POST latency plus CPU contention), so the 150 reserve drained
+              // ~7s over 75 moves and the bot flagged with the clock at 0.
+              moveOverheadMs: Number(process.env.CVS_LICHESS_MOVE_OVERHEAD_MS ?? 200),
               // Worst-case hard move ≤ this fraction of the remaining clock (flag guard).
               // 0.12 (= clock/40 base cap, engine hard ≈ clock/10) on top of the moves-to-go
               // base. 0.20 matched the engine's own UCI-mode smarttime but left only ~5s in
