@@ -43,6 +43,10 @@ export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): stri
   const extra: string[] = [];
   if (env.CVS_RUST_NNUE) extra.push('--nnue', env.CVS_RUST_NNUE);
   if (env.CVS_RUST_HELPER_NNUE) extra.push('--helper-nnue', env.CVS_RUST_HELPER_NNUE);
+  // Syzygy tablebases: root WDL/DTZ move choice + in-search TB scores. The
+  // engine probes only when castling rights are gone and pieces <= the tables'
+  // max, so a 3-4-5 directory is inert outside simplified endgames.
+  if (env.CVS_SYZYGY_PATH) extra.push('--syzygy', env.CVS_SYZYGY_PATH);
   if (env.CVS_RUST_ALLOW_UNVERIFIED === '1') extra.push('--allow-unverified-net');
   if (env.CVS_RUST_FUTILITY === '1') extra.push('--futility');
   if (env.CVS_RUST_RFP === '1') extra.push('--rfp');

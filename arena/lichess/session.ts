@@ -67,13 +67,13 @@ export interface SessionOptions {
   /**
    * Hard safety ceiling: the worst-case (hard-extended) single move must not exceed this
    * fraction of the REMAINING clock. The base budget is capped at
-   * remaining·safeHardFraction / smarttimeHardMult so the engine cannot over-spend into a
-   * time forfeit — deep thinking when the clock is large, automatically conservative as it
-   * drains. Default 0.20 (≈5 worst-case moves of headroom): the resulting base is
-   * clock/24, so the engine's own soft/hard (1.2×/4.8×) land on clock/20 and clock/5 —
-   * in line with the engine's UCI-mode smarttime (soft clock/25, hard clock/6). The
-   * earlier 0.05 gave a clock/96 base, which starved fast games (80-235ms at 1+0) and
-   * left the bot with half its clock unspent.
+   * remaining·safeHardFraction / smarttimeHardMultiplier so the engine cannot over-spend
+   * into a time forfeit — deep thinking when the clock is large, automatically
+   * conservative as it drains. Default 0.12 (base cap clock/40, engine hard ≈ clock/10).
+   * 0.20 matched the engine's own UCI-mode smarttime but left ~5s in a 73-move 2+0 replay
+   * and two live games flagged in long no-increment games; 0.12 doubles the flag margin
+   * for about 6% average time. 0.05 (the original) gave a clock/96 base, which starved
+   * fast games (80-235ms at 1+0) and left the bot with half its clock unspent.
    */
   safeHardFraction?: number;
   /**
@@ -104,7 +104,7 @@ export async function playSession(
   const maxMoveMs = opts.maxMoveMs ?? 4000;
   const moveOverheadMs = opts.moveOverheadMs ?? 100;
   const smarttimeHardMult = opts.smarttimeHardMult ?? 4.8;
-  const safeHardFraction = opts.safeHardFraction ?? 0.20;
+  const safeHardFraction = opts.safeHardFraction ?? 0.12;
   const bookLine = opts.bookLine;
 
   let initialFen = START_FEN;
