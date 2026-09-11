@@ -43,6 +43,10 @@ export function rustBackendExtraArgs(env: NodeJS.ProcessEnv = process.env): stri
   const extra: string[] = [];
   if (env.CVS_RUST_NNUE) extra.push('--nnue', env.CVS_RUST_NNUE);
   if (env.CVS_RUST_HELPER_NNUE) extra.push('--helper-nnue', env.CVS_RUST_HELPER_NNUE);
+  // Eval output calibration: maps the net's compressed cp output onto the
+  // oracle-labelled scale (measured static MAE 126 -> 85 vs Stockfish). Set only
+  // after the fixed-node gate promotes it; unset = raw net output.
+  if (env.CVS_RUST_NNUE_CAL) extra.push('--nnue-cal', env.CVS_RUST_NNUE_CAL);
   // Syzygy tablebases: root WDL/DTZ move choice + in-search TB scores. The
   // engine probes only when castling rights are gone and pieces <= the tables'
   // max, so a 3-4-5 directory is inert outside simplified endgames.
