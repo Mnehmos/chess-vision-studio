@@ -32,11 +32,14 @@ describe.skipIf(!up)('studio commentary (live)', () => {
     const line = await studioLine(
       { baseUrl: STUDIO, depth: 10 },
       {
-        fenBefore: 'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1',
-        fenAfter: 'r3k3/2N5/8/8/8/8/8/4K3 b - - 1 1',
+        // The move number comes from the FEN's counters (as in a real game), so the FEN
+        // must say move 12 for the line to read "12." — the earlier fixture said move 1
+        // while passing ply 23, which asserted a number the studio would never render.
+        fenBefore: 'r3k3/8/8/1N6/8/8/8/4K3 w - - 0 12',
+        fenAfter: 'r3k3/2N5/8/8/8/8/8/4K3 b - - 1 12',
         uci: 'b5c7',
         san: 'Nc7+',
-        ply: 23, // Black's 12th move
+        ply: 23,
         mover: 'white',
       },
     );
