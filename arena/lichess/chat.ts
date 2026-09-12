@@ -179,7 +179,9 @@ export function makeChatter(
         const said = await client.chat(gameId, text, room);
         if (said) {
           lines += 1;
-          log(`chat ${gameId} [${tag}]: ${text}`);
+          // Log the room: whether a line is visible depends entirely on which room it
+          // went to, and guessing has cost us a lot of time today.
+          log(`chat ${gameId} [${room} ${tag}]: ${text}`);
         }
       } catch (error) {
         // Chat is a garnish: never let it touch the game.

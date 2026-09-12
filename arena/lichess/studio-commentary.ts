@@ -36,7 +36,10 @@ export interface StudioCommentaryOptions {
   baseUrl: string;
   /** Depth for each side's eval (before/after). Default 12. */
   depth?: number;
-  /** Chat length budget. Default 200. */
+  /**
+   * Chat length budget. Default 140: Lichess rejects a longer chat message with HTTP 400
+   * (measured — 185 chars -> 400), and a rejected line is a silently missing one.
+   */
   maxChars?: number;
   timeoutMs?: number;
 }
@@ -331,7 +334,7 @@ export async function studioLine(
     ? text
     : `${movePrefix(params.ply)} ${text}`;
   const line = prefixed.replace(/\s+/g, ' ').trim();
-  const maxChars = opts.maxChars ?? 200;
+  const maxChars = opts.maxChars ?? 140;
   if (line.length > maxChars) return null; // drop rather than truncate mid-claim
 
   return {
