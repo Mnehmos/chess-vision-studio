@@ -14,6 +14,8 @@
 // validity is binary; a claim may never exceed the eval budget; "White/Black", never
 // "you/opponent"), and running it live means the bot and the app explain a move the
 // same way.
+import { request as httpRequest } from 'node:http';
+import { Buffer } from 'node:buffer';
 import { Chess } from 'chess.js';
 import { analyzeMove } from '../../engine/saliency';
 import { renderInsight } from '../../engine/explain';
@@ -66,21 +68,45 @@ function uciPvToSan(fen: string, pv: string[]): string[] {
   return out;
 }
 
-async function postJson<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
-    return (await res.json()) as T;
-  } finally {
-    clearTimeout(timer);
-  }
+/**
+ * POST JSON over node:http rather than global fetch. Under the bot's vite-node runtime
+ * `fetch` was intermittently undefined (logged as "studio unavailable (fetch is not a
+ * function)"), which silently downgraded commentary to the local curator. node:http is
+ * always there; no AbortController semantics to depend on either.
+ */
+function postJson<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const payload = JSON.stringify(body);
+    const req = httpRequest(
+      url,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk: string) => { data += chunk; });
+        res.on('end', () => {
+          const status = res.statusCode ?? 0;
+          if (status < 200 || status >= 300) {
+            reject(new Error(`${url} -> HTTP ${status}`));
+            return;
+          }
+          try {
+            resolve(JSON.parse(data) as T);
+          } catch (error) {
+            reject(error as Error);
+          }
+        });
+      },
+    );
+    req.on('timeout', () => req.destroy(new Error(`${url} timed out`)));
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
 }
 
 export async function fetchFacts(
