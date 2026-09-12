@@ -117,6 +117,9 @@ export async function playSession(
   let cvsColor: 'white' | 'black' = 'white';
   let whiteName = 'white';
   let blackName = 'black';
+  // The opponent's display name drives which chat room the commentary goes to: the
+  // Lichess AI ("Stockfish level N") has no visible chat, real bots show the player room.
+  let opponentName: string | undefined;
   let lastMoves: string | null = null; // sentinel: differs from '' so the initial empty state still acts
   let finalMoves = '';
   let finalStatus = 'unknown';
@@ -130,6 +133,7 @@ export async function playSession(
       cvsColor = wId === botId.toLowerCase() ? 'white' : 'black';
       whiteName = ev.white?.name ?? ev.white?.id ?? 'white';
       blackName = ev.black?.name ?? ev.black?.id ?? 'black';
+      opponentName = cvsColor === 'white' ? blackName : whiteName;
       state = ev.state;
     } else if (ev.type === 'gameState') {
       state = ev;
@@ -174,7 +178,7 @@ export async function playSession(
       try {
         const beforeTheir = new Chess(initialFen);
         for (let i = 0; i < ucis.length - 1; i += 1) beforeTheir.move(uciToMove(ucis[i] as string));
-        void opts.chatter.afterTheirMove(gameId, beforeTheir.fen(), theirUci);
+        void opts.chatter.afterTheirMove(gameId, beforeTheir.fen(), theirUci, opponentName);
       } catch {
         /* a replay hiccup must never affect play */
       }
@@ -271,7 +275,7 @@ export async function playSession(
 
     // Teaching chat: strictly after the move is banked, fire-and-forget.
     if (opts.chatter) {
-      void opts.chatter.afterOurMove(gameId, fenBeforeMove, uci);
+      void opts.chatter.afterOurMove(gameId, fenBeforeMove, uci, opponentName);
     }
   }
 

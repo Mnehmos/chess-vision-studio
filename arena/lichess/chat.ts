@@ -28,10 +28,11 @@ export interface ChatterOptions {
   /** Engine binary; defaults to the same path the picker uses. */
   exe?: string;
   /**
-   * Which Lichess chat room. Default 'spectator': a teaching bot's audience is the
-   * people watching, and in AI games the player room is not what a spectator sees
-   * (verified live — a player-room post is accepted by the API and stays invisible).
-   * Override with CVS_LICHESS_CHAT_ROOM.
+   * Which Lichess chat room. Verified live: in a game against the Lichess AI the player
+   * room is accepted by the API and stays invisible (AI games show no chat at all), while
+   * in a real bot game the player room is what everyone sees. So the room is chosen per
+   * game from the opponent's name (AI -> spectator, otherwise player), with
+   * CVS_LICHESS_CHAT_ROOM as an explicit override.
    */
   room?: 'player' | 'spectator';
   /**
@@ -47,7 +48,7 @@ export interface ChatterOptions {
 
 export interface Chatter {
   /** Called after our move has been accepted by the server. Never throws. */
-  afterOurMove(gameId: string, fenBefore: string, uci: string): Promise<void>;
+  afterOurMove(gameId: string, fenBefore: string, uci: string, opponent?: string): Promise<void>;
   /**
    * Called when it is our turn again, with the opponent's just-played move: says what
    * that move ALLOWED us. This is the more instructive half — the opponent-side probes
@@ -55,7 +56,7 @@ export interface Chatter {
    * before-position's opponent-side collections), so the claim is verified rather than
    * assumed. Never throws.
    */
-  afterTheirMove(gameId: string, fenBefore: string, uci: string): Promise<void>;
+  afterTheirMove(gameId: string, fenBefore: string, uci: string, opponent?: string): Promise<void>;
   dispose(): void;
 }
 
@@ -87,7 +88,15 @@ export function makeChatter(
   opts: ChatterOptions = {},
 ): Chatter {
   const studioUrl = opts.studioUrl ?? process.env.CVS_STUDIO_URL ?? 'http://localhost:5199';
-  const room = opts.room ?? ((process.env.CVS_LICHESS_CHAT_ROOM as 'player' | 'spectator' | undefined) ?? 'spectator');
+  const roomOverride = opts.room
+    ?? (process.env.CVS_LICHESS_CHAT_ROOM as 'player' | 'spectator' | undefined);
+  let room: 'player' | 'spectator' = roomOverride ?? 'player';
+
+  /** Lichess AI opponents are named "Stockfish level N" and their games show no chat. */
+  function roomFor(opponent: string | undefined): 'player' | 'spectator' {
+    if (roomOverride) return roomOverride;
+    return opponent && /^stockfish level/i.test(opponent) ? 'spectator' : 'player';
+  }
   const log = opts.log ?? ((): void => {});
   // Facts need no nets and no search: a dedicated depth-1 serve process is enough.
   const engine = new RustEngine(opts.exe ?? DEFAULT_EXE, 1);
@@ -100,7 +109,9 @@ export function makeChatter(
     fenBefore: string,
     uci: string,
     subject: 'ours' | 'theirs',
+    opponent?: string,
   ): Promise<void> {
+    room = roomFor(opponent);
     {
       try {
         if (gameId !== game) {
@@ -178,11 +189,11 @@ export function makeChatter(
   }
 
   return {
-    async afterOurMove(gameId, fenBefore, uci) {
-      await speak(gameId, fenBefore, uci, 'ours');
+    async afterOurMove(gameId, fenBefore, uci, opponent) {
+      await speak(gameId, fenBefore, uci, 'ours', opponent);
     },
-    async afterTheirMove(gameId, fenBefore, uci) {
-      await speak(gameId, fenBefore, uci, 'theirs');
+    async afterTheirMove(gameId, fenBefore, uci, opponent) {
+      await speak(gameId, fenBefore, uci, 'theirs', opponent);
     },
     dispose() {
       engine.dispose();
