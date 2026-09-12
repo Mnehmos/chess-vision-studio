@@ -39,17 +39,21 @@ describe.skipIf(!hasEngine)('chat line end-to-end (real engine)', () => {
     }
   }, 60_000);
 
-  it('speaks once and then stays silent on the same claim', async () => {
+  // Per-ply commentary is the policy now: no cadence, no dedupe, no silence. This test
+  // points the studio path at a dead port so it exercises the local curator fallback
+  // (validated motif + move number), which is what runs when the studio is not up.
+  it('speaks on every ply and prefixes the move number', async () => {
     const said: string[] = [];
     const chatter = makeChatter(
       { chat: async (_gameId, text) => (said.push(text), true) },
-      { exe: EXE, log: () => {} },
+      { exe: EXE, studioUrl: 'http://127.0.0.1:9', log: () => {} },
     );
     try {
       await chatter.afterOurMove('g1', ROYAL_FORK_FEN, ROYAL_FORK_UCI);
-      await chatter.afterOurMove('g1', ROYAL_FORK_FEN, ROYAL_FORK_UCI); // same claim
-      expect(said).toHaveLength(1);
+      await chatter.afterOurMove('g1', ROYAL_FORK_FEN, ROYAL_FORK_UCI);
+      expect(said).toHaveLength(2);
       expect(said[0]).toContain('forks');
+      expect(said[0]?.startsWith('1.')).toBe(true); // FEN says move 1, White
     } finally {
       chatter.dispose();
     }

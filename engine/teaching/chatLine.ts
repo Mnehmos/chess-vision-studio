@@ -228,11 +228,15 @@ function collectOurs(
   // ── T4: structure ────────────────────────────────────────────────────────────
   for (const sd of items(deltas.createdStructures)) {
     const kind = String(sd.kind ?? 'structure').replace(/_/g, ' ');
-    const sq = (sd.squares ?? []).slice(0, 2).join(', ');
+    const sq = (sd.squares ?? [])[0] ?? '';
+    // "a isolated pawn" was the live output; and repeating the destination square the
+    // move just named reads as noise ("b3 creates an isolated pawn (b3)").
+    const article = /^[aeiou]/i.test(kind) ? 'an' : 'a';
+    const where = sq && sq !== played.move.to ? ` on ${sq}` : '';
     push({
       tier: 4, score: 300, topic: 'Pawn structure', conceptCode: `created_${kind.replace(/ /g, '_')}`,
       validators: ['pawn_structure'], squares: sd.squares ?? [], key: `st|${kind}|${sq}`,
-      text: `${label} creates a ${kind}${sq ? ` (${sq})` : ''}.`,
+      text: `${label} creates ${article} ${kind}${where}.`,
     });
   }
 

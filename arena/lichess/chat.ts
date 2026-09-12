@@ -12,31 +12,66 @@
 //   * **Evidence-gated.** Every line cites the validators that proved it, and the
 //     curator reads only `computed` collections — an uncomputed or unavailable fact
 //     contributes nothing.
-//   * **Cadence-limited.** At most one line every `minPlies` (default 6) and at most
-//     `maxLines` per game (default 12): the point is teaching, not narration.
+//   * **Every ply, studio voice.** No cadence, no dedupe, no silence: after each of our
+//     moves and after each of theirs, the line the Chess Vision Studio's `analyzeMove`
+//     produces for that ply is what gets said. The studio's neutral fallback is still its
+//     voice; filtering it out is what produced three lines per game before.
 //   * **Fail-closed.** Any engine/protocol/network failure is swallowed; the game
 //     continues untouched.
 import { Chess } from 'chess.js';
 import { RustEngine } from '../gauntlet/rust-engine';
 import { uciToMove } from '../players';
-import { cadenceAllows, curateChatLine } from '../../engine/teaching/chatLine';
+import { curateChatLine } from '../../engine/teaching/chatLine';
+import { studioLine } from './studio-commentary';
 
 export interface ChatterOptions {
   /** Engine binary; defaults to the same path the picker uses. */
   exe?: string;
-  /** Minimum plies between lines. Default 6. */
-  minPlies?: number;
-  /** Hard cap per game. Default 12. */
-  maxLines?: number;
   /** Which Lichess chat room. Default 'player' (the game's main chat). */
   room?: 'player' | 'spectator';
+  /**
+   * Running Chess Vision Studio (dev server) whose teaching pipeline writes the line:
+   * its facts endpoint + `analyzeMove`. When unset/unreachable the local curator
+   * (engine/teaching/chatLine.ts) is used instead.
+   */
+  studioUrl?: string;
+  /** Depth for the studio path's before/after evals. Default 12. */
+  studioDepth?: number;
   log?: (message: string) => void;
 }
 
 export interface Chatter {
   /** Called after our move has been accepted by the server. Never throws. */
   afterOurMove(gameId: string, fenBefore: string, uci: string): Promise<void>;
+  /**
+   * Called when it is our turn again, with the opponent's just-played move: says what
+   * that move ALLOWED us. This is the more instructive half — the opponent-side probes
+   * in the bundle prove a motif is newly available (present now, absent from the
+   * before-position's opponent-side collections), so the claim is verified rather than
+   * assumed. Never throws.
+   */
+  afterTheirMove(gameId: string, fenBefore: string, uci: string): Promise<void>;
   dispose(): void;
+}
+
+/** FEN halfmove/fullmove -> the move number the position belongs to (1-based). */
+function moveNumber(fen: string): number {
+  const parts = fen.split(' ');
+  return Number(parts[5] ?? '1') || 1;
+}
+
+/** `12.` for White's move, `12...` for Black's — a chat reader must know WHICH move. */
+function moveNumberPrefix(fen: string): string {
+  return fen.split(' ')[1] === 'w' ? `${moveNumber(fen)}.` : `${moveNumber(fen)}...`;
+}
+
+/** Fullmove index (odd = White) for the studio's AnalyzeInput.ply. */
+function plyOf(fen: string): number {
+  return (moveNumber(fen) - 1) * 2 + (fen.split(' ')[1] === 'w' ? 1 : 2);
+}
+
+function moverOf(fen: string): 'white' | 'black' {
+  return fen.split(' ')[1] === 'w' ? 'white' : 'black';
 }
 
 const DEFAULT_EXE =
@@ -46,30 +81,26 @@ export function makeChatter(
   client: { chat(gameId: string, text: string, room?: 'player' | 'spectator'): Promise<boolean> },
   opts: ChatterOptions = {},
 ): Chatter {
-  const minPlies = opts.minPlies ?? 6;
-  const maxLines = opts.maxLines ?? 12;
+  const studioUrl = opts.studioUrl ?? process.env.CVS_STUDIO_URL ?? 'http://localhost:5199';
   const room = opts.room ?? 'player';
   const log = opts.log ?? ((): void => {});
   // Facts need no nets and no search: a dedicated depth-1 serve process is enough.
   const engine = new RustEngine(opts.exe ?? DEFAULT_EXE, 1);
 
   let game = '';
-  let spoken = new Set<string>();
-  let pliesSinceLine = 999;
   let lines = 0;
 
-  return {
-    async afterOurMove(gameId, fenBefore, uci) {
+  async function speak(
+    gameId: string,
+    fenBefore: string,
+    uci: string,
+    subject: 'ours' | 'theirs',
+  ): Promise<void> {
+    {
       try {
         if (gameId !== game) {
           game = gameId;
-          spoken = new Set();
-          pliesSinceLine = 999;
           lines = 0;
-        }
-        if (lines >= maxLines) {
-          pliesSinceLine += 1;
-          return;
         }
 
         let moveLabel = uci;
@@ -92,27 +123,61 @@ export function makeChatter(
           return;
         }
 
-        const line = curateChatLine(bundle, { subject: 'ours', moveLabel, spoken });
-        if (!line) {
-          pliesSinceLine += 1;
-          return;
+        // The studio's own per-ply commentary. Its insights are budget-gated against
+        // cpLoss (a best move carries no "missed" claim) and it always has a fallback
+        // line, which is fine: this is narration of every ply, not a highlight reel.
+        let text: string | null = null;
+        let tag = 'studio';
+        try {
+          const line = await studioLine(
+            { baseUrl: studioUrl, depth: opts.studioDepth ?? 12 },
+            {
+              fenBefore,
+              fenAfter: new Chess(fenBefore).move(uciToMove(uci))?.after ?? fenBefore,
+              uci,
+              san: moveLabel,
+              ply: plyOf(fenBefore),
+              mover: moverOf(fenBefore),
+            },
+          );
+          if (line?.text) {
+            text = line.text;
+            tag = `studio ${line.topic} (${line.classification})`;
+          }
+        } catch (error) {
+          log(`chat: studio unavailable (${(error as Error).message}) — local curator`);
         }
-        if (!cadenceAllows(spoken, pliesSinceLine, minPlies)) {
-          pliesSinceLine += 1;
+
+        if (!text) {
+          // Studio unreachable: say the validated motif the move created, if any.
+          const local = curateChatLine(bundle, { subject, moveLabel });
+          if (local) {
+            text = `${moveNumberPrefix(fenBefore)} ${local.text}`;
+            tag = `local T${local.tier} ${local.conceptCode}${subject === 'theirs' ? ' their-move' : ''}`;
+          }
+        }
+        if (!text) {
           return;
         }
 
-        const said = await client.chat(gameId, line.text, room);
+        const said = await client.chat(gameId, text, room);
         if (said) {
-          spoken.add(line.key);
-          pliesSinceLine = 0;
           lines += 1;
-          log(`chat ${gameId} [T${line.tier} ${line.conceptCode}]: ${line.text}`);
+          log(`chat ${gameId} [${tag}]: ${text}`);
         }
       } catch (error) {
         // Chat is a garnish: never let it touch the game.
         log(`chat: suppressed error (${(error as Error).message})`);
       }
+    }
+  }
+
+  return {
+    async afterOurMove(gameId, fenBefore, uci) {
+      await speak(gameId, fenBefore, uci, 'ours');
+    },
+    async afterTheirMove(gameId, fenBefore, uci) {
+      await speak(gameId, fenBefore, uci, 'theirs');
     },
     dispose() {
       engine.dispose();

@@ -166,6 +166,20 @@ export async function playSession(
     const turn = chess.turn() === 'w' ? 'white' : 'black';
     if (turn !== cvsColor) continue; // opponent to move
 
+    // Teaching chat, their half: we are to move, so the last entry in `ucis` is the
+    // opponent's move. Rebuild the position it was played in and let the curator say
+    // what it newly allowed (the bundle's opponent-side probes prove "newly").
+    if (opts.chatter && ucis.length >= 2) {
+      const theirUci = ucis[ucis.length - 1] as string;
+      try {
+        const beforeTheir = new Chess(initialFen);
+        for (let i = 0; i < ucis.length - 1; i += 1) beforeTheir.move(uciToMove(ucis[i] as string));
+        void opts.chatter.afterTheirMove(gameId, beforeTheir.fen(), theirUci);
+      } catch {
+        /* a replay hiccup must never affect play */
+      }
+    }
+
     // Opening book: while we're still in our assigned line, play the next book move
     // INSTANTLY — no engine search. Banks clock for the middlegame and keeps
     // --smarttime from spending ~clock/6 on a known opening move. We leave book the
