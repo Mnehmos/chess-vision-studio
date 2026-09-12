@@ -195,11 +195,13 @@ function matePhrase(evidence: string | undefined): string {
   const m = /mate in (\d+)/.exec(evidence);
   return m ? `mate in ${m[1]}` : 'mate is forced';
 }
+// Returns a LEADING-space clause with no trailing period: callers append their own,
+// and the old " (26 to 33)." produced "...mobility (26 to 33).." in live output.
 function deltaPhrase(evidence: string | undefined): string {
-  if (!evidence) return '.';
+  if (!evidence) return '';
   const m = /(\d+)->(\d+)/.exec(evidence);
-  if (!m) return '.';
-  return ` (${m[1]} to ${m[2]}).`;
+  if (!m) return '';
+  return ` (${m[1]} to ${m[2]})`;
 }
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
