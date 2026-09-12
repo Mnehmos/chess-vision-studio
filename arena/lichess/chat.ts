@@ -27,7 +27,12 @@ import { studioLine } from './studio-commentary';
 export interface ChatterOptions {
   /** Engine binary; defaults to the same path the picker uses. */
   exe?: string;
-  /** Which Lichess chat room. Default 'player' (the game's main chat). */
+  /**
+   * Which Lichess chat room. Default 'spectator': a teaching bot's audience is the
+   * people watching, and in AI games the player room is not what a spectator sees
+   * (verified live — a player-room post is accepted by the API and stays invisible).
+   * Override with CVS_LICHESS_CHAT_ROOM.
+   */
   room?: 'player' | 'spectator';
   /**
    * Running Chess Vision Studio (dev server) whose teaching pipeline writes the line:
@@ -82,7 +87,7 @@ export function makeChatter(
   opts: ChatterOptions = {},
 ): Chatter {
   const studioUrl = opts.studioUrl ?? process.env.CVS_STUDIO_URL ?? 'http://localhost:5199';
-  const room = opts.room ?? 'player';
+  const room = opts.room ?? ((process.env.CVS_LICHESS_CHAT_ROOM as 'player' | 'spectator' | undefined) ?? 'spectator');
   const log = opts.log ?? ((): void => {});
   // Facts need no nets and no search: a dedicated depth-1 serve process is enough.
   const engine = new RustEngine(opts.exe ?? DEFAULT_EXE, 1);

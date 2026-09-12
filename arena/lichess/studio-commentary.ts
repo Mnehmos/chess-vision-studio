@@ -298,7 +298,13 @@ export async function studioLine(
   if (!text) return null;
   if (/analysis unavailable/i.test(text)) return null;
 
-  const line = `${movePrefix(params.ply)} ${text}`.replace(/\s+/g, ' ').trim();
+  // The studio's composition path ("11. Nxe5 — captures on e5 …") already carries a move
+  // number from the FEN; its insight path does not. Prefix only when it is missing, or
+  // live chat reads "11. 11. Nxe5 — …".
+  const prefixed = /^\d+\.{1,3}\s/.test(text.trim())
+    ? text
+    : `${movePrefix(params.ply)} ${text}`;
+  const line = prefixed.replace(/\s+/g, ' ').trim();
   const maxChars = opts.maxChars ?? 200;
   if (line.length > maxChars) return null; // drop rather than truncate mid-claim
 
