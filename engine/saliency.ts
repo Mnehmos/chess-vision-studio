@@ -380,6 +380,15 @@ function immediateRecapture(fenAfter: string, target: Square, evalAfter: Eval): 
   });
 }
 
+const PIECE_WORD: Record<string, string> = {
+  p: 'pawn',
+  n: 'knight',
+  b: 'bishop',
+  r: 'rook',
+  q: 'queen',
+  k: 'king',
+};
+
 function lowGateEventParts(
   fenBefore: string,
   fenAfter: string,
@@ -393,10 +402,25 @@ function lowGateEventParts(
   if (played && isCaptureMove(played)) {
     const recapture = immediateRecapture(fenAfter, played.to, evalAfter);
     const extraEvents = events.filter((event) => event !== 'capture');
+    // Name the piece TAKEN rather than repeating the destination square the move label
+    // already carries ("12. Nxe4 — captures on e4" said the same thing twice), and say
+    // when the recapture is forced rather than optional.
+    const victim = safe(() => {
+      const board = new Chess(fenBefore);
+      const taken = board.get(played.to as never) as { type?: string } | undefined;
+      return taken?.type ? PIECE_WORD[taken.type] : undefined;
+    });
+    const forcedReply = safe(() => new Chess(fenAfter).moves().length === 1) ?? false;
     return [
-      `captures on ${played.to}`,
+      victim ? `takes the ${victim} on ${played.to}` : `captures on ${played.to}`,
       ...extraEvents,
-      ...(recapture ? [`${opponentName} can recapture with ${recapture}`] : []),
+      ...(recapture
+        ? [
+            forcedReply
+              ? `reply ${recapture} is forced`
+              : `${opponentName} recaptures with ${recapture}`,
+          ]
+        : []),
       ...(forced ? ['only legal move'] : []),
     ];
   }

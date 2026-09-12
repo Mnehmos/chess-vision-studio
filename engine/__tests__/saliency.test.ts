@@ -143,7 +143,7 @@ describe('captures and the low-loss gate', () => {
     });
     expect(r.cpLoss).toBeLessThan(0.3);
     expect(r.topExplanation).not.toMatch(/nothing important changed/i);
-    expect(r.topExplanation.toLowerCase()).toContain('capture');
+    expect(r.topExplanation).toContain('takes the pawn on e5');
   });
 
   it('an even-trade capture (SEE 0) names the recapture instead of falling back', () => {
@@ -156,8 +156,8 @@ describe('captures and the low-loss gate', () => {
     });
     expect(r.cpLoss).toBeLessThan(0.3);
     // Even trades are still concrete chess events.
-    expect(r.topExplanation).toContain('captures on e5');
-    expect(r.topExplanation).toContain('Black can recapture with dxe5');
+    expect(r.topExplanation).toContain('takes the pawn on e5');
+    expect(r.topExplanation).toContain('Black recaptures with dxe5');
     expect(r.topExplanation).not.toMatch(/nothing important changed/i);
     expect(r.confidence).toBe('semantic_overlay');
   });
@@ -170,8 +170,8 @@ describe('captures and the low-loss gate', () => {
       evalAfter: ev(-8, ['Qxh6', 'Qa5', 'Qd2']),
     });
     expect(r.cpLoss).toBeLessThan(0.3);
-    expect(r.topExplanation).toContain('captures on h6');
-    expect(r.topExplanation).toContain('White can recapture with Qxh6');
+    expect(r.topExplanation).toContain('takes the bishop on h6');
+    expect(r.topExplanation).toContain('White recaptures with Qxh6');
     expect(r.topExplanation).not.toMatch(/Opening move/i);
     expect(r.confidence).toBe('semantic_overlay');
   });

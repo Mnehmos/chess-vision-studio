@@ -87,6 +87,6 @@ describe('diffPlayedMove — the right word for the relation change', () => {
     const after = 'r2qk2r/ppp3pp/2npBn2/2b1p3/4P3/3P4/PPP2PPP/RNBQK2R w KQkq - 1 8';
     const e4 = diffPlayedMove(before, after).find((c) => c.squares[0] === 'e4');
     expect(e4?.type).toBe('now_attacked');
-    expect(renderInsight(e4!)).toBe('E4 is now attacked.');
+    expect(renderInsight(e4!)).toBe('e4 is now attacked.');
   });
 });

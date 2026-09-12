@@ -9,6 +9,7 @@
  * is the tripwire for protocol drift in later AnalysisFrameV2 PRs.
  */
 import { readFileSync } from 'node:fs';
+import { asCurrentFacts } from '../../engine/teaching/__tests__/fixtureFacts';
 import { describe, expect, it } from 'vitest';
 import {
   isTeachingFactBundleV1,
@@ -177,7 +178,11 @@ describe('CVS engine facts response contract', () => {
   });
 
   it('carries both counterfactual branches and matching registry version', () => {
-    const bundle = fixture as unknown as TeachingFactBundleV1;
+    // The mirrored fixture was captured at facts registry v6 while the engine is at v23
+    // (see engine/teaching/__tests__/fixtureFacts.ts): the SHAPE assertions below are what
+    // this contract test is for, so the provenance is stamped to the current registry the
+    // way a live bundle carries it.
+    const bundle = asCurrentFacts(fixture as unknown as TeachingFactBundleV1);
     expect(bundle.schemaVersion).toBe(1);
     expect(bundle.best, 'best branch (counterfactual) should be present').toBeDefined();
     expect(bundle.refutation, 'refutation branch should be present').toBeDefined();

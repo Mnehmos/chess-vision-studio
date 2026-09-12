@@ -25,6 +25,8 @@ import type { PieceRef, TeachingFactBundleV1 } from '../../engine/teaching/types
 export interface StudioLine {
   /** Chat-ready line, prefixed with the move number it belongs to. */
   text: string;
+  /** The evals the line was derived from (side-to-move POV), so callers can quote a score. */
+  evals: { before: Eval; after: Eval };
   topic: string;
   classification: string;
   saliency: number;
@@ -339,6 +341,7 @@ export async function studioLine(
 
   return {
     text: line,
+    evals: { before: evalBefore, after: evalAfter },
     topic: top ? `${top.kind}:${top.kind === 'motif' ? top.type : top.templateId}` : analysis.classification,
     classification: analysis.classification,
     saliency: top?.saliency ?? 0,

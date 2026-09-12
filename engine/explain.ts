@@ -55,11 +55,11 @@ function renderChange(c: ChangedRelation): string {
             c.materialSwing,
           )} (SEE ${signed(c.materialSwing)}).`;
     case 'now_undefended':
-      return `${capitalize(sq)} is no longer defended.`;
+      return `${sq} is no longer defended.`;
     case 'now_attacked':
-      return `${capitalize(sq)} is now attacked.`;
+      return `${sq} is now attacked.`;
     case 'now_defended':
-      return `${capitalize(sq)} is now defended.`;
+      return `${sq} is now defended.`;
     case 'defender_left':
       return `A defender of ${sq} has left.`;
     case 'piece_captured':
@@ -76,8 +76,11 @@ function renderChange(c: ChangedRelation): string {
     case 'repetition_conversion_warning':
       // The detector built the full sentence (it knows the eval and PV move).
       return c.evidence[0] ?? `${who} can repeat moves here, but the position is still winning — look for a progress move instead of taking the draw.`;
-    case 'development_improved':
+    case 'development_improved': {
+      const castle = castleSideOf(c);
+      if (castle) return `${who} castles ${castle} — the king is safer and the rook joins.`;
       return `${who} develops the ${pieceName(pieceOnSquare(c))}${sq ? ` to ${sq}` : ''}.`;
+    }
     case 'center_control_gained':
       return `${who} gains central control${sq ? ` around ${sq}` : ''}.`;
     case 'mobility_improved':
@@ -99,6 +102,19 @@ function renderChange(c: ChangedRelation): string {
     default:
       return `A relationship changed on ${sq}.`;
   }
+}
+
+/** A king moving two files is a castle: 'short' (g-file) or 'long' (c-file). Returns null
+ *  for anything else, so ordinary king moves still read as developments. */
+function castleSideOf(c: ChangedRelation): 'short' | 'long' | null {
+  const evidence = c.evidence[0] ?? '';
+  const m = /\b[wb]K from ([a-h][1-8]) to ([a-h][1-8])/.exec(evidence);
+  if (!m) return null;
+  const from = m[1] as string;
+  const to = m[2] as string;
+  if (Math.abs(from.charCodeAt(0) - to.charCodeAt(0)) !== 2) return null;
+  if (from[1] !== to[1]) return null;
+  return to[0] === 'g' ? 'short' : 'long';
 }
 
 function pieceOnSquare(c: ChangedRelation): string {
@@ -202,7 +218,4 @@ function deltaPhrase(evidence: string | undefined): string {
   const m = /(\d+)->(\d+)/.exec(evidence);
   if (!m) return '';
   return ` (${m[1]} to ${m[2]})`;
-}
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }

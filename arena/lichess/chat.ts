@@ -22,6 +22,7 @@ import { Chess } from 'chess.js';
 import { RustEngine } from '../gauntlet/rust-engine';
 import { uciToMove } from '../players';
 import { curateChatLine } from '../../engine/teaching/chatLine';
+import type { Eval } from '../../engine/types';
 import { studioLine } from './studio-commentary';
 
 export interface ChatterOptions {
@@ -66,6 +67,21 @@ function moveNumber(fen: string): number {
   return Number(parts[5] ?? '1') || 1;
 }
 
+/**
+ * Compact eval tag for the line: "(mate in 5)", or the score, or the swing when it moved.
+ * The mate lines already carried this and were the most useful in the feed; the rest said
+ * "the evaluation is unchanged" without ever saying what it was.
+ */
+function evalTag(before: Eval, after: Eval): string {
+  if (typeof after.mate === 'number' && after.mate !== 0) return `(mate in ${Math.abs(after.mate)})`;
+  if (typeof after.cp !== 'number') return '';
+  const now = after.cp / 100;
+  const was = typeof before.cp === 'number' ? before.cp / 100 : undefined;
+  const fmt = (v: number): string => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`;
+  if (was !== undefined && Math.abs(was - now) >= 0.5) return `(${fmt(was)} → ${fmt(now)})`;
+  return `(${fmt(now)})`;
+}
+
 /** `12.` for White's move, `12...` for Black's — a chat reader must know WHICH move. */
 function moveNumberPrefix(fen: string): string {
   return fen.split(' ')[1] === 'w' ? `${moveNumber(fen)}.` : `${moveNumber(fen)}...`;
@@ -102,6 +118,7 @@ export function makeChatter(
   const engine = new RustEngine(opts.exe ?? DEFAULT_EXE, 1);
 
   let game = '';
+  let lastTag = '';
   let lines = 0;
 
   async function speak(
@@ -117,6 +134,7 @@ export function makeChatter(
         if (gameId !== game) {
           game = gameId;
           lines = 0;
+          lastTag = '';
         }
 
         let moveLabel = uci;
@@ -144,6 +162,7 @@ export function makeChatter(
         // line, which is fine: this is narration of every ply, not a highlight reel.
         let text: string | null = null;
         let tag = 'studio';
+        let scoreTag = '';
         try {
           const line = await studioLine(
             { baseUrl: studioUrl, depth: opts.studioDepth ?? 12 },
@@ -157,7 +176,13 @@ export function makeChatter(
             },
           );
           if (line?.text) {
-            text = line.text;
+            scoreTag = evalTag(line.evals.before, line.evals.after);
+            // Quote the score when the line does not already carry one and the budget
+            // allows it: "the evaluation is unchanged" is meaningless without the number.
+            text =
+              scoreTag && !/\([+-]?\d|mate in/.test(line.text) && line.text.length + scoreTag.length + 1 <= 140
+                ? `${line.text} ${scoreTag}`
+                : line.text;
             tag = `studio ${line.topic} (${line.classification})`;
           }
         } catch (error) {
@@ -176,9 +201,17 @@ export function makeChatter(
           return;
         }
 
+        // Repetition guard: the same template on consecutive plies must not read as the
+        // same sentence twice ("No forcing tactic found…" ran 15x in one game). Fall back
+        // to the compact move+score form — still per-ply, still informative, never a rerun.
+        if (tag === lastTag && scoreTag) {
+          text = `${moveNumberPrefix(fenBefore)} ${moveLabel} ${scoreTag}`.replace(/\s+/g, ' ').trim();
+        }
+
         const said = await client.chat(gameId, text, room);
         if (said) {
           lines += 1;
+          lastTag = tag;
           // Log the room: whether a line is visible depends entirely on which room it
           // went to, and guessing has cost us a lot of time today.
           log(`chat ${gameId} [${room} ${tag}]: ${text}`);
