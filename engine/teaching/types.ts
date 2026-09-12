@@ -1,6 +1,9 @@
 export const TEACHING_FACTS_SCHEMA_VERSION = 1 as const;
-// v6: deterministic 64-square control + legal movers (squareFacts) — PR-07.
-export const TEACHING_FACTS_REGISTRY_VERSION = 6 as const;
+// The engine's registry is at v23 (src/facts/mod.rs FACTS_REGISTRY_VERSION); the app's
+// mirror had drifted to v6, which hid 16 motif families and every opponent-side probe
+// from TypeScript. Additive fields below carry `?` so bundles produced by older engine
+// builds (and the v6-era mirrored fixtures) still satisfy the type.
+export const TEACHING_FACTS_REGISTRY_VERSION = 23 as const;
 
 export interface TeachingFactsRequestV1 {
   schemaVersion: 1;
@@ -41,6 +44,44 @@ export interface PositionFacts {
   // Deterministic 64-square control + legal movers (PR-07, facts registry v6).
   // Optional so older fact bundles (registry <=5) still satisfy the type.
   squareFacts?: FactCollection<SquareFact>;
+
+  // ── Registry v7..v23 collections ────────────────────────────────────────────
+  // Every collection below also has an `opponentAvailable*` twin: the symmetric
+  // analysis probe for the side NOT to move, which is what lets the app prove a
+  // motif was NEWLY allowed by a move (see TEACHING_FACTS_PROTOCOL.md).
+  // Optional: engine builds before the corresponding registry version omit them.
+  availableSkewers?: FactCollection<SkewerOpportunity>;
+  availableDiscoveries?: FactCollection<DiscoveryOpportunity>;
+  availableDiscoveredDefense?: FactCollection<DiscoveredDefenseOpportunity>;
+  availableRemoveGuard?: FactCollection<RemoveGuardOpportunity>;
+  availableTrapped?: FactCollection<TrappedPieceOpportunity>;
+  availableDesperado?: FactCollection<DesperadoOpportunity>;
+  availableMatePatterns?: FactCollection<MatePatternFact>;
+  availableOverload?: FactCollection<OverloadOpportunity>;
+  availableAttackDefender?: FactCollection<AttackDefenderOpportunity>;
+  availableDeflection?: FactCollection<DeflectionOpportunity>;
+  availableLureDefender?: FactCollection<LureDefenderOpportunity>;
+  availableInterference?: FactCollection<InterferenceOpportunity>;
+  availableDoubleAttack?: FactCollection<DoubleAttackOpportunity>;
+  availableXrayAttack?: FactCollection<XRayOpportunity>;
+  availableXrayDefense?: FactCollection<XRayDefenseOpportunity>;
+  availableWinExchange?: FactCollection<WinExchangeOpportunity>;
+  opponentAvailableSkewers?: FactCollection<SkewerOpportunity>;
+  opponentAvailableDiscoveries?: FactCollection<DiscoveryOpportunity>;
+  opponentAvailableDiscoveredDefense?: FactCollection<DiscoveredDefenseOpportunity>;
+  opponentAvailableRemoveGuard?: FactCollection<RemoveGuardOpportunity>;
+  opponentAvailableTrapped?: FactCollection<TrappedPieceOpportunity>;
+  opponentAvailableDesperado?: FactCollection<DesperadoOpportunity>;
+  opponentAvailableMatePatterns?: FactCollection<MatePatternFact>;
+  opponentAvailableOverload?: FactCollection<OverloadOpportunity>;
+  opponentAvailableAttackDefender?: FactCollection<AttackDefenderOpportunity>;
+  opponentAvailableDeflection?: FactCollection<DeflectionOpportunity>;
+  opponentAvailableLureDefender?: FactCollection<LureDefenderOpportunity>;
+  opponentAvailableInterference?: FactCollection<InterferenceOpportunity>;
+  opponentAvailableDoubleAttack?: FactCollection<DoubleAttackOpportunity>;
+  opponentAvailableXrayAttack?: FactCollection<XRayOpportunity>;
+  opponentAvailableXrayDefense?: FactCollection<XRayDefenseOpportunity>;
+  opponentAvailableWinExchange?: FactCollection<WinExchangeOpportunity>;
 }
 
 export interface MoveStateFacts {
@@ -417,3 +458,185 @@ export type TeachingAnalysis =
       primaryEvent?: TeachingEvent;
     }
   | { computed: false; reason: TeachingUncomputedReason };
+
+// ── Registry v7..v23 motif-opportunity shapes ─────────────────────────────────
+// Mirrors src/facts/types.rs (serde camelCase), field-for-field. Every shape carries
+// the `validator` that proved it: consumers must fail closed when a collection is
+// uncomputed or unavailable, and cite the validator on any event derived from it.
+// `materialGain` is the engine's proven WORST-CASE gain, never an optimistic count.
+
+export interface SkewerOpportunity {
+  kind: string; // "skewer"
+  validator: string; // "skewer_validation"
+  moveUci: string;
+  skewerer: PieceRef;
+  front: PieceRef;
+  back: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface DiscoveryOpportunity {
+  kind: string; // "discovered_attack" | "discovered_check" | "double_check" | "discoverer_checks"
+  validator: string; // "discovery_validation"
+  moveUci: string;
+  mover: PieceRef;
+  slider: PieceRef;
+  target: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  discoveredCheck: boolean;
+  doubleCheck: boolean;
+  moverThreatens: boolean;
+  materialGain: number;
+}
+
+export interface DiscoveredDefenseOpportunity {
+  kind: string; // "discovered_defense"
+  validator: string; // "discovered_defense_validation"
+  moveUci: string;
+  mover: PieceRef;
+  slider: PieceRef;
+  defendedPiece: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface RemoveGuardOpportunity {
+  kind: string; // "capture_the_defender"
+  validator: string; // "remove_guard_validation"
+  moveUci: string;
+  mover: PieceRef;
+  capturedDefender: PieceRef;
+  target: PieceRef;
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface TrappedPieceOpportunity {
+  kind: string; // "trapped_piece"
+  validator: string; // "trapped_piece_validation"
+  piece: PieceRef;
+  attackers: PieceRef[];
+  escapeSquaresTried: string[];
+  materialGain: number;
+}
+
+export interface DesperadoOpportunity {
+  kind: string; // "desperado"
+  validator: string; // "desperado_validation"
+  moveUci: string;
+  piece: PieceRef;
+  capturedVictim: PieceRef;
+  materialGain: number;
+}
+
+export interface MatePatternFact {
+  kind: string; // "back_rank_mate" | "smothered_mate" | "epaulette_mate" | "damiano_mate" | "boden_mate"
+  validator: string; // "mate_pattern_validation"
+  moveUci: string;
+  matingPiece: PieceRef;
+  matedKing: PieceRef;
+  keySquares: string[];
+  givesCheck: boolean;
+}
+
+export interface OverloadOpportunity {
+  kind: string; // "overloading"
+  validator: string; // "overload_validation"
+  overloadedDefender: PieceRef;
+  targets: PieceRef[];
+  materialGain: number;
+}
+
+export interface AttackDefenderOpportunity {
+  kind: string; // "attacking_the_defender"
+  validator: string; // "attack_defender_validation"
+  moveUci: string;
+  mover: PieceRef;
+  attackedDefender: PieceRef;
+  targets: PieceRef[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface DeflectionOpportunity {
+  kind: string; // "deflection"
+  validator: string; // "deflection_validation"
+  moveUci: string;
+  mover: PieceRef;
+  distractedDefender: PieceRef;
+  targets: PieceRef[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface LureDefenderOpportunity {
+  kind: string; // "luring_the_defender"
+  validator: string; // "lure_defender_validation"
+  moveUci: string;
+  mover: PieceRef;
+  luredDefender: PieceRef;
+  targets: PieceRef[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface InterferenceOpportunity {
+  kind: string; // "interference"
+  validator: string; // "interference_validation"
+  moveUci: string;
+  interposer: PieceRef;
+  cutDefender: PieceRef;
+  target: PieceRef;
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface DoubleAttackOpportunity {
+  kind: string; // "double_attack"
+  validator: string; // "double_attack_validation"
+  moveUci: string;
+  mover: PieceRef;
+  secondAttacker: PieceRef;
+  targetA: PieceRef;
+  targetB: PieceRef;
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface XRayOpportunity {
+  kind: string; // "xray_attack"
+  validator: string; // "xray_attack_validation"
+  moveUci: string;
+  xrayer: PieceRef;
+  front: PieceRef;
+  back: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface XRayDefenseOpportunity {
+  kind: string; // "xray_defense"
+  validator: string; // "xray_defense_validation"
+  moveUci: string;
+  xrayer: PieceRef;
+  frontEnemy: PieceRef;
+  defended: PieceRef;
+  ray: string[];
+  givesCheck: boolean;
+  materialGain: number;
+}
+
+export interface WinExchangeOpportunity {
+  kind: string; // "win_the_exchange"
+  validator: string; // "win_exchange_validation"
+  moveUci: string;
+  mover: PieceRef;
+  victim: PieceRef;
+  givesCheck: boolean;
+  materialGain: number;
+}

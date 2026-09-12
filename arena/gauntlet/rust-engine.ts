@@ -4,6 +4,7 @@
 // pure orchestration glue.
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { createInterface, type Interface } from 'node:readline';
+import type { TeachingFactsRequestV1, TeachingFactBundleV1 } from '../../engine/teaching/types';
 
 export interface RustPick {
   fen: string;
@@ -106,6 +107,16 @@ export class RustEngine {
     // a true hang is still bounded by the per-game watchdog upstream.
     const timeoutMs = Math.max(8_000, cappedBudgetMs * 6 + 2_000);
     return JSON.parse(await this.request(command, timeoutMs)) as RustPick;
+  }
+
+  /**
+   * Teaching-fact bundle for one move (the full detector sweep) via `cmd: "facts"`.
+   * Standalone chess facts — it needs no nets and no search, so callers can keep this
+   * on a dedicated serve process away from the picker's search.
+   */
+  async facts(request: TeachingFactsRequestV1): Promise<TeachingFactBundleV1> {
+    const command = JSON.stringify({ cmd: 'facts', ...request });
+    return JSON.parse(await this.request(command, 30_000)) as TeachingFactBundleV1;
   }
 
   /** Static eval (White-POV rounded cp; exact TS-eval parity) via `eval <fen>`. */

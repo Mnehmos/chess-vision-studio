@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import allowedForkFixture from '../../../fixtures/teaching-facts/v1/allowed-fork.json';
 import type { MoveAnalysis } from '../../types';
 import type { TeachingFactBundleV1 } from '../types';
+import { asCurrentFacts } from './fixtureFacts';
 import {
   buildTeachingRecord,
   isRecordFresh,
@@ -10,8 +11,9 @@ import {
   teachingStockfishSettings,
   TEACHING_COMPILER_VERSION,
 } from '../record';
+import { TEACHING_FACTS_REGISTRY_VERSION } from '../types';
 
-const FACTS = allowedForkFixture as unknown as TeachingFactBundleV1;
+const FACTS = asCurrentFacts(allowedForkFixture as unknown as TeachingFactBundleV1);
 
 const analysis = {
   positionBefore: FACTS.fenBefore,
@@ -38,7 +40,7 @@ describe('buildTeachingRecord', () => {
   });
 
   it('carries the Rust fact bundle and committed teaching', () => {
-    expect(record.facts.provenance.factsRegistryVersion).toBe(6);
+    expect(record.facts.provenance.factsRegistryVersion).toBe(TEACHING_FACTS_REGISTRY_VERSION);
     expect(record.primaryTopicId).toBe('allowed_fork');
     expect(record.events.some((e) => e.topicId === 'allowed_fork')).toBe(true);
     expect(record.primaryPlan?.headline).toContain('fork');
@@ -51,7 +53,7 @@ describe('buildTeachingRecord', () => {
 
   it('stamps full provenance (schema/registry/compiler/engine/depth)', () => {
     expect(record.provenance.teachingSchemaVersion).toBe(1);
-    expect(record.provenance.factsRegistryVersion).toBe(6);
+    expect(record.provenance.factsRegistryVersion).toBe(TEACHING_FACTS_REGISTRY_VERSION);
     expect(record.provenance.compilerVersion).toBe(TEACHING_COMPILER_VERSION);
     expect(record.provenance.engine).toBe('cvs-bitboard-core');
     expect(record.provenance.sfDepth).toBe(20);
@@ -64,8 +66,10 @@ describe('buildTeachingRecord', () => {
   });
 
   it('keys cache rows by game, ply, schema, registry, compiler, and Stockfish settings', () => {
-    expect(recordSignature(record.provenance)).toBe('t1.r6.c2.b20.a20.dx');
-    expect(teachingCacheKey(record)).toBe('g1|p14|t1.r6.c2.b20.a20.dx');
+    expect(recordSignature(record.provenance)).toBe(
+      `t1.r${TEACHING_FACTS_REGISTRY_VERSION}.c2.b20.a20.dx`,
+    );
+    expect(teachingCacheKey(record)).toBe(`g1|p14|t1.r${TEACHING_FACTS_REGISTRY_VERSION}.c2.b20.a20.dx`);
   });
 
   it('rejects stale registry and Stockfish settings', () => {

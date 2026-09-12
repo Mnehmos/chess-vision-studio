@@ -9,6 +9,7 @@ import {
   type TeachingAuditRow,
 } from '../audit';
 import { buildTeachingRecord, type TeachingRecordV1 } from '../record';
+import { asCurrentFacts } from './fixtureFacts';
 import type { TeachingFactBundleV1 } from '../types';
 
 const ANALYSIS = {
@@ -29,7 +30,7 @@ function baseRecord(): TeachingRecordV1 {
     ply: 1,
     san: 'Re1',
     analysis: ANALYSIS,
-    facts: allowedForkFixture as unknown as TeachingFactBundleV1,
+    facts: asCurrentFacts(allowedForkFixture as unknown as TeachingFactBundleV1),
   });
 }
 

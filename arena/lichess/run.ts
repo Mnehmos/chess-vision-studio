@@ -11,6 +11,7 @@ import { CvsEngine, type PolicyWeights } from '@cvs/engine';
 import { resolveBackendKind } from '../engine-backend';
 import { RustBackend, rustBackendExtraArgs } from '../engine-backend/rust-backend';
 import { ponderPicker } from './ponder-picker';
+import { makeChatter } from './chat';
 import { rustPicker } from './rust-picker';
 import { LichessClient, type LichessEvent } from './client';
 import { loadLichessConfig, hasToken, type LichessConfig } from './env';
@@ -289,6 +290,9 @@ export async function runBot(
           });
           // Rotate the opening book per game: snap-play our in-book moves (diversity
           // + banked clock + keeps smarttime off known openings).
+          // Teaching chat (opt-in): one curated, validator-backed line about our own
+          // move, after it is posted, on its own process. Off unless CVS_LICHESS_CHAT=1.
+          const chatter = process.env.CVS_LICHESS_CHAT === '1' ? makeChatter(client, { log }) : undefined;
           const book = nextBookLine();
           log(`game ${gameId} opening: ${book.name}`);
           // maxMoveMs 12s caps the base budget for slow games (smarttime expands it);
@@ -311,6 +315,7 @@ export async function runBot(
               safeHardFraction: Number(process.env.CVS_LICHESS_SAFE_HARD_FRACTION ?? 0.12),
               smarttimeHardMult: Number(process.env.CVS_LICHESS_SMARTTIME_HARD ?? 4.8),
               bookLine: book.moves,
+              chatter,
             }),
             watchdog,
           ])
@@ -336,7 +341,10 @@ export async function runBot(
               log(`game ${gameId} error: ${String(e)}`);
               void fillSlot(); // re-seed / re-kick the ladder after a watchdog/abort too
             })
-            .finally(() => clearTimeout(wd));
+            .finally(() => {
+              clearTimeout(wd);
+              chatter?.dispose(); // one serve process per game, released with it
+            });
         }
         // 'gameFinish' needs no handling: the per-game stream ends on its own.
       }

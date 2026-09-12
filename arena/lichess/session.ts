@@ -8,6 +8,7 @@ import { uciToMove } from '../players';
 import type { PlayedPly, GameRecord } from '../match';
 import type { LichessClient, GameStreamEvent, GameState } from './client';
 import { bookMove } from './book';
+import type { Chatter } from './chat';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -51,6 +52,11 @@ export interface SessionOptions {
   smarttimeOverrun?: number;
   minMoveMs?: number;
   maxMoveMs?: number;
+  /**
+   * Optional teaching chat. Fired AFTER our move is accepted by the server, on its own
+   * serve process, fail-closed: it cannot delay a move or touch the game result.
+   */
+  chatter?: Chatter;
   /**
    * Wall-clock reserved per move for network round-trip + engine IPC + clock lag.
    * Subtracted from the budget so the time we actually burn stays under the clock.
@@ -235,6 +241,9 @@ export async function playSession(
       break;
     }
 
+    // Captured before the POST: chat describes the position we just moved in.
+    const fenBeforeMove = chess.fen();
+
     // Move POSTs fail under 429/network blips; the clock is the real judge, so
     // keep retrying with backoff instead of resigning a playable position.
     let posted = false;
@@ -244,6 +253,11 @@ export async function playSession(
     }
     if (!posted) {
       break; // exit the session WITHOUT resigning — a reconnect can resume the game
+    }
+
+    // Teaching chat: strictly after the move is banked, fire-and-forget.
+    if (opts.chatter) {
+      void opts.chatter.afterOurMove(gameId, fenBeforeMove, uci);
     }
   }
 
